@@ -43,6 +43,46 @@ test("local resignation exports a replayable PGN with the correct winner", async
   archived.loadPgn(archivePgn!);
   expect(archived.getHeaders().Result).toBe("1-0");
   expect(archived.history()).toEqual(["e4"]);
+
+  await page.goto("/games");
+  const localArchive = page.getByRole("region", { name: "Local game archive" });
+  await expect(localArchive.getByText("Local game · Black resigned")).toBeVisible();
+  const archiveDownload = page.waitForEvent("download");
+  await localArchive.getByRole("button", { name: "Download PGN" }).click();
+  const savedFile = await archiveDownload;
+  const saved = new Chess();
+  saved.loadPgn(await readFile(await savedFile.path(), "utf8"));
+  expect(saved.getHeaders().Result).toBe("1-0");
+
+  await localArchive.getByRole("link", { name: "Review game" }).click();
+  await expect(page).toHaveURL(/\/analysis\?localGame=local-/);
+  await expect(page.getByRole("status").filter({ hasText: "1 plies loaded from your local archive." })).toBeVisible();
+  await expect(page.getByLabel("Analysis moves").getByText("e4")).toBeVisible();
+  await page.getByRole("button", { name: "Previous move" }).click();
+  await expect(page.getByText("0 / 1")).toBeVisible();
+  const reviewExport = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PGN" }).click();
+  const review = new Chess();
+  review.loadPgn(await readFile(await (await reviewExport).path(), "utf8"));
+  expect(review.history()).toEqual(["e4"]);
+  expect(review.getHeaders().Result).toBe("1-0");
+});
+
+test("local archive ignores invalid storage and refuses corrupt replay PGN", async ({ page }) => {
+  await page.goto("/games");
+  await page.evaluate(() => localStorage.setItem("rookline-history", "{corrupted"));
+  await page.reload();
+  const localArchive = page.getByRole("region", { name: "Local game archive" });
+  await expect(localArchive.getByText("No completed games saved on this device yet.")).toBeVisible();
+
+  await page.evaluate(() => localStorage.setItem("rookline-history", JSON.stringify([{
+    id: "local-corrupt-pgn", mode: "local", outcome: "Corrupted", date: new Date().toISOString(),
+    pgn: "1. not-a-legal-move",
+  }])));
+  await page.reload();
+  await localArchive.getByRole("link", { name: "Review game" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "This local game cannot be loaded." })).toBeVisible();
+  await expect(page.getByText("0 / 0")).toBeVisible();
 });
 
 test("puzzle solution validates against board rules", async ({ page }) => {

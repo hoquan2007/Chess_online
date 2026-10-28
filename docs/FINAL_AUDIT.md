@@ -9,9 +9,9 @@ Track acceptance 1–20 exactly as specified in the owner's `/goal`:
 | 1: All functional routes | FAIL | Additional routes and hosted functionality |
 | 2–4: Rules, local and computer | PARTIAL | Local move/checkmate, threefold claims, keyboard moves, clock-accurate undo/reload, throttled-tab timeout rejection, safe bot Undo and Worker E2E pass; comprehensive rules/timing, long-game and skill-level QA missing |
 | 5–11: Real online, authority, clocks, reconnect, auth, persistence and rating | BLOCKED_EXTERNAL / NOT IMPLEMENTED | Resignation-before-timeout correction exists as an unrun SQL migration; no credentialed SQL integration or 2-browser evidence |
-| 12–13: Profiles, history, puzzles and analysis | PARTIAL | Local analysis FEN/PGN import/export, underpromotion, puzzle, completed local PGN archival and mocked online PGN download pass browser checks; local archive browsing, backend profiles, licensed engine evaluation and learning scale incomplete |
+| 12–13: Profiles, history, puzzles and analysis | PARTIAL | Local analysis FEN/PGN import/export, underpromotion, puzzle, completed local PGN archive browsing/replay/download with result preserved and mocked online PGN download pass browser checks; backend profiles, licensed engine evaluation and learning scale incomplete |
 | 14: Community | NOT IMPLEMENTED | Auth-based features and tests |
-| 15–16: UX and all test suites | PARTIAL | Local mobile no-overflow, theme, coordinate keyboard paths, lint/typecheck/47 unit/23 E2E/Webpack build pass; broad keyboard/visual audit and live DB integration missing |
+| 15–16: UX and all test suites | PARTIAL | Local mobile no-overflow, theme, coordinate keyboard paths, lint/typecheck/47 unit/24 E2E/Webpack build pass at checkpoint 8; broad keyboard/visual audit and live DB integration missing |
 | 17: Zero high/critical findings | UNVERIFIED | Current npm audit failed registry DNS; external security/DB checks absent |
 | 18: Vercel build/deployment guide verified | PARTIAL | Local Webpack build passes; preview/staging deployment unverified |
 | 19: No placeholders/fake controls | FAIL | Online/friend and absent pages |

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowLeft, ArrowRight, Download, RotateCcw } from "lucide-react";
@@ -12,12 +12,41 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const [analysis, setAnalysis] = useState<Analysis>(() => ({ start: new Chess().fen(), san: [], index: 0 }));
   const [selected, setSelected] = useState<Square | null>(null);
   const [pgn, setPgn] = useState(initialPgn);
+  const [importedPgn, setImportedPgn] = useState<string | null>(null);
   const [fenText, setFenText] = useState("");
   const [message, setMessage] = useState("");
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [keyboardMove, setKeyboardMove] = useState("");
   const [keyboardError, setKeyboardError] = useState("");
   const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    queueMicrotask(() => {
+      if (!mounted) return;
+      const id = new URLSearchParams(window.location.search).get("localGame");
+      if (!id) return;
+      try {
+        if (!id.startsWith("local-") || id.length > 80) throw new Error("Invalid archive id");
+        const raw = localStorage.getItem("rookline-history") || "[]";
+        if (raw.length > 2_000_000) throw new Error("Archive too large");
+        const stored: unknown = JSON.parse(raw);
+        const match = Array.isArray(stored) ? stored.slice(0, 80).find((entry) =>
+          entry && typeof entry === "object" && entry.id === id) as { pgn?: unknown } | undefined : undefined;
+        if (typeof match?.pgn !== "string" || match.pgn.length > 100_000) throw new Error("Invalid archive PGN");
+        const restored = new Chess();
+        restored.loadPgn(match.pgn);
+        const san = restored.history();
+        setAnalysis({ start: restored.header().FEN || new Chess().fen(), san, index: san.length });
+        setPgn(match.pgn);
+        setImportedPgn(restored.pgn());
+        setMessage(`${san.length} plies loaded from your local archive.`);
+      } catch {
+        setMessage("This local game cannot be loaded. It may have been deleted or corrupted.");
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
 
   const board = useMemo(() => {
     const reconstructed = new Chess(analysis.start);
@@ -37,6 +66,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       parsed.loadPgn(pgn);
       const history = parsed.history();
       setAnalysis({ start: parsed.header().FEN || new Chess().fen(), san: history, index: history.length });
+      setImportedPgn(parsed.pgn());
       setSelected(null);
       setPromotion(null);
       setMessage(`${history.length} plies imported successfully.`);
@@ -47,6 +77,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     try {
       const parsed = new Chess(fenText.trim());
       setAnalysis({ start: parsed.fen(), san: [], index: 0 });
+      setImportedPgn(null);
       setSelected(null);
       setPromotion(null);
       setMessage("Position loaded. You can explore legal moves.");
@@ -65,6 +96,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     if (!played) return false;
     const next = [...analysis.san.slice(0, analysis.index), played.san];
     setAnalysis({ ...analysis, san: next, index: next.length });
+    setImportedPgn(null);
     setSelected(null);
     setPromotion(null);
     setMessage(`Played ${played.san}.`);
@@ -89,7 +121,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const exportPgn = () => {
     const reconstructed = new Chess(analysis.start);
     for (const san of analysis.san) reconstructed.move(san);
-    const blob = new Blob([reconstructed.pgn()], { type: "application/x-chess-pgn" });
+    const blob = new Blob([importedPgn ?? reconstructed.pgn()], { type: "application/x-chess-pgn" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.download = "rookline-analysis.pgn";
@@ -140,7 +172,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
         {keyboardError && <p role="alert" className="panel-sub">{keyboardError}</p>}
       </form>
       {message && <p className="status" role="status">{message}</p>}
-      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
+      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setImportedPgn(null); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
     </aside>
     {promotion && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose promotion piece"><div className="promotion-box"><h2>Choose your promotion</h2><div className="promotion-choices">{(["q", "r", "b", "n"] as const).map((piece) => <button key={piece} type="button" aria-label={`Promote to ${piece}`} onClick={() => makeMove(promotion.from, promotion.to, piece)}>{({ q: "♛", r: "♜", b: "♝", n: "♞" })[piece]}</button>)}</div><button type="button" className="btn ghost" onClick={() => setPromotion(null)}>Cancel</button></div></div>}
   </div>;

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, BookOpen, Swords } from "lucide-react";
 import { authenticatedGameContext } from "@/lib/supabase/server";
+import { LocalGameArchive } from "@/components/LocalGameArchive";
 
 export const metadata = { title: "Game archive" };
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export default async function GamesPage() {
       <div className="text-panel stack"><h2>{context.status === 503 ? "Online history is not configured" : "Sign in to view your games"}</h2>
         <p className="muted">{context.status === 503 ? "A Supabase project and database migrations are required to save online matches." : "Your private game history follows your Rookline account."}</p>
         <div className="game-actions"><Link href="/login?next=%2Fgames" className="btn primary">Sign in</Link><Link href="/play/local" className="btn ghost">Play locally</Link></div></div>
+      <LocalGameArchive />
     </section>;
   }
 
@@ -36,5 +38,6 @@ export default async function GamesPage() {
             <small className="muted">{game.result ?? (game.status === "completed" ? "Completed" : "Unrated private match")}</small></span><ArrowUpRight size={19} />
         </Link>;
       })}</div>}
+    <LocalGameArchive />
   </section>;
 }

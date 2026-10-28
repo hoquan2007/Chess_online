@@ -4,11 +4,11 @@ Date: 2026-10-29. Workspace: `D:\Chess_online`; branch `codex/chess-platform-fou
 
 | Check | Observed result | Evidence boundary |
 | --- | --- | --- |
-| `npm run lint` | PASS, exit 0, checkpoint 7 | Local source and tests |
-| `npm run typecheck` | PASS, exit 0, checkpoint 7 | TypeScript strict check |
-| `npm run test` | PASS, 47/47 tests in 7 suites, checkpoint 7 | Includes replayable local and online PGN, nonstandard FEN, clocks, FIDE claims/timeout and input checks; **not** hosted DB integration |
-| `npm run test:e2e -- --workers=1` | PASS, 23/23 Playwright tests (43.1 s), checkpoint 7 | Local resignation downloaded PGN and saved local archive PGN both include winner; online PGN browser uses a **mocked** snapshot; **not** hosted multiplayer |
-| `npm run build -- --webpack` | PASS, exit 0, Next 16.4.3, checkpoint 7 | Compile, types, 17/17 static generation, build trace; Webpack is the verified builder |
+| `npm run lint` | PASS, exit 0, checkpoint 8 after adding archive test | Local source and tests |
+| `npm run typecheck` | PASS, exit 0, checkpoint 8 | TypeScript strict check |
+| `npm run test` | PASS, 47/47 tests in 7 suites, checkpoint 8 | Includes replayable local and online PGN, nonstandard FEN, clocks, FIDE claims/timeout and input checks; **not** hosted DB integration |
+| `npm run test:e2e -- --workers=1` | PASS, 24/24 Playwright cases (47.3 s), checkpoint 8 | Local completed game browsing/replay/download, import/export with correct Result and corrupted-storage recovery; online PGN browser uses a **mocked** snapshot; **not** hosted multiplayer |
+| `npm run build -- --webpack` | PASS, exit 0, Next 16.4.3, checkpoint 8 | Compile, types, 17/17 static generation, build trace; Webpack is the verified builder |
 | `.github/workflows/quality.yml` | Written; **NOT RUN** on GitHub | Node 24, lint/typecheck/Vitest/Webpack build/Playwright Chromium configured |
 | `npm audit --omit=dev --json` | UNVERIFIED: `getaddrinfo ENOTFOUND registry.npmjs.org` | No conclusion about current dependency vulnerabilities |
 | Supabase migration, RLS, RPC and Auth | BLOCKED_EXTERNAL | No configured staging project or real account credentials |
@@ -22,5 +22,7 @@ The `20261029030000_draw_claims.sql` and `20261029040000_resignation_clock_autho
 At checkpoint 6, a default-sandbox full Playwright startup produced no further output after web-server warnings and was interrupted; the full 22-test regression passed under native escalated local execution. The escalated Webpack production build also passed. Earlier Turbopack and sandboxed Webpack failures were environment-specific observations; avoid claiming default Turbopack or CI success.
 
 Checkpoint 7: local PGN downloads now include correctly adjudicated result headers for resignation, claim, timeout, checkmate and unfinished games; archived local sessions store the same replayable PGN. New tests cover exporting a custom starting FEN and preserving game state. Full 23-test browser regression and build passed again after archive changes. These tests do not certify hosted persistence.
+
+Checkpoint 8: `/games` renders a browser-only completed-game archive for signed-out, unconfigured and authenticated visitors, with download and links to `/analysis?localGame=…`. Analysis replays locally saved PGNs and preserves Result and initial FEN headers on untouched export. Browser scenario verified a Black resignation, saved PGN, opening and seeking the replay, and re-export with `Result "1-0"`. A browser test verified corrupt JSON yields an empty archive and invalid saved PGN produces an error without crashing analysis. Full 24-case regression passed (47.3 s). Lint/typecheck/47 Vitest passed and the Next 16.4.3 Webpack build passed with 17/17 generated static pages. All new archive data is local browser storage, never server-rated history.
 
 All 20 full product acceptance gates remain open. Rerun relevant checks after further code changes and record their outcomes here.

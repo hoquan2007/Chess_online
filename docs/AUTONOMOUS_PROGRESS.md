@@ -71,3 +71,13 @@ Next focus: acquire staging verification prerequisites; meanwhile audit and impr
 - Four SQL migrations remain unrun on PostgreSQL, and hosted Supabase Auth, RLS, RPC, Realtime, two-player sessions, rating, GitHub CI and Vercel preview are unverified. All 20 acceptance gates remain OPEN; status **IN_PROGRESS**.
 
 Next focus: expose locally saved completed games in the archive UI and allow their replay, while continuing to seek dedicated Rookline staging access for hosted security verification.
+
+## 2026-10-29, checkpoint 8 — saved local games browser archive and analysis replay
+
+- Added a local completed-games section to `/games` for signed-out and authenticated states, with device-local game date/outcome, PGN download, and replay link; invalid and oversized localStorage entries are guarded.
+- `/analysis?localGame=<id>` restores a stored PGN and opens at the final ply with first/previous/next navigation. Unmodified PGN export retains the saved result and setup headers; branching the line starts an ordinary new analysis variation.
+- Browser tests checked local Black resignation → archive → download → replay → re-export with preserved `1-0`, plus malformed archive JSON and invalid replay PGN error handling.
+- Lint, strict TypeScript and 47/47 Vitest passed; full Playwright **24/24** passed (47.3 s), including new archive corruption coverage. Next.js 16.4.3 Webpack build passed with 17/17 generated static pages.
+- Dedicated Supabase staging URL, publishable key and server-only credential remain absent. Four SQL migrations, RLS/GRANTS and two real authenticated browsers remain unverified; no real-hosted multiplayer gate has closed. Status: **IN_PROGRESS**; all 20 acceptance gates OPEN.
+
+Next focus: continue locally verifiable accessibility and replay correctness while preparing the dedicated Rookline staging integration checklist. Do not touch the unrelated Supabase project.
