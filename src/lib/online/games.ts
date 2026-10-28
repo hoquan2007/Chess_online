@@ -30,6 +30,18 @@ export type OnlineGame = {
 export const validUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 export const validSquare = (value: unknown): value is string => typeof value === "string" && /^[a-h][1-8]$/.test(value);
 
+/** Avoid applying an older HTTP response after a newer move or game termination.
+ * A game can only advance in ply, then in lifecycle phase at the same ply.
+ */
+export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
+  if (current.id !== incoming.id) return false;
+  if (incoming.ply !== current.ply) return incoming.ply < current.ply;
+  const phase: Record<OnlineGame["status"], number> = {
+    waiting: 0, active: 1, completed: 2, cancelled: 2,
+  };
+  return phase[incoming.status] < phase[current.status];
+}
+
 /** Rebuild from the server's canonical, durable PGN to preserve repetition history. */
 export function replayGame(snapshot: Pick<OnlineGame, "pgn" | "fen" | "ply">) {
   const chess = new Chess();

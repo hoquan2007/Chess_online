@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { Chess } from "chess.js";
+import { readFile } from "node:fs/promises";
 
 test("home navigation and local chess legal moves", async ({ page }) => {
   await page.goto("/");
@@ -31,6 +33,39 @@ test("analysis imports PGN and navigates positions", async ({ page }) => {
   await expect(page.getByText("4 plies imported successfully.")).toBeVisible();
   await page.getByRole("button", { name: "Previous move" }).click();
   await expect(page.getByText("3 / 4")).toBeVisible();
+  const pendingDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PGN" }).click();
+  const download = await pendingDownload;
+  expect(download.suggestedFilename()).toBe("rookline-analysis.pgn");
+  const savedPgn = await readFile(await download.path(), "utf8");
+  expect(savedPgn).toContain("Nf3 Nc6");
+});
+
+test("analysis keyboard moves validate legality and offer underpromotion", async ({ page }) => {
+  await page.goto("/analysis");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("e2e5");
+  await input.press("Enter");
+  await expect(page.getByRole("alert").filter({ hasText: "not legal" })).toBeVisible();
+  await input.fill("e2e4");
+  await input.press("Enter");
+  await expect(page.getByLabel("Analysis moves").getByText("e4")).toBeVisible();
+
+  await page.getByRole("textbox", { name: "FEN position" }).fill("4k3/P7/8/8/8/8/8/4K3 w - - 0 1");
+  await page.getByRole("button", { name: "Load FEN" }).click();
+  await input.fill("a7a8");
+  await input.press("Enter");
+  await expect(page.getByRole("dialog", { name: "Choose promotion piece" })).toBeVisible();
+  await page.getByRole("button", { name: "Promote to n" }).click();
+  await expect(page.getByLabel("Analysis moves").getByText("a8=N")).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Choose promotion piece" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Load FEN" }).click();
+  await page.locator('[data-square="a7"]').click();
+  await page.locator('[data-square="a8"]').click();
+  await expect(page.getByRole("dialog", { name: "Choose promotion piece" })).toBeVisible();
+  await page.getByRole("button", { name: "Promote to q" }).click();
+  await expect(page.getByLabel("Analysis moves").getByText(/a8=Q/)).toBeVisible();
 });
 
 test("online service fails clearly without credentials and mobile does not overflow", async ({ page }) => {
@@ -184,6 +219,105 @@ test("undo restores the previous chess clock and survives reload", async ({ page
   await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(0);
   await page.reload();
   await expect(page.getByLabel("White clock")).toHaveText("03:00");
+});
+
+test("keyboard-only coordinate entry validates and plays a local chess move", async ({ page }) => {
+  await page.goto("/play/local");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("e2e5");
+  await input.press("Enter");
+  await expect(page.getByRole("alert").filter({ hasText: "not legal" })).toBeVisible();
+  await input.fill("E2-E4");
+  await input.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(input).toHaveValue("");
+  await input.fill("e7e5");
+  await input.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
+});
+
+test("computer Undo keeps the opening bot move and restores the human clock", async ({ page }) => {
+  await page.goto("/play/computer");
+  await page.getByRole("button", { name: "3+2" }).click();
+  await page.getByRole("button", { name: "easy", exact: true }).click();
+  await page.getByRole("button", { name: "Black", exact: true }).click();
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+  await page.locator('[data-square="e7"]').click();
+  await page.locator('[data-square="e5"]').click();
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1);
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByLabel("Black clock")).toHaveText("03:00");
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1);
+  await page.reload();
+  await expect(page.getByLabel("Black clock")).toHaveText("03:00");
+});
+
+test("game room ignores an old HTTP snapshot arriving after a newer ply", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000001";
+  const chess = new Chess();
+  const initialFen = chess.fen();
+  chess.move("e4");
+  const newerFen = chess.fen();
+  const started = { id, white_id: "white-id", black_id: "black-id", status: "active", pgn: "", fen: initialFen,
+    turn: "w", ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000, black_ms: 300000,
+    clock_anchor_at: new Date().toISOString(), result: null, winner_id: null, rated: false, created_at: new Date().toISOString() };
+  const advanced = { ...started, pgn: chess.pgn(), fen: newerFen, turn: "b", ply: 1 };
+  let requests = 0;
+  let releaseOld: (() => void) | undefined;
+  await page.route(`**/api/games/${id}`, async (route) => {
+    requests++;
+    const number = requests;
+    if (number === 2) await new Promise<void>((resolve) => { releaseOld = resolve; });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      game: number <= 2 ? started : advanced, viewerColor: "w",
+    }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  const staleResponse = page.waitForResponse(async (response) =>
+    response.url().endsWith(`/api/games/${id}`) && response.status() === 200 && (await response.json()).game.ply === 0);
+  releaseOld?.();
+  await (await staleResponse).finished();
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+});
+
+test("game room ignores a stale join prompt after a newer valid game response", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000002";
+  const chess = new Chess();
+  const game = { id, white_id: "white-id", black_id: "black-id", status: "active", pgn: "", fen: chess.fen(),
+    turn: "w", ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000, black_ms: 300000,
+    clock_anchor_at: new Date().toISOString(), result: null, winner_id: null, rated: false, created_at: new Date().toISOString() };
+  let requests = 0;
+  let releaseOld: (() => void) | undefined;
+  await page.route(`**/api/games/${id}`, async (route) => {
+    requests++;
+    const number = requests;
+    if (number === 2) {
+      await new Promise<void>((resolve) => { releaseOld = resolve; });
+      await route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ joinable: true }) });
+    } else {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ game, viewerColor: "w" }) });
+    }
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(3);
+  const staleResponse = page.waitForResponse((response) =>
+    response.url().endsWith(`/api/games/${id}`) && response.status() === 403);
+  releaseOld?.();
+  await (await staleResponse).finished();
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Accept challenge" })).toHaveCount(0);
 });
 
 test("baseline security headers are sent for document routes", async ({ request }) => {

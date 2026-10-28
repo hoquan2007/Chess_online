@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowLeft, ArrowRight, Download, RotateCcw } from "lucide-react";
-import { applyLegalMove } from "@/lib/chess/rules";
+import { applyLegalMove, parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
 
 type Analysis = { start: string; san: string[]; index: number };
 
@@ -15,6 +15,9 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const [fenText, setFenText] = useState("");
   const [message, setMessage] = useState("");
   const [orientation, setOrientation] = useState<"white" | "black">("white");
+  const [keyboardMove, setKeyboardMove] = useState("");
+  const [keyboardError, setKeyboardError] = useState("");
+  const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
 
   const board = useMemo(() => {
     const reconstructed = new Chess(analysis.start);
@@ -25,6 +28,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const seek = (step: number) => {
     setAnalysis((prev) => ({ ...prev, index: Math.max(0, Math.min(step, prev.san.length)) }));
     setSelected(null);
+    setPromotion(null);
   };
 
   const importPgn = () => {
@@ -34,6 +38,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       const history = parsed.history();
       setAnalysis({ start: parsed.header().FEN || new Chess().fen(), san: history, index: history.length });
       setSelected(null);
+      setPromotion(null);
       setMessage(`${history.length} plies imported successfully.`);
     } catch { setMessage("Invalid PGN. Check the move text and try again."); }
   };
@@ -43,20 +48,42 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       const parsed = new Chess(fenText.trim());
       setAnalysis({ start: parsed.fen(), san: [], index: 0 });
       setSelected(null);
+      setPromotion(null);
       setMessage("Position loaded. You can explore legal moves.");
     } catch { setMessage("Invalid FEN. Please enter a legal chess position."); }
   };
 
-  const makeMove = (from: Square, to: Square, promotion: "q" | "r" | "b" | "n" = "q") => {
+  const makeMove = (from: Square, to: Square, piece?: "q" | "r" | "b" | "n") => {
+    if (!piece && selectPromotion(board, from, to)) {
+      setPromotion({ from, to });
+      setSelected(null);
+      return false;
+    }
     const copy = new Chess(analysis.start);
     for (const san of analysis.san.slice(0, analysis.index)) copy.move(san);
-    const played = applyLegalMove(copy, { from, to, promotion });
+    const played = applyLegalMove(copy, { from, to, promotion: piece });
     if (!played) return false;
     const next = [...analysis.san.slice(0, analysis.index), played.san];
     setAnalysis({ ...analysis, san: next, index: next.length });
     setSelected(null);
+    setPromotion(null);
     setMessage(`Played ${played.san}.`);
     return true;
+  };
+
+  const submitKeyboardMove = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const input = parseCoordinateMove(keyboardMove);
+    if (!input) { setKeyboardError("Enter a move like e2e4 or a7a8n."); return; }
+    const legal = board.moves({ square: input.from, verbose: true }).some((move) =>
+      move.to === input.to && (input.promotion ? move.promotion === input.promotion : !move.promotion || selectPromotion(board, input.from, input.to)));
+    if (!legal) { setKeyboardError("That move is not legal in this position."); return; }
+    const choosePiece = !input.promotion && selectPromotion(board, input.from, input.to);
+    if (choosePiece || makeMove(input.from, input.to, input.promotion)) {
+      if (choosePiece) { setPromotion({ from: input.from, to: input.to }); setSelected(null); }
+      setKeyboardMove("");
+      setKeyboardError("");
+    }
   };
 
   const exportPgn = () => {
@@ -107,8 +134,14 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       <div className="moves" aria-label="Analysis moves">
         {analysis.san.length === 0 ? <p className="panel-sub">Move a piece to start a variation.</p> : Array.from({ length: Math.ceil(analysis.san.length / 2) }, (_, i) => <div className="move-row" key={i}><span>{i + 1}.</span>{[0, 1].map((offset) => <button type="button" key={offset} disabled={!analysis.san[i * 2 + offset]} onClick={() => seek(i * 2 + offset + 1)} style={{ textAlign: "left", textDecoration: analysis.index === i * 2 + offset + 1 ? "underline" : "none" }}>{analysis.san[i * 2 + offset] || ""}</button>)}</div>)}
       </div>
+      <form className="keyboard-move-form" onSubmit={submitKeyboardMove}>
+        <label className="panel-sub" htmlFor="analysis-keyboard-move">Keyboard move · e2e4 or a7a8n</label>
+        <div className="keyboard-move-row"><input id="analysis-keyboard-move" value={keyboardMove} onChange={(event) => { setKeyboardMove(event.target.value); setKeyboardError(""); }} maxLength={12} autoComplete="off" placeholder="e2e4" /><button type="submit" className="btn ghost">Move</button></div>
+        {keyboardError && <p role="alert" className="panel-sub">{keyboardError}</p>}
+      </form>
       {message && <p className="status" role="status">{message}</p>}
-      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setMessage(""); }}>Reset</button></div>
+      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
     </aside>
+    {promotion && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose promotion piece"><div className="promotion-box"><h2>Choose your promotion</h2><div className="promotion-choices">{(["q", "r", "b", "n"] as const).map((piece) => <button key={piece} type="button" aria-label={`Promote to ${piece}`} onClick={() => makeMove(promotion.from, promotion.to, piece)}>{({ q: "♛", r: "♜", b: "♝", n: "♞" })[piece]}</button>)}</div><button type="button" className="btn ghost" onClick={() => setPromotion(null)}>Cancel</button></div></div>}
   </div>;
 }

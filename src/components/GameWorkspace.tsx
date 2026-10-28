@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, RotateCcw, Undo2, Volume2, VolumeX, Flag } from "lucide-react";
-import { applyLegalMove, availableDrawClaims, gameResult, pgnDownload, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
+import { applyLegalMove, availableDrawClaims, gameResult, parseCoordinateMove, pgnDownload, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
 import type { Difficulty } from "@/lib/chess/bot";
 
 type Side = "w" | "b";
@@ -44,6 +44,8 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   const [level, setLevel] = useState<Difficulty>("medium");
   const [selected, setSelected] = useState<Square | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
+  const [keyboardMove, setKeyboardMove] = useState("");
+  const [keyboardError, setKeyboardError] = useState("");
   const [manualResult, setManualResult] = useState<string | null>(null);
   const [seconds, setSeconds] = useState<Clocks>({ w: 300, b: 300 });
   const clockRef = useRef<Clocks>({ w: 300, b: 300 });
@@ -135,11 +137,11 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
       const elapsed = (now - tickAt.current) / 1000;
       tickAt.current = now;
       const turn = engine.current.turn();
-      setSeconds((prev) => {
-        const updated = { ...prev, [turn]: Math.max(0, prev[turn] - elapsed) };
-        clockRef.current = updated;
-        return updated;
-      });
+      // Publish the clock update synchronously. A queued React state updater may
+      // run after Undo or a move, overwriting the newly restored clock.
+      const updated = { ...clockRef.current, [turn]: Math.max(0, clockRef.current[turn] - elapsed) };
+      clockRef.current = updated;
+      setSeconds(updated);
     }, 250);
     return () => window.clearInterval(timer);
   }, [fen, running, outcome, history.length]);
@@ -228,6 +230,8 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     engine.current = new Chess();
     setManualResult(null);
     setBotError("");
+    setKeyboardMove("");
+    setKeyboardError("");
     clockRef.current = { w: controlValues[control].base, b: controlValues[control].base };
     setSeconds(clockRef.current);
     setUndoClocks([]);
@@ -280,6 +284,19 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     setSound(!sound);
   };
 
+  const submitKeyboardMove = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const move = parseCoordinateMove(keyboardMove);
+    if (!move) { setKeyboardError("Enter a move like e2e4 or e7e8q."); return; }
+    if (outcome || botTurn) return;
+    const promotionNeeded = !move.promotion && selectPromotion(engine.current, move.from, move.to);
+    if (!completeMove(move.from, move.to, move.promotion)) {
+      if (!promotionNeeded) { setKeyboardError("That move is not legal in this position."); return; }
+    } else beep();
+    setKeyboardMove("");
+    setKeyboardError("");
+  };
+
   const sideName = (color: Side) => mode === "computer" ? color === playingSide ? "You" : `Computer (${level})` : color === "w" ? "White player" : "Black player";
   const renderPlayer = (color: Side) => (
     <div className="player-strip" key={color}>
@@ -322,9 +339,14 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
         <div className="moves" aria-label="Move history">
           {history.length === 0 ? <p className="panel-sub">Your moves will appear here. Drag a piece or click a square.</p> : Array.from({ length: Math.ceil(history.length / 2) }, (_, i) => <div className="move-row" key={i}><span>{i + 1}.</span><strong>{history[i * 2]?.san ?? ""}</strong><strong>{history[i * 2 + 1]?.san ?? ""}</strong></div>)}
         </div>
+        <form className="keyboard-move-form" onSubmit={submitKeyboardMove}>
+          <label htmlFor={`keyboard-move-${mode}`} className="panel-sub">Keyboard move · e2e4 or e7e8q</label>
+          <div className="keyboard-move-row"><input id={`keyboard-move-${mode}`} value={keyboardMove} onChange={(event) => { setKeyboardMove(event.target.value); setKeyboardError(""); }} disabled={!!outcome || botTurn} autoComplete="off" maxLength={12} placeholder="e2e4" /><button className="btn ghost" type="submit" disabled={!!outcome || botTurn}>Move</button></div>
+          {keyboardError && <p role="alert" className="panel-sub">{keyboardError}</p>}
+        </form>
         {botError && <p className="status" role="alert">{botError}</p>}
         <div className="game-actions">
-          <button type="button" className="btn ghost" onClick={undo} disabled={history.length === 0}><Undo2 size={16} /> Undo</button>
+          <button type="button" className="btn ghost" onClick={undo} disabled={history.length === 0 || (mode === "computer" && playingSide === "b" && history.length === 1)}><Undo2 size={16} /> Undo</button>
           <button type="button" className="btn ghost" onClick={() => setOrientation((prev) => prev === "white" ? "black" : "white")}><ArrowLeftRight size={16} /> Flip</button>
           <button type="button" className="icon-btn" aria-label={sound ? "Mute moves" : "Enable move sounds"} title="Move sound" onClick={toggleSound}>{sound ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>
           <button type="button" className="btn ghost" onClick={downloadPgn}><ArrowDownToLine size={16} /> PGN</button>

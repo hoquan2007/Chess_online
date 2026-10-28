@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { displayedClock, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
+import { displayedClock, isOlderGameSnapshot, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
 import { safeNext } from "./redirect";
 
 function snapshot(override: Partial<OnlineGame> = {}): OnlineGame {
@@ -46,6 +46,19 @@ describe("clock rendering only", () => {
     expect(displayedClock(game, Date.parse(game.clock_anchor_at!) + 5000).w).toBe(0);
     expect(displayedClock(game, Date.parse(game.clock_anchor_at!) - 1000).w).toBe(1200);
     expect(displayedClock({ ...game, status: "completed" }, Date.parse(game.clock_anchor_at!) + 5000).w).toBe(1200);
+  });
+});
+
+describe("out-of-order authoritative snapshots", () => {
+  it("rejects delayed responses that would rewind moves or a completed result", () => {
+    const active = snapshot({ ply: 4 });
+    expect(isOlderGameSnapshot(active, snapshot({ ply: 3 }))).toBe(true);
+    expect(isOlderGameSnapshot(active, snapshot({ ply: 5 }))).toBe(false);
+    const completed = snapshot({ ply: 4, status: "completed", result: "resignation" });
+    expect(isOlderGameSnapshot(completed, active)).toBe(true);
+    expect(isOlderGameSnapshot(active, completed)).toBe(false);
+    expect(isOlderGameSnapshot(snapshot({ status: "active" }), snapshot({ status: "waiting" }))).toBe(true);
+    expect(isOlderGameSnapshot(completed, completed)).toBe(false);
   });
 });
 

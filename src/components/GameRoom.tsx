@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowLeftRight, ClipboardCopy, Flag } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
-import { displayedClock, replayGame, type OnlineGame } from "@/lib/online/games";
-import { availableDrawClaims, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
+import { displayedClock, isOlderGameSnapshot, replayGame, type OnlineGame } from "@/lib/online/games";
+import { availableDrawClaims, parseCoordinateMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 
 type Viewer = "w" | "b";
 type Promotion = "q" | "r" | "b" | "n";
@@ -28,13 +28,22 @@ export function GameRoom({ id }: { id: string }) {
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
+  const [keyboardMove, setKeyboardMove] = useState("");
+  const [keyboardError, setKeyboardError] = useState("");
   const [flipped, setFlipped] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const nextLoadId = useRef(0);
+  const lastAppliedLoadId = useRef(0);
 
   const load = useCallback(async () => {
+    const loadId = ++nextLoadId.current;
     try {
       const response = await fetch(`/api/games/${id}`, { cache: "no-store" });
       const data = await response.json();
+      // Polling and realtime hints may complete out of order. An obsolete 403
+      // must not replace a room already joined in a more recent response.
+      if (loadId < lastAppliedLoadId.current) return;
+      lastAppliedLoadId.current = loadId;
       if (response.status === 401) {
         setUnauthenticated(true); setJoinable(false); setGame(null);
       } else if (response.status === 403 && data.joinable) {
@@ -42,11 +51,13 @@ export function GameRoom({ id }: { id: string }) {
       } else if (!response.ok) {
         setError(data.error ?? "Could not load the game.");
       } else {
-        setGame(data.game);
+        setGame((previous) => previous && isOlderGameSnapshot(previous, data.game) ? previous : data.game);
         setViewer(data.viewerColor);
         setJoinable(false); setUnauthenticated(false); setError("");
       }
-    } catch { setError("Connection lost. Game state will reload when you reconnect."); }
+    } catch {
+      if (loadId >= lastAppliedLoadId.current) setError("Connection lost. Game state will reload when you reconnect.");
+    }
     finally { setLoading(false); }
   }, [id]);
 
@@ -136,6 +147,19 @@ export function GameRoom({ id }: { id: string }) {
     setSelected(chess.get(destination)?.color === viewer ? destination : null);
   };
 
+  function submitKeyboardMove(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!myTurn || busy) return;
+    const move = parseCoordinateMove(keyboardMove);
+    if (!move) { setKeyboardError("Enter a move like e2e4 or e7e8q."); return; }
+    const promotionNeeded = !move.promotion && selectPromotion(chess, move.from, move.to);
+    const legal = chess.moves({ square: move.from, verbose: true }).some((candidate) =>
+      candidate.to === move.to && (promotionNeeded || (candidate.promotion ?? null) === (move.promotion ?? null)));
+    if (!legal) { setKeyboardError("That move is not legal in this position."); return; }
+    setKeyboardMove(""); setKeyboardError("");
+    void makeMove(move.from, move.to, move.promotion);
+  }
+
   const highlights: Record<string, React.CSSProperties> = {};
   if (last) {
     highlights[last.from] = { boxShadow: "inset 0 0 0 3px var(--color-accent)" };
@@ -180,6 +204,11 @@ export function GameRoom({ id }: { id: string }) {
       <div><h2 className="panel-title">Match details</h2><p className="panel-sub">{Math.round(game.base_ms / 60000)}+{Math.round(game.increment_ms / 1000)} · {game.rated ? "Rated" : "Unrated"} · Playing {viewer === "w" ? "White" : "Black"}</p></div>
       <p role="status" className="status">{game.status === "waiting" ? "Waiting for opponent. Share this game link." : game.status === "active" ? busy ? "Saving move…" : myTurn ? "Your move" : "Waiting for opponent’s move" : `Result: ${game.result ?? game.status}`}</p>
       <div className="moves" aria-label="Move history">{history.length === 0 ? <p className="panel-sub">Moves will appear here once your game starts.</p> : Array.from({ length: Math.ceil(history.length / 2) }, (_, index) => <div className="move-row" key={index}><span>{index + 1}.</span><strong>{history[index * 2]?.san}</strong><strong>{history[index * 2 + 1]?.san ?? ""}</strong></div>)}</div>
+      <form className="keyboard-move-form" onSubmit={submitKeyboardMove}>
+        <label className="panel-sub" htmlFor="online-keyboard-move">Keyboard move · e2e4 or e7e8q</label>
+        <div className="keyboard-move-row"><input id="online-keyboard-move" value={keyboardMove} onChange={(event) => { setKeyboardMove(event.target.value); setKeyboardError(""); }} disabled={!myTurn || busy} maxLength={12} autoComplete="off" placeholder="e2e4" /><button className="btn ghost" disabled={!myTurn || busy} type="submit">Move</button></div>
+        {keyboardError && <p className="panel-sub" role="alert">{keyboardError}</p>}
+      </form>
       <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void copyInvite()}><ClipboardCopy size={16} /> Copy link</button><button className="btn ghost" type="button" onClick={() => setFlipped(!flipped)}><ArrowLeftRight size={16} /> Flip</button></div>
       <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void load()}>Sync</button><button className="btn ghost" disabled={busy || game.status !== "active"} type="button" onClick={() => void action("resign")}><Flag size={16} /> Resign</button><Link className="btn ghost" href="/play/online">My games</Link></div>
       <div className="game-actions" aria-label="Draw claim controls"><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.repetition} onClick={() => void claimDraw("repetition")}>Claim threefold draw</button><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.fiftyMoves} onClick={() => void claimDraw("fiftyMoves")}>Claim 50-move draw</button></div>

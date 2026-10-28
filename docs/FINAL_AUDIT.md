@@ -7,11 +7,11 @@ Track acceptance 1–20 exactly as specified in the owner's `/goal`:
 | Gate | Status | Evidence missing |
 | --- | --- | --- |
 | 1: All functional routes | FAIL | Additional routes and hosted functionality |
-| 2–4: Rules, local and computer | PARTIAL | Local move/checkmate, threefold claims, clock-accurate undo/reload and Worker E2E pass; comprehensive rules/timing, long-game and skill-level QA missing |
+| 2–4: Rules, local and computer | PARTIAL | Local move/checkmate, threefold claims, keyboard moves, clock-accurate undo/reload, safe bot Undo and Worker E2E pass; comprehensive rules/timing, long-game and skill-level QA missing |
 | 5–11: Real online, authority, clocks, reconnect, auth, persistence and rating | BLOCKED_EXTERNAL / NOT IMPLEMENTED | Credentials, SQL integration, 2 browsers |
-| 12–13: Profiles, history, puzzles and analysis | PARTIAL | Backend profiles, licensed engine evaluation, learning scale |
+| 12–13: Profiles, history, puzzles and analysis | PARTIAL | Analysis FEN/PGN import/export, underpromotion and puzzle pass local browser checks; backend profiles, licensed engine evaluation and learning scale incomplete |
 | 14: Community | NOT IMPLEMENTED | Auth-based features and tests |
-| 15–16: UX and all test suites | PARTIAL | Local mobile no-overflow, theme and browser tests, lint/typecheck/37 unit/15 E2E/Webpack build pass; keyboard/visual audit and live DB integration missing |
+| 15–16: UX and all test suites | PARTIAL | Local mobile no-overflow, theme, coordinate keyboard paths, lint/typecheck/39 unit/20 E2E/Webpack build pass; broad keyboard/visual audit and live DB integration missing |
 | 17: Zero high/critical findings | UNVERIFIED | Current npm audit failed registry DNS; external security/DB checks absent |
 | 18: Vercel build/deployment guide verified | PARTIAL | Local Webpack build passes; preview/staging deployment unverified |
 | 19: No placeholders/fake controls | FAIL | Online/friend and absent pages |

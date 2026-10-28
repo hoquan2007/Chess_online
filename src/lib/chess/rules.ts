@@ -4,6 +4,14 @@ export type GameResult = { finished: boolean; label: string; winner: "w" | "b" |
 export type MoveInput = { from: Square; to: Square; promotion?: "q" | "r" | "b" | "n" };
 export type DrawClaim = "repetition" | "fiftyMoves";
 
+/** Keyboard-friendly coordinate notation: e2e4, e2-e4 or e7e8q. */
+export function parseCoordinateMove(value: string): MoveInput | null {
+  const match = /^([a-h][1-8])\s*-?\s*([a-h][1-8])\s*([qrbn])?$/.exec(value.trim().toLowerCase());
+  if (!match) return null;
+  return { from: match[1] as Square, to: match[2] as Square,
+    ...(match[3] ? { promotion: match[3] as "q" | "r" | "b" | "n" } : {}) };
+}
+
 /** FIDE 6.9: a flag fall is a draw if the other side cannot mate by any legal sequence. */
 export function timeoutResult(game: Chess, flaggedSide: "w" | "b"): GameResult {
   const winner = flaggedSide === "w" ? "b" : "w";

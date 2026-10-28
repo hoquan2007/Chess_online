@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { applyLegalMove, availableDrawClaims, gameResult, mayClaimDraw, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
+import { applyLegalMove, availableDrawClaims, gameResult, mayClaimDraw, parseCoordinateMove, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
 import { chooseBotMove } from "./bot";
 
 describe("chess rules", () => {
+  it("parses keyboard moves including explicit promotions and rejects malformed input", () => {
+    expect(parseCoordinateMove(" E2 - E4 ")).toEqual({ from: "e2", to: "e4" });
+    expect(parseCoordinateMove("a7a8n")).toEqual({ from: "a7", to: "a8", promotion: "n" });
+    expect(parseCoordinateMove("e9e4")).toBeNull();
+    expect(parseCoordinateMove("e2e4x")).toBeNull();
+  });
   it("rejects illegal and out of turn moves", () => {
     const game = new Chess();
     expect(applyLegalMove(game, { from: "e2", to: "e5" })).toBeNull();

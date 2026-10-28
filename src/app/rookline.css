@@ -84,6 +84,10 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .game-grid { display: grid; grid-template-columns: minmax(0, 650px) minmax(290px, 410px); gap: var(--space-xl); align-items: start; justify-content: center; margin-top: var(--space-lg); }
 .board-shell { width: 100%; min-width: 0; }
 .board-wrap { width: 100%; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: var(--color-card); }
+  .keyboard-move-form { display: grid; gap: var(--space-xs); }
+  .keyboard-move-row { display: flex; gap: var(--space-xs); }
+  .keyboard-move-row input { min-width: 0; flex: 1; border: 1px solid var(--color-rule); border-radius: 9px; padding: 0 var(--space-sm); color: var(--color-ink); background: var(--color-paper-3); font: inherit; }
+  .keyboard-move-row input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
 .player-strip { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); min-height: 66px; }
 .player-name { display: flex; align-items: center; gap: var(--space-sm); font-weight: 700; }
 .player-avatar { width: 37px; height: 37px; display: grid; place-items: center; background: var(--color-paper-2); border-radius: 11px; font-size: 20px; }
