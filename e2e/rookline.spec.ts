@@ -221,6 +221,28 @@ test("undo restores the previous chess clock and survives reload", async ({ page
   await expect(page.getByLabel("White clock")).toHaveText("03:00");
 });
 
+test("a late move is refused even before a throttled clock interval fires", async ({ page }) => {
+  await page.goto("/play/local");
+  await page.getByRole("button", { name: "3+2" }).click();
+  const entry = page.getByRole("textbox", { name: /Keyboard move/ });
+  await entry.fill("e2e4");
+  await entry.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+
+  // Simulate a suspended tab that resumes after Black's three-minute flag.
+  // No browser interval is invoked between the time jump and the move.
+  await page.evaluate(() => {
+    const actualNow = performance.now.bind(performance);
+    Object.defineProperty(performance, "now", { configurable: true, value: () => actualNow() + 181_000 });
+  });
+  await entry.fill("e7e5");
+  await entry.press("Enter");
+  await expect(page.getByLabel("Game controls").locator('[role="status"]')).toHaveText("Timeout");
+  await expect(page.getByLabel("Black clock")).toHaveText("00:00");
+  await expect(page.getByLabel("Move history").getByText("e5")).toHaveCount(0);
+  await expect(page.getByRole("alert").filter({ hasText: "Time expired" })).toBeVisible();
+});
+
 test("keyboard-only coordinate entry validates and plays a local chess move", async ({ page }) => {
   await page.goto("/play/local");
   const input = page.getByRole("textbox", { name: /Keyboard move/ });

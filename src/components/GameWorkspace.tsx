@@ -6,6 +6,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, RotateCcw, Undo2, Volume2, VolumeX, Flag } from "lucide-react";
 import { applyLegalMove, availableDrawClaims, gameResult, parseCoordinateMove, pgnDownload, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
+import { advanceLocalClock } from "@/lib/chess/clocks";
 import type { Difficulty } from "@/lib/chess/bot";
 
 type Side = "w" | "b";
@@ -69,7 +70,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   const sync = useCallback(() => {
     setFen(engine.current.fen());
     setSelected(null);
-    tickAt.current = Date.now();
+    tickAt.current = performance.now();
   }, []);
 
   useEffect(() => {
@@ -129,22 +130,27 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     } catch { /* Game remains playable if browser storage is unavailable. */ }
   }, [fen, mode, control, seconds, undoClocks, manualResult, orientation, playingSide, gameId]);
 
-  useEffect(() => {
-    if (!running || outcome || !history.length) return;
-    tickAt.current = Date.now();
-    const timer = window.setInterval(() => {
-      const now = Date.now();
-      const elapsed = (now - tickAt.current) / 1000;
-      tickAt.current = now;
-      const turn = engine.current.turn();
-      // Publish the clock update synchronously. A queued React state updater may
-      // run after Undo or a move, overwriting the newly restored clock.
-      const updated = { ...clockRef.current, [turn]: Math.max(0, clockRef.current[turn] - elapsed) };
+  const settleClock = useCallback(() => {
+    const now = performance.now();
+    const elapsedMs = now - tickAt.current;
+    tickAt.current = now;
+    if (!running || manualResult || !engine.current.history().length || gameResult(engine.current).finished) return true;
+    const turn = engine.current.turn();
+    const updated = advanceLocalClock(clockRef.current, turn, elapsedMs);
+    if (updated !== clockRef.current) {
+      // Update the ref now, so a move or Undo cannot race a queued React updater.
       clockRef.current = updated;
       setSeconds(updated);
-    }, 250);
+    }
+    return updated[turn] > 0;
+  }, [running, manualResult]);
+
+  useEffect(() => {
+    if (!running || outcome || !history.length) return;
+    tickAt.current = performance.now();
+    const timer = window.setInterval(() => { settleClock(); }, 250);
     return () => window.clearInterval(timer);
-  }, [fen, running, outcome, history.length]);
+  }, [fen, running, outcome, history.length, settleClock]);
 
   useEffect(() => {
     if (!outcome || gameId === "local-0") return;
@@ -169,6 +175,9 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
 
   const completeMove = useCallback((from: Square, to: Square, promotion?: "q" | "r" | "b" | "n", byBot = false) => {
     if (outcome || (!byBot && botTurn)) return false;
+    // Browser intervals may be throttled for minutes in a background tab. A
+    // move cannot be accepted until the live clock has been charged to now.
+    if (!settleClock()) { setPendingPromotion(null); return false; }
     const before = engine.current.turn();
     if (!promotion && selectPromotion(engine.current, from, to)) {
       if (!byBot) setPendingPromotion({ from, to });
@@ -185,7 +194,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     setPendingPromotion(null);
     sync();
     return true;
-  }, [outcome, botTurn, sync, control]);
+  }, [outcome, botTurn, sync, control, settleClock]);
 
   useEffect(() => {
     if (mode !== "computer" || !botTurn || outcome || botError || gameId === "local-0") return;
@@ -273,6 +282,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
 
   const claimDraw = () => {
     if (outcome) return;
+    if (!settleClock()) return;
     const available = availableDrawClaims(engine.current);
     if (!available.repetition && !available.fiftyMoves) return;
     setManualResult(available.repetition ? "Draw: claimed threefold repetition" : "Draw: claimed fifty-move rule");
@@ -291,6 +301,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     if (outcome || botTurn) return;
     const promotionNeeded = !move.promotion && selectPromotion(engine.current, move.from, move.to);
     if (!completeMove(move.from, move.to, move.promotion)) {
+      if (clockRef.current[game.turn()] <= 0) { setKeyboardError("Time expired. Start a new game to continue."); return; }
       if (!promotionNeeded) { setKeyboardError("That move is not legal in this position."); return; }
     } else beep();
     setKeyboardMove("");
@@ -354,7 +365,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
         <div className="game-actions">
           <button type="button" className="btn primary" onClick={reset}><RotateCcw size={16} /> New game</button>
           <button type="button" className="btn ghost" disabled={!!outcome || (!drawClaims.repetition && !drawClaims.fiftyMoves)} onClick={claimDraw}>Claim draw</button>
-          <button type="button" className="btn ghost" disabled={!!outcome || history.length === 0} onClick={() => { setManualResult(`${game.turn() === "w" ? "White" : "Black"} resigned`); setRunning(false); }}><Flag size={16} /> Resign</button>
+          <button type="button" className="btn ghost" disabled={!!outcome || history.length === 0} onClick={() => { if (!settleClock()) return; setManualResult(`${game.turn() === "w" ? "White" : "Black"} resigned`); setRunning(false); }}><Flag size={16} /> Resign</button>
         </div>
       </aside>
       {pendingPromotion && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose a promotion piece">
