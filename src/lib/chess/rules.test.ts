@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { applyLegalMove, availableDrawClaims, gameResult, mayClaimDraw, parseCoordinateMove, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
+import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, mayClaimDraw, parseCoordinateMove, pgnDownload, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
 import { chooseBotMove } from "./bot";
 
 describe("chess rules", () => {
@@ -21,6 +21,42 @@ describe("chess rules", () => {
     const game = new Chess();
     for (const san of ["f3", "e5", "g4", "Qh4#"]) game.move(san);
     expect(gameResult(game)).toEqual({ finished: true, label: "Checkmate", winner: "b" });
+  });
+
+  it("exports parseable PGN with a FIDE result without modifying the live board", () => {
+    const game = new Chess();
+    for (const move of ["f3", "e5", "g4", "Qh4#"]) game.move(move);
+    const before = game.pgn();
+    const result = localPgnResult(null, gameResult(game), null);
+    expect(result).toBe("0-1");
+    const restored = new Chess();
+    restored.loadPgn(pgnDownload(game, result));
+    expect(restored.fen()).toBe(game.fen());
+    expect(restored.getHeaders().Result).toBe("0-1");
+    expect(restored.getHeaders().Event).toBe("Rookline local game");
+    expect(game.pgn()).toBe(before);
+  });
+
+  it("preserves a nonstandard starting FEN when exporting a PGN", () => {
+    const game = new Chess("4k3/P7/8/8/8/8/8/4K3 w - - 0 1");
+    game.move({ from: "a7", to: "a8", promotion: "n" });
+    const restored = restoreLocalGame(pgnDownload(game));
+    expect(restored.fen()).toBe(game.fen());
+    expect(restored.history()).toEqual(["a8=N"]);
+    expect(restored.getHeaders().SetUp).toBe("1");
+  });
+
+  it("exports resignation, timeout draw, and ongoing results consistently", () => {
+    const game = new Chess();
+    expect(localPgnResult(null, gameResult(game), null)).toBe("*");
+    expect(localPgnResult("White resigned", gameResult(game), null)).toBe("0-1");
+    expect(localPgnResult("Black resigned", gameResult(game), null)).toBe("1-0");
+    expect(localPgnResult("Draw: claimed threefold repetition", gameResult(game), null)).toBe("1/2-1/2");
+    const drawnTimeout = timeoutResult(new Chess("4k3/8/8/8/8/8/8/4K2Q w - - 0 1"), "w");
+    expect(localPgnResult(null, gameResult(game), drawnTimeout)).toBe("1/2-1/2");
+    const parsed = new Chess();
+    parsed.loadPgn(pgnDownload(game));
+    expect(parsed.getHeaders().Result).toBe("*");
   });
 
   it("supports legal castling and en passant", () => {

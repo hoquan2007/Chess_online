@@ -18,6 +18,33 @@ test("home navigation and local chess legal moves", async ({ page }) => {
   await expect(page.getByLabel("Move history").getByText("e5")).toHaveCount(0);
 });
 
+test("local resignation exports a replayable PGN with the correct winner", async ({ page }) => {
+  await page.goto("/play/local");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("e2e4");
+  await input.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await page.getByRole("button", { name: "Resign" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Black resigned" })).toBeVisible();
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "PGN", exact: true }).click();
+  const downloaded = await pending;
+  expect(downloaded.suggestedFilename()).toBe("rookline-game.pgn");
+  const parsed = new Chess();
+  parsed.loadPgn(await readFile(await downloaded.path(), "utf8"));
+  expect(parsed.history()).toEqual(["e4"]);
+  expect(parsed.getHeaders().Result).toBe("1-0");
+  const archivePgn = await page.evaluate(() => {
+    const archive = JSON.parse(localStorage.getItem("rookline-history") ?? "[]");
+    return archive[0]?.pgn as string | undefined;
+  });
+  expect(archivePgn).toBeTruthy();
+  const archived = new Chess();
+  archived.loadPgn(archivePgn!);
+  expect(archived.getHeaders().Result).toBe("1-0");
+  expect(archived.history()).toEqual(["e4"]);
+});
+
 test("puzzle solution validates against board rules", async ({ page }) => {
   await page.goto("/puzzles");
   await expect(page.getByRole("heading", { name: "The queen finishes" })).toBeVisible();

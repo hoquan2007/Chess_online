@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, RotateCcw, Undo2, Volume2, VolumeX, Flag } from "lucide-react";
-import { applyLegalMove, availableDrawClaims, gameResult, parseCoordinateMove, pgnDownload, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
+import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, parseCoordinateMove, pgnDownload, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
 import { advanceLocalClock } from "@/lib/chess/clocks";
 import type { Difficulty } from "@/lib/chess/bot";
 
@@ -24,12 +24,12 @@ function clockText(value: number) {
   return `${Math.floor(safe / 60).toString().padStart(2, "0")}:${(safe % 60).toString().padStart(2, "0")}`;
 }
 
-function storeFinishedGame(id: string, game: Chess, outcome: string, mode: string) {
+function storeFinishedGame(id: string, pgn: string, outcome: string, mode: string) {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem("rookline-history") || "[]");
     const existing = Array.isArray(parsed) ? parsed.filter((item): item is { id: string } =>
       typeof item === "object" && item !== null && typeof item.id === "string") : [];
-    const data = { id, pgn: game.pgn(), outcome, mode, date: new Date().toISOString() };
+    const data = { id, pgn, outcome, mode, date: new Date().toISOString() };
     localStorage.setItem("rookline-history", JSON.stringify([data, ...existing.filter((record) => record.id !== id)].slice(0, 80)));
   } catch {
     // Corrupt data, private browsing restrictions or storage quota must not interrupt a game.
@@ -65,6 +65,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   const drawClaims = availableDrawClaims(game);
   const timedOut = seconds.w <= 0 ? timeoutResult(game, "w") : seconds.b <= 0 ? timeoutResult(game, "b") : null;
   const outcome = manualResult ?? (computed.finished ? computed.label : null) ?? (timedOut ? timedOut.label : null);
+  const pgnResult = localPgnResult(manualResult, computed, timedOut);
   const botTurn = mode === "computer" && game.turn() !== playingSide;
 
   const sync = useCallback(() => {
@@ -154,8 +155,8 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
 
   useEffect(() => {
     if (!outcome || gameId === "local-0") return;
-    storeFinishedGame(gameId, engine.current, outcome, mode);
-  }, [outcome, gameId, mode]);
+    storeFinishedGame(gameId, pgnDownload(engine.current, pgnResult), outcome, mode);
+  }, [outcome, gameId, mode, pgnResult]);
 
   const beep = () => {
     if (!sound) return;
@@ -271,7 +272,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   };
 
   const downloadPgn = () => {
-    const file = new Blob([pgnDownload(game)], { type: "application/x-chess-pgn" });
+    const file = new Blob([pgnDownload(game, pgnResult)], { type: "application/x-chess-pgn" });
     const url = URL.createObjectURL(file);
     const anchor = document.createElement("a");
     anchor.href = url;

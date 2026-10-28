@@ -86,8 +86,24 @@ export function restoreLocalGame(pgn: string): Chess {
   return game;
 }
 
-export function pgnDownload(game: Chess): string {
-  return `[Event "Rookline local game"]\n[Site "Rookline"]\n\n${game.pgn()}`;
+export type PgnResult = "1-0" | "0-1" | "1/2-1/2" | "*";
+
+/** Translate a local game's actual termination into the standard PGN result. */
+export function localPgnResult(manual: string | null, automatic: GameResult, timeout: GameResult | null): PgnResult {
+  if (manual === "White resigned") return "0-1";
+  if (manual === "Black resigned") return "1-0";
+  if (!manual && !automatic.finished && !timeout) return "*";
+  const winner = manual ? null : automatic.finished ? automatic.winner : timeout?.winner;
+  return winner === "w" ? "1-0" : winner === "b" ? "0-1" : "1/2-1/2";
+}
+
+/** Leave the in-progress board untouched; export a valid replayable PGN ledger. */
+export function pgnDownload(game: Chess, result: PgnResult = "*"): string {
+  const copy = restoreLocalGame(game.pgn());
+  copy.setHeader("Event", "Rookline local game");
+  copy.setHeader("Site", "Rookline");
+  copy.setHeader("Result", result);
+  return copy.pgn();
 }
 
 export function selectPromotion(game: Chess, from: Square, to: Square) {

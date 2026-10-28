@@ -4,11 +4,11 @@ Date: 2026-10-29. Workspace: `D:\Chess_online`; branch `codex/chess-platform-fou
 
 | Check | Observed result | Evidence boundary |
 | --- | --- | --- |
-| `npm run lint` | PASS, exit 0, checkpoint 6 | Local source and tests |
-| `npm run typecheck` | PASS, exit 0, checkpoint 6 | TypeScript strict check |
-| `npm run test` | PASS, 44/44 tests in 7 suites, checkpoint 6 | Includes online PGN replay/result validation, monotonic local clocks, FIDE claims/timeout, coordinate notation, stale-snapshot guard, serialization, input/origin validation, puzzle/study; **not** hosted DB integration |
-| `npm run test:e2e -- --workers=1` | PASS, 22/22 Playwright tests (42.4 s), checkpoint 6 | Local browser/Next, new downloaded online PGN verified against a **mocked** snapshot, existing clock and stale-response regressions; **not** hosted multiplayer |
-| `npm run build -- --webpack` | PASS, exit 0, Next 16.4.3, checkpoint 6 | Compile, types, 17/17 static generation, build trace; Webpack is the verified builder |
+| `npm run lint` | PASS, exit 0, checkpoint 7 | Local source and tests |
+| `npm run typecheck` | PASS, exit 0, checkpoint 7 | TypeScript strict check |
+| `npm run test` | PASS, 47/47 tests in 7 suites, checkpoint 7 | Includes replayable local and online PGN, nonstandard FEN, clocks, FIDE claims/timeout and input checks; **not** hosted DB integration |
+| `npm run test:e2e -- --workers=1` | PASS, 23/23 Playwright tests (43.1 s), checkpoint 7 | Local resignation downloaded PGN and saved local archive PGN both include winner; online PGN browser uses a **mocked** snapshot; **not** hosted multiplayer |
+| `npm run build -- --webpack` | PASS, exit 0, Next 16.4.3, checkpoint 7 | Compile, types, 17/17 static generation, build trace; Webpack is the verified builder |
 | `.github/workflows/quality.yml` | Written; **NOT RUN** on GitHub | Node 24, lint/typecheck/Vitest/Webpack build/Playwright Chromium configured |
 | `npm audit --omit=dev --json` | UNVERIFIED: `getaddrinfo ENOTFOUND registry.npmjs.org` | No conclusion about current dependency vulnerabilities |
 | Supabase migration, RLS, RPC and Auth | BLOCKED_EXTERNAL | No configured staging project or real account credentials |
@@ -20,5 +20,7 @@ Browser E2E covered local legal moves, clock-accurate undo and reload, a throttl
 The `20261029030000_draw_claims.sql` and `20261029040000_resignation_clock_authority.sql` migrations, and the baseline timeout adjudication SQL, have **not** run in PostgreSQL. The resignation migration locks the game row, reads trusted time after locking, and gives an expired clock precedence over resignation; these are reviewed source semantics only, not executable DB evidence. Browser tests of `/api/games/[id]/claim` currently establish only cross-origin and unconfigured-service rejection, not an authenticated successful claim. A local PostgreSQL/Supabase CLI and Docker were unavailable when checked. Claims about SQL privilege grants, row locks, realtime and two-player operation remain unverified.
 
 At checkpoint 6, a default-sandbox full Playwright startup produced no further output after web-server warnings and was interrupted; the full 22-test regression passed under native escalated local execution. The escalated Webpack production build also passed. Earlier Turbopack and sandboxed Webpack failures were environment-specific observations; avoid claiming default Turbopack or CI success.
+
+Checkpoint 7: local PGN downloads now include correctly adjudicated result headers for resignation, claim, timeout, checkmate and unfinished games; archived local sessions store the same replayable PGN. New tests cover exporting a custom starting FEN and preserving game state. Full 23-test browser regression and build passed again after archive changes. These tests do not certify hosted persistence.
 
 All 20 full product acceptance gates remain open. Rerun relevant checks after further code changes and record their outcomes here.

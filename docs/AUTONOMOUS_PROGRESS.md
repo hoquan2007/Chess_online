@@ -62,3 +62,12 @@ Next focus: validate the database migrations in a dedicated staging environment 
 - No Supabase staging project, database migration execution, two-user Auth/RLS/realtime/concurrent transaction test, CI run or Vercel preview evidence. All 20 acceptance gates remain OPEN. Status: **IN_PROGRESS**.
 
 Next focus: acquire staging verification prerequisites; meanwhile audit and improve independent server clock, input and accessibility correctness, testing each change and keeping the SQL verification boundary explicit.
+
+## 2026-10-29, checkpoint 7 — local PGN results and archived replay
+
+- Fixed local/computer PGN export to use chess.js headers, preserve nonstandard initial FEN and attach the actual completed result. The in-progress game object remains unchanged.
+- Ensured finished local sessions' browser storage archive contains a replayable PGN with the same Result header; added browser verification after Black resigns and unit coverage for a custom promotion position.
+- Verified lint PASS, typecheck PASS, Vitest **47/47** PASS (7 suites), Playwright **23/23** PASS (43.1 s), Webpack production build PASS (17/17 static pages). Browser checks were run under native escalated execution after earlier default-sandbox startup issues.
+- Four SQL migrations remain unrun on PostgreSQL, and hosted Supabase Auth, RLS, RPC, Realtime, two-player sessions, rating, GitHub CI and Vercel preview are unverified. All 20 acceptance gates remain OPEN; status **IN_PROGRESS**.
+
+Next focus: expose locally saved completed games in the archive UI and allow their replay, while continuing to seek dedicated Rookline staging access for hosted security verification.
