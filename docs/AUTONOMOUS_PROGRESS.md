@@ -53,3 +53,12 @@ Next focus: commit this verified slice. Afterward prioritize a staging Supabase 
 - No Supabase staging credentials, live database Auth/RLS/realtime/concurrency, or Vercel preview evidence. All 20 full acceptance gates remain OPEN.
 
 Next focus: validate the database migrations in a dedicated staging environment once configured. Until then continue standalone accessibility, local game correctness, and security verification.
+
+## 2026-10-29, checkpoint 6 — online PGN and resignation flag authority
+
+- Added `exportOnlinePgn` for game-room download. The file is reconstructed from a validated canonical PGN/FEN/ply snapshot and labels finished wins, draws and ongoing games using the recorded result/winner. Added a downloadable button and unit/browser coverage. Browser online room is **mocked** for this test.
+- Added versioned migration `20261029040000_resignation_clock_authority.sql`: under row lock, check trusted server elapsed time before resolving resignation; when the active clock is already expired, settle timeout or timeout-material draw instead, freezing clocks. Existing migrations were not modified. This source was reviewed but has **never executed against PostgreSQL**.
+- Verified lint PASS, typecheck PASS, Vitest **44/44** PASS (7 suites), full Playwright **22/22** PASS (42.4s), Webpack production build PASS (17/17 static pages). The default-sandbox Playwright server startup stalled and was interrupted; the escalated full run passed. The new PGN E2E explicitly stubs the online GET response.
+- No Supabase staging project, database migration execution, two-user Auth/RLS/realtime/concurrent transaction test, CI run or Vercel preview evidence. All 20 acceptance gates remain OPEN. Status: **IN_PROGRESS**.
+
+Next focus: acquire staging verification prerequisites; meanwhile audit and improve independent server clock, input and accessibility correctness, testing each change and keeping the SQL verification boundary explicit.

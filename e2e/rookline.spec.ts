@@ -309,6 +309,34 @@ test("game room ignores an old HTTP snapshot arriving after a newer ply", async 
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 
+test("online room exports a parseable PGN with the authoritative result", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000003";
+  const chess = new Chess();
+  for (const san of ["f3", "e5", "g4", "Qh4#"]) chess.move(san);
+  const game = {
+    id, white_id: "white-id", black_id: "black-id", status: "completed",
+    pgn: chess.pgn(), fen: chess.fen(), turn: chess.turn(), ply: 4,
+    base_ms: 300000, increment_ms: 0, white_ms: 281000, black_ms: 290000,
+    clock_anchor_at: null, result: "Checkmate", winner_id: "black-id",
+    rated: false, created_at: new Date().toISOString(),
+  };
+  // This verifies UI/export behavior only; it is not a hosted multiplayer test.
+  await page.route(`**/api/games/${id}`, (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ game, viewerColor: "w" }),
+  }));
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PGN" }).click();
+  const download = await pending;
+  expect(download.suggestedFilename()).toBe(`rookline-online-${id}.pgn`);
+  const pgn = await readFile(await download.path(), "utf8");
+  const parsed = new Chess();
+  parsed.loadPgn(pgn);
+  expect(parsed.fen()).toBe(chess.fen());
+  expect(parsed.getHeaders().Result).toBe("0-1");
+});
+
 test("game room ignores a stale join prompt after a newer valid game response", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000002";
   const chess = new Chess();

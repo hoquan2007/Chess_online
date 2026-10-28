@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
-import { ArrowLeftRight, ClipboardCopy, Flag } from "lucide-react";
+import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
-import { displayedClock, isOlderGameSnapshot, replayGame, type OnlineGame } from "@/lib/online/games";
+import { displayedClock, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame } from "@/lib/online/games";
 import { availableDrawClaims, parseCoordinateMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 
 type Viewer = "w" | "b";
@@ -175,6 +175,21 @@ export function GameRoom({ id }: { id: string }) {
     catch { setNotice(`Share this page address: ${window.location.href}`); }
   }
 
+  function downloadPgn() {
+    if (!game || !position.valid) return;
+    try {
+      const file = new Blob([exportOnlinePgn(game)], { type: "application/x-chess-pgn" });
+      const url = URL.createObjectURL(file);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `rookline-online-${id}.pgn`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Could not export the verified game ledger.");
+    }
+  }
+
   if (loading) return <p role="status" className="status">Loading authoritative game state…</p>;
   if (unauthenticated) return <div className="text-panel stack"><h1 className="page-title">Sign in to join this board.</h1><div className="game-actions"><Link className="btn primary" href={`/login?next=${encodeURIComponent(`/game/${id}`)}`}>Sign in</Link><Link className="btn ghost" href={`/register?next=${encodeURIComponent(`/game/${id}`)}`}>Create account</Link></div></div>;
   if (joinable) return <div className="text-panel stack"><h1 className="page-title">You’ve been invited.</h1><p className="muted">Join this private game as Black. Only two accounts can take a seat.</p><button className="btn primary" disabled={busy} type="button" onClick={() => void action("join")}>{busy ? "Joining…" : "Accept challenge"}</button>{error && <p role="alert" className="status">{error}</p>}</div>;
@@ -209,7 +224,7 @@ export function GameRoom({ id }: { id: string }) {
         <div className="keyboard-move-row"><input id="online-keyboard-move" value={keyboardMove} onChange={(event) => { setKeyboardMove(event.target.value); setKeyboardError(""); }} disabled={!myTurn || busy} maxLength={12} autoComplete="off" placeholder="e2e4" /><button className="btn ghost" disabled={!myTurn || busy} type="submit">Move</button></div>
         {keyboardError && <p className="panel-sub" role="alert">{keyboardError}</p>}
       </form>
-      <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void copyInvite()}><ClipboardCopy size={16} /> Copy link</button><button className="btn ghost" type="button" onClick={() => setFlipped(!flipped)}><ArrowLeftRight size={16} /> Flip</button></div>
+      <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void copyInvite()}><ClipboardCopy size={16} /> Copy link</button><button className="btn ghost" type="button" onClick={downloadPgn}><ArrowDownToLine size={16} /> Export PGN</button><button className="btn ghost" type="button" onClick={() => setFlipped(!flipped)}><ArrowLeftRight size={16} /> Flip</button></div>
       <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void load()}>Sync</button><button className="btn ghost" disabled={busy || game.status !== "active"} type="button" onClick={() => void action("resign")}><Flag size={16} /> Resign</button><Link className="btn ghost" href="/play/online">My games</Link></div>
       <div className="game-actions" aria-label="Draw claim controls"><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.repetition} onClick={() => void claimDraw("repetition")}>Claim threefold draw</button><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.fiftyMoves} onClick={() => void claimDraw("fiftyMoves")}>Claim 50-move draw</button></div>
       {error && <p className="status" role="alert">{error}</p>}{notice && <p className="status" role="status">{notice}</p>}

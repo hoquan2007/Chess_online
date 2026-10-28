@@ -50,6 +50,18 @@ export function replayGame(snapshot: Pick<OnlineGame, "pgn" | "fen" | "ply">) {
   return chess;
 }
 
+/** Export a verified authoritative ledger with a standard, parseable PGN result. */
+export function exportOnlinePgn(snapshot: OnlineGame) {
+  const chess = replayGame(snapshot);
+  const result = snapshot.status !== "completed" ? "*" :
+    snapshot.winner_id === snapshot.white_id ? "1-0" :
+    snapshot.winner_id && snapshot.winner_id === snapshot.black_id ? "0-1" : "1/2-1/2";
+  chess.setHeader("Event", "Rookline online game");
+  chess.setHeader("Site", "Rookline");
+  chess.setHeader("Result", result);
+  return chess.pgn();
+}
+
 /** For display only. The actual winner is decided in a Postgres transaction. */
 export function displayedClock(game: OnlineGame, nowMs: number) {
   let white = game.white_ms;

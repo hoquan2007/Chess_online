@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { displayedClock, isOlderGameSnapshot, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
+import { displayedClock, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
 import { safeNext } from "./redirect";
 
 function snapshot(override: Partial<OnlineGame> = {}): OnlineGame {
@@ -32,6 +32,31 @@ describe("server snapshot replay", () => {
     expect(validSquare("z1")).toBe(false);
     expect(validUuid("00000000-0000-4000-8000-000000000001")).toBe(true);
     expect(validUuid("../../etc/passwd")).toBe(false);
+  });
+});
+
+describe("online PGN export", () => {
+  it("exports verified moves and the result of a finished game", () => {
+    const chess = new Chess();
+    for (const move of ["f3", "e5", "g4", "Qh4#"]) chess.move(move);
+    const online = snapshot({ pgn: chess.pgn(), fen: chess.fen(), ply: 4,
+      status: "completed", winner_id: "black-id", result: "Checkmate" });
+    const downloaded = exportOnlinePgn(online);
+    const restored = new Chess();
+    restored.loadPgn(downloaded);
+    expect(restored.fen()).toBe(chess.fen());
+    expect(restored.getHeaders().Result).toBe("0-1");
+    expect(restored.getHeaders().Event).toBe("Rookline online game");
+  });
+
+  it("marks ongoing games as unfinished and completed draws as draws", () => {
+    const ongoing = exportOnlinePgn(snapshot());
+    const ongoingChess = new Chess();
+    ongoingChess.loadPgn(ongoing);
+    expect(ongoingChess.getHeaders().Result).toBe("*");
+    const drawn = new Chess();
+    drawn.loadPgn(exportOnlinePgn(snapshot({ status: "completed", result: "Stalemate", winner_id: null })));
+    expect(drawn.getHeaders().Result).toBe("1/2-1/2");
   });
 });
 
