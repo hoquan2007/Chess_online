@@ -18,12 +18,22 @@ export function timeoutResult(game: Chess, flaggedSide: "w" | "b"): GameResult {
   const pieces = game.board().flat().filter((piece) => piece !== null);
   const potentialWinner = pieces.filter((piece) => piece.color === winner && piece.type !== "k");
   const flaggedPieces = pieces.filter((piece) => piece.color === flaggedSide && piece.type !== "k");
-  const noMatingPotential = potentialWinner.length === 0 ||
+  // chess.js detects dead positions including arbitrarily many bishops
+  // confined to one square color (even when both players have bishops).
+  const noMatingPotential = game.isInsufficientMaterial() || potentialWinner.length === 0 ||
     (potentialWinner.length === 1 && flaggedPieces.length === 0 &&
       (potentialWinner[0].type === "b" || potentialWinner[0].type === "n"));
   return noMatingPotential
     ? { finished: true, label: "Draw: timeout without mating material", winner: null }
     : { finished: true, label: "Timeout", winner };
+}
+
+/** FIDE 5.1.2: resignation is drawn if the opponent cannot possibly mate. */
+export function resignationResult(game: Chess, resigningSide: "w" | "b"): GameResult {
+  const possibleWinner = timeoutResult(game, resigningSide).winner;
+  return possibleWinner === null
+    ? { finished: true, label: "Draw: resignation without mating material", winner: null }
+    : { finished: true, label: `${resigningSide === "w" ? "White" : "Black"} resigned`, winner: possibleWinner };
 }
 
 /** Under FIDE rules three repetitions / 50 moves permit a claim, not automatic termination. */

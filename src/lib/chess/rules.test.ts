@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, mayClaimDraw, parseCoordinateMove, pgnDownload, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
+import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, mayClaimDraw, parseCoordinateMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
 import { chooseBotMove } from "./bot";
 
 describe("chess rules", () => {
@@ -119,6 +119,28 @@ describe("chess rules", () => {
     expect(timeoutResult(bishopWithEnemyPawn, "b").winner).toBe("w");
     const twoKnights = new Chess("4k3/8/8/8/8/8/8/4KNN1 w - - 0 1");
     expect(timeoutResult(twoKnights, "b").winner).toBe("w");
+  });
+
+  it("draws flagged games with only same-colored bishops, including promotion extras", () => {
+    const promotedSameColor = new Chess("4k3/8/8/8/8/4B3/8/2B1K3 w - - 0 1");
+    expect(timeoutResult(promotedSameColor, "b").winner).toBeNull();
+    const oppositeColor = new Chess("4k3/8/8/8/8/3B4/8/2B1K3 w - - 0 1");
+    expect(timeoutResult(oppositeColor, "b").winner).toBe("w");
+    const bothBishopsSameColor = new Chess("4k3/6b1/8/8/8/4B3/8/4K3 w - - 0 1");
+    expect(timeoutResult(bothBishopsSameColor, "b").winner).toBeNull();
+    const bothBishopsOppositeColor = new Chess("4k3/5b2/8/8/8/4B3/8/4K3 w - - 0 1");
+    expect(timeoutResult(bothBishopsOppositeColor, "b").winner).toBe("w");
+  });
+
+  it("applies FIDE resignation draw exception and exports a drawn result", () => {
+    const queenVsKing = new Chess("4k3/8/8/8/8/8/8/4K2Q w - - 0 1");
+    const whiteResigns = resignationResult(queenVsKing, "w");
+    expect(whiteResigns).toEqual({ finished: true, label: "Draw: resignation without mating material", winner: null });
+    expect(localPgnResult(whiteResigns.label, gameResult(queenVsKing), null)).toBe("1/2-1/2");
+    expect(resignationResult(queenVsKing, "b").winner).toBe("w");
+    const bishopAndEnemyPawn = new Chess("4k3/p7/8/8/8/8/8/4KB2 w - - 0 1");
+    expect(resignationResult(bishopAndEnemyPawn, "b").winner).toBe("w");
+    expect(resignationResult(new Chess("4k3/8/8/8/8/4B3/8/2B1K3 w - - 0 1"), "b").winner).toBeNull();
   });
 
   it("computer returns a legal move without mutating the input", () => {

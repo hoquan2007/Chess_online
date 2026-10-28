@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, RotateCcw, Undo2, Volume2, VolumeX, Flag } from "lucide-react";
-import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, parseCoordinateMove, pgnDownload, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
+import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, parseCoordinateMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
 import { advanceLocalClock } from "@/lib/chess/clocks";
 import type { Difficulty } from "@/lib/chess/bot";
 
@@ -366,7 +366,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
         <div className="game-actions">
           <button type="button" className="btn primary" onClick={reset}><RotateCcw size={16} /> New game</button>
           <button type="button" className="btn ghost" disabled={!!outcome || (!drawClaims.repetition && !drawClaims.fiftyMoves)} onClick={claimDraw}>Claim draw</button>
-          <button type="button" className="btn ghost" disabled={!!outcome || history.length === 0} onClick={() => { if (!settleClock()) return; setManualResult(`${game.turn() === "w" ? "White" : "Black"} resigned`); setRunning(false); }}><Flag size={16} /> Resign</button>
+          <button type="button" className="btn ghost" disabled={!!outcome || history.length === 0} onClick={() => { if (!settleClock()) return; setManualResult(resignationResult(game, game.turn()).label); setRunning(false); }}><Flag size={16} /> Resign</button>
         </div>
       </aside>
       {pendingPromotion && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose a promotion piece">

@@ -81,3 +81,13 @@ Next focus: expose locally saved completed games in the archive UI and allow the
 - Dedicated Supabase staging URL, publishable key and server-only credential remain absent. Four SQL migrations, RLS/GRANTS and two real authenticated browsers remain unverified; no real-hosted multiplayer gate has closed. Status: **IN_PROGRESS**; all 20 acceptance gates OPEN.
 
 Next focus: continue locally verifiable accessibility and replay correctness while preparing the dedicated Rookline staging integration checklist. Do not touch the unrelated Supabase project.
+
+## 2026-10-29, checkpoint 9 — FIDE mating potential and resignation draw
+
+- Corrected local timeout decisions for multiple same-square-color bishops and FIDE resignation draws when the opponent has no possible mating sequence; recorded resignation draws as a standard `1/2-1/2` PGN outcome, including locally archived games.
+- Added versioned `20261029050000_mating_potential_adjudication.sql` to bring the PostgreSQL timeout helper and resignation RPC into source-level parity while preserving the earlier locked-row server-clock precedence. Source reviewed; **no PostgreSQL execution or privilege test**.
+- Added two Vitest cases and a full browser local-FEN resignation/drawn-PGN replay scenario. Diagnosed a flaky existing computer Undo browser test: its first row-count assertion raced the asynchronous bot reply. Wait now asserts two rows after the reply; Undo still leaves the original opening move and resets the human clock.
+- Final verification: lint PASS, typecheck PASS, **49/49** Vitest (7 suites) PASS, **25/25** Playwright PASS (50.8 s), Next.js 16.4.3 Webpack build PASS (17/17 static pages). The first full browser run was 24/25 due to the timing assertion; focused rerun 1/1 and final full rerun 25/25 passed.
+- Five SQL migrations await application; no dedicated Rookline staging credentials, two-user Auth, RLS, RPC, realtime, concurrent move, rated settlement or Vercel preview verification. All 20 gates remain OPEN; project **IN_PROGRESS**.
+
+Next: keep tightening independent local correctness and accessibility. When dedicated Rookline staging is provisioned, apply and test all five migrations, authorized RPC grants, and two real authenticated clients without modifying unrelated projects.

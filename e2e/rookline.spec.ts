@@ -68,6 +68,29 @@ test("local resignation exports a replayable PGN with the correct winner", async
   expect(review.getHeaders().Result).toBe("1-0");
 });
 
+test("resignation awards a draw when the opponent has only a king", async ({ page }) => {
+  const setup = new Chess("4k3/8/8/8/8/8/8/4K2Q b - - 0 1");
+  setup.move("Kd7");
+  await page.addInitScript((pgn) => {
+    localStorage.setItem("rookline-session-local", JSON.stringify({
+      pgn, control: "5+0", seconds: { w: 300, b: 300 },
+      manualResult: null, orientation: "white", playingSide: "w",
+      undoClocks: [{ w: 300, b: 300 }], gameId: "local-resignation-draw",
+    }));
+  }, setup.pgn());
+
+  await page.goto("/play/local");
+  await expect(page.getByLabel("Move history").getByText("Kd7")).toBeVisible();
+  await page.getByRole("button", { name: "Resign" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Draw: resignation without mating material" })).toBeVisible();
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "PGN", exact: true }).click();
+  const exported = new Chess();
+  exported.loadPgn(await readFile(await (await pending).path(), "utf8"));
+  expect(exported.history()).toEqual(["Kd7"]);
+  expect(exported.getHeaders().Result).toBe("1/2-1/2");
+});
+
 test("local archive ignores invalid storage and refuses corrupt replay PGN", async ({ page }) => {
   await page.goto("/games");
   await page.evaluate(() => localStorage.setItem("rookline-history", "{corrupted"));
@@ -334,7 +357,9 @@ test("computer Undo keeps the opening bot move and restores the human clock", as
   await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
   await page.locator('[data-square="e7"]').click();
   await page.locator('[data-square="e5"]').click();
-  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1);
+  // Wait for the computer's reply: three plies occupy two move rows.
+  // The worker can answer before the first assertion on a fast machine.
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(2, { timeout: 20_000 });
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByLabel("Black clock")).toHaveText("03:00");
   await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1);
