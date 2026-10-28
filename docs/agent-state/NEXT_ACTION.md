@@ -1,0 +1,3 @@
+# Next action after context compaction
+
+Read `/goal` attachment, `docs/TEST_RESULTS.md`, architecture/security docs, and Git status. Checkpoint 3 baseline: lint/typecheck PASS, 37 unit and 15 browser tests PASS, Webpack production build PASS. Three SQL migrations exist but are unrun; live Supabase Auth/RLS/claim/move/timeout/realtime integration is not verified. Once a dedicated staging project is configured, validate SQL function grants, conflicting and duplicate move transactions, timed expiry, repetition claims, two-user browser sync/reconnect, then rating settlement. Until then, prioritize independent clock, keyboard accessibility and training functionality. Never merge main or production deploy automatically.

@@ -1,0 +1,13 @@
+node_modules/
+.next/
+.env
+.env.local
+.env.*.local
+coverage/
+playwright-report/
+test-results/
+.reference-template/
+.hallmark/
+*.tsbuildinfo
+*.log
+lint-results.json
