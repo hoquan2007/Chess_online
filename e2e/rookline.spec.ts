@@ -311,6 +311,59 @@ test("undo restores the previous chess clock and survives reload", async ({ page
   await expect(page.getByLabel("White clock")).toHaveText("03:00");
 });
 
+test("an active local clock charges elapsed time across reload and rejects an expired turn", async ({ page }) => {
+  await page.goto("/play/local");
+  await page.getByRole("button", { name: "3+2" }).click();
+  const entry = page.getByRole("textbox", { name: /Keyboard move/ });
+  await entry.fill("e2e4");
+  await entry.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(localStorage.getItem("rookline-session-local") ?? "{}").running)).toBe(true);
+
+  // Last persisted tick was 42 seconds before the browser was reloaded.
+  await page.evaluate(() => {
+    const snapshot = JSON.parse(localStorage.getItem("rookline-session-local")!);
+    snapshot.savedAt = Date.now() - 42_000;
+    localStorage.setItem("rookline-session-local", JSON.stringify(snapshot));
+  });
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => {
+    const { seconds, running } = JSON.parse(localStorage.getItem("rookline-session-local")!);
+    return running && seconds.b < 140 && seconds.b > 130;
+  })).toBe(true);
+  await expect(page.getByLabel("Black clock")).toContainText("02:1");
+
+  await page.evaluate(() => {
+    const snapshot = JSON.parse(localStorage.getItem("rookline-session-local")!);
+    snapshot.savedAt = Date.now() - 200_000;
+    localStorage.setItem("rookline-session-local", JSON.stringify(snapshot));
+  });
+  await page.reload();
+  await expect(page.getByLabel("Game controls").locator('[role="status"]')).toHaveText("Timeout");
+  await expect(page.getByLabel("Black clock")).toHaveText("00:00");
+  await expect(entry).toBeDisabled();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+});
+
+test("a resumed computer game does not answer after its clock expired during reload", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("rookline-session-computer", JSON.stringify({
+      pgn: "1. e4", control: "3+2", seconds: { w: 182, b: 180 },
+      manualResult: null, orientation: "white", playingSide: "w",
+      gameId: "local-computer-expired", undoClocks: [{ w: 180, b: 180 }],
+      running: true, savedAt: Date.now() - 200_000,
+    }));
+  });
+  await page.goto("/play/computer");
+  await expect(page.getByLabel("Game controls").locator('[role="status"]')).toHaveText("Timeout");
+  await expect(page.getByLabel("Black clock")).toHaveText("00:00");
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1);
+  await page.waitForTimeout(900);
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+});
+
 test("a late move is refused even before a throttled clock interval fires", async ({ page }) => {
   await page.goto("/play/local");
   await page.getByRole("button", { name: "3+2" }).click();

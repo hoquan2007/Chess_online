@@ -91,3 +91,13 @@ Next focus: continue locally verifiable accessibility and replay correctness whi
 - Five SQL migrations await application; no dedicated Rookline staging credentials, two-user Auth, RLS, RPC, realtime, concurrent move, rated settlement or Vercel preview verification. All 20 gates remain OPEN; project **IN_PROGRESS**.
 
 Next: keep tightening independent local correctness and accessibility. When dedicated Rookline staging is provisioned, apply and test all five migrations, authorized RPC grants, and two real authenticated clients without modifying unrelated projects.
+
+## 2026-10-29, checkpoint 10 — clock catch-up after reloading a live local game
+
+- Found that reloading an ongoing local/computer game restored the chess position and remaining seconds but left its clock permanently paused, effectively granting unbounded time. Added `running` and `savedAt` to saved sessions and now charge the turn player's wall-time gap on reload; expired games render timeout immediately and the bot Worker cannot play afterward.
+- Preserved older local snapshots that lack these metadata fields: they load with paused clocks. Live turn charging continues using monotonic `performance.now()`, while across reloads the unranked game uses `Date.now()` to recover elapsed wall time.
+- Added two Playwright scenarios: active clock is charged for a simulated 42-second page gap and a subsequent expired turn is blocked; reloaded computer-to-move expired game never adds a move.
+- Lint PASS, typecheck PASS, Vitest **49/49** PASS, focused browser **2/2** PASS and full browser **27/27** PASS (54.2 s), Webpack build PASS (17/17 static pages). A default-sandbox Playwright server startup stalled and was interrupted; native escalated runs completed and passed.
+- Five SQL migrations still unrun on PostgreSQL; no staging Rookline Auth/RLS/RPC/realtime, CI or Vercel deployment verification. All 20 acceptance gates remain OPEN; status **IN_PROGRESS**.
+
+Next: investigate local accessibility and sustained chess timing/engine correctness independently. Once dedicated staging access exists, execute the five migrations and two-real-account verification before claiming hosted multiplayer or rated results.

@@ -81,7 +81,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
       try {
         const value = localStorage.getItem(`rookline-session-${mode}`);
         if (value) {
-          const snapshot = JSON.parse(value) as { pgn: string; control: Control; seconds: Clocks; manualResult: string | null; orientation: "white" | "black"; playingSide: Side; gameId: string; undoClocks?: Clocks[] };
+          const snapshot = JSON.parse(value) as { pgn: string; control: Control; seconds: Clocks; manualResult: string | null; orientation: "white" | "black"; playingSide: Side; gameId: string; undoClocks?: Clocks[]; running?: boolean; savedAt?: number };
           if (!snapshot || typeof snapshot.pgn !== "string" || snapshot.pgn.length > 100000 ||
               !(snapshot.control in controlValues) || !snapshot.seconds ||
               !["w", "b"].every((side) => Number.isFinite(snapshot.seconds[side as Side]) && snapshot.seconds[side as Side] >= 0 && snapshot.seconds[side as Side] <= 36000) ||
@@ -90,6 +90,9 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
               (snapshot.undoClocks !== undefined && (!Array.isArray(snapshot.undoClocks) || snapshot.undoClocks.length > 10000 ||
                 snapshot.undoClocks.some((clock) => !clock || !["w", "b"].every((side) =>
                   Number.isFinite(clock[side as Side]) && clock[side as Side] >= 0 && clock[side as Side] <= 36000)))) ||
+              (snapshot.running !== undefined && typeof snapshot.running !== "boolean") ||
+              (snapshot.savedAt !== undefined && (!Number.isFinite(snapshot.savedAt) || snapshot.savedAt < 0)) ||
+              (snapshot.running === true && snapshot.savedAt === undefined) ||
               (snapshot.manualResult !== null && (typeof snapshot.manualResult !== "string" || snapshot.manualResult.length > 160))) {
             throw new Error("Invalid local game snapshot");
           }
@@ -97,16 +100,24 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
           if (snapshot.undoClocks && snapshot.undoClocks.length !== restored.history().length) {
             throw new Error("Inconsistent clock history");
           }
+          // A timed local game keeps running across reloads. Use wall time only
+          // across page lifetimes; performance.now() handles live moves/ticks.
+          // Older snapshots without running/savedAt retain their paused state.
+          const resume = snapshot.running === true && restored.history().length > 0 &&
+            !snapshot.manualResult && !gameResult(restored).finished;
+          const restoredSeconds = resume
+            ? advanceLocalClock(snapshot.seconds, restored.turn(), Date.now() - snapshot.savedAt!)
+            : snapshot.seconds;
           engine.current = restored;
           setControl(snapshot.control);
-          setSeconds(snapshot.seconds);
-          clockRef.current = snapshot.seconds;
+          setSeconds(restoredSeconds);
+          clockRef.current = restoredSeconds;
           setUndoClocks(snapshot.undoClocks ?? []);
           setManualResult(snapshot.manualResult);
           setOrientation(snapshot.orientation);
           setPlayingSide(snapshot.playingSide);
           setGameId(snapshot.gameId);
-          setRunning(false);
+          setRunning(resume && restoredSeconds[restored.turn()] > 0);
           sync();
         } else {
           setGameId(`local-${Date.now()}`);
@@ -127,9 +138,9 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   useEffect(() => {
     if (gameId === "local-0") return;
     try {
-      localStorage.setItem(`rookline-session-${mode}`, JSON.stringify({ pgn: engine.current.pgn(), control, seconds, undoClocks, manualResult, orientation, playingSide, gameId }));
+      localStorage.setItem(`rookline-session-${mode}`, JSON.stringify({ pgn: engine.current.pgn(), control, seconds, undoClocks, manualResult, orientation, playingSide, gameId, running: running && !outcome, savedAt: Date.now() }));
     } catch { /* Game remains playable if browser storage is unavailable. */ }
-  }, [fen, mode, control, seconds, undoClocks, manualResult, orientation, playingSide, gameId]);
+  }, [fen, mode, control, seconds, undoClocks, manualResult, orientation, playingSide, gameId, running, outcome]);
 
   const settleClock = useCallback(() => {
     const now = performance.now();
