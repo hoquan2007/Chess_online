@@ -36,11 +36,11 @@ Date: 2026-10-30. Status: QA-00 **local checks passed** (checkpoint 22: 40 brows
 | Adversarial / concurrency | forged actor, IDOR, invalid/late move, 2 simultaneous moves, duplicate requests, connection loss, timeout vs resign, rating double settlement | all unauthorized writes rejected; exactly one authoritative commit |
 | Operational | clean install, Webpack build, CI, preview smoke, CSP/secret scan, dependency audit, monitoring/rollback | recorded PASS in target environment |
 
-## Initial two-sprint queue (capacity-based; estimates are planning assumptions)
+## Next two delivery sprints (capacity-based; estimates are planning assumptions)
 
-**Sprint A — local readiness:** (A1) baseline all working-tree changes and investigate Windows `.next` EPERM; (A2) exercise existing auth/sound browser tests and add meaningful missing coverage; (A3) verify logo across desktop, mobile and light/dark; (A4) update evidence ledger. Exit: local build + test suite genuinely green, no regression introduced.
+**Sprint A — S0 hosted Auth/security:** Local QA-00 readiness has passed at checkpoint 23 (lint/typecheck/52 unit/40 browser, Webpack 17 pages). (A1) securely configure dedicated staging runtime and Auth redirect URLs; (A2) verify remote migration history and structural privileges; (A3) execute three-real-account signup/session/forbidden-access staging E2E; (A4) record request-level evidence, cleanup and findings. Exit: actual authenticated RLS/session evidence, with no privileged key exposure. If access remains absent, mark `BLOCKED_EXTERNAL` and continue isolated local keyboard/long-game QA.
 
-**Sprint B — staging multiplayer:** (B1) configure dedicated staging Auth and correct callback URL; (B2) run migrations in ordered transaction-safe process and test RLS/grants; (B3) complete two-account room/move/invite flow; (B4) test concurrency, server clocks, offline/reconnect; (B5) log artifacts and block promotion on any failed security test. Exit: independently verifiable two-person unrated game with server persistence. If staging is absent, prioritize independent local QA and mark B1–B5 `BLOCKED_EXTERNAL`.
+**Sprint B — S1/S2 authoritative unrated multiplayer:** (B1) independently verify live create/join/move/finish/PGN across two browser contexts; (B2) verify true Realtime delivery and lost-event reconnect; (B3) run two-connection row-lock, late-clock, 26-day expiry and adversarial game authorization/duplicate-request cases; (B4) fix observed defects, rerun complete checks and log proof. Exit: independently verified unrated hosted game with correct server clocks and atomic state. Matchmaking/rated mode remains gated until later implementation and exact-once settlement tests. See `CONTINUATION_PLAN_2026-10-30.md` for subsequent phases.
 
 ## Per-slice completion record
 

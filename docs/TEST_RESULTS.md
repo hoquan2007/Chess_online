@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 23: independent audit baseline rerun
+
+- On branch `codex/chess-platform-foundation`, native-permission `npm run check` **PASS**, exit 0: ESLint PASS, strict TypeScript PASS, **52/52 Vitest in 8 files PASS**, Webpack production build **17/17** generated pages PASS (Next.js 16.4.3). An earlier restricted-sandbox composite failed at `.next` output creation with Windows `EPERM`; the successful native-access composite supersedes that failure for code verification.
+- Fresh `npm run test:e2e` native Chromium suite completed **40 PASS / 1 intentionally SKIP**, exit 0 (1.9 minutes). The skip is the guarded `e2e/staging-online.spec.ts` (requires `ROOKLINE_STAGING_E2E=1`, dedicated credentials and real Auth). Remaining mocked online tests do **not** show live multiplayer works.
+- No new Supabase SQL, Auth or Realtime execution in this review; checkpoint 22 remains the latest **structural** hosted DB PASS. Real identity/RLS/transaction/race/clock/Realtime, rated matchmaking and public Vercel smoke still **UNVERIFIED**. All 20 project acceptance gates OPEN.
+- Review findings and blocking dependencies recorded in `CODEBASE_AUDIT_2026-10-30.md`; ordered next slices and their measurable acceptance gates in `CONTINUATION_PLAN_2026-10-30.md`.
+
 ## 2026-10-30 — checkpoint 22: hosted structural SQL and completed local regression
 
 - Ran new reusable, **non-mutating** `supabase/tests/structural-acceptance.sql` on the connected dedicated `chessonline` Postgres project `tyvczicinpjixmxgjhjn`: **PASS**, no SQL error. The DO block checked RLS on seven tables; prohibited direct client game/move/rating writes and anonymous authoritative reads; restricted profile-column grants; seven service-only privileged RPC/trigger grants; `games` membership in `supabase_realtime`; all three expected foreign-key indexes; and **executed** `rookline_timeout_winner()` for bare kings, same-square-colour bishops, opposite-colour bishops and a rook. Baseline/after-count queries confirmed **0 Auth users / 0 games / 0 moves**. The SQL does not simulate user identities, RLS predicates, two-connection row locks or Realtime message delivery.

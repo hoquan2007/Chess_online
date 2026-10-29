@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 23 — codebase audit and prioritized continuation plan
+
+- Completed a read-only implementation/security/verification review across the current Next.js application and API boundaries, Supabase migration history and RPC design, local chess/learning flows, release workflow and 20 acceptance gates. Published `CODEBASE_AUDIT_2026-10-30.md` and `CONTINUATION_PLAN_2026-10-30.md`; no application code, migration or hosted resource changed.
+- Fresh native-permission **`npm run check` PASS** (exit 0): ESLint, strict TypeScript, **52/52 Vitest (8 files)** and Next.js 16.4.3 Webpack **17/17** page generation. Fresh native Chromium **40 PASS, 1 staging SKIP** (exit 0; 1.9 minutes). Earlier restricted `.next` EPERM does not reproduce with native build access.
+- Hosted structural SQL success from checkpoint 22 remains the latest database evidence. Missing Next.js Supabase staging runtime credentials still block **real** Auth, user-specific RLS, two-client authoritative games, concurrency, Realtime and rated correctness. The opted-in staging E2E was **not** run. All 20 final acceptance gates remain OPEN; project `IN_PROGRESS`.
+- Next delivery slice: S0 hosted Auth/security evidence, then S1 private unrated play/reconnect, S2 server clock and race regression; continue independently testable accessibility/long-game QA if external staging remains blocked. No `main` merge, production deploy or credential disclosure.
+
 ## 2026-10-30, checkpoint 22 — verify hosted schema and finish local browser regression
 
 - Added the reusable, non-mutating `supabase/tests/structural-acceptance.sql` and ran it successfully on the isolated hosted `chessonline` project. It asserts seven RLS tables, API grants, service-only privileged functions, Realtime table publication, three FK indexes and actually invokes the timeout-winner helper for four distinct mating-material positions. Hosted user/game/move counts remained zero. This is **structural and helper execution evidence only**.
