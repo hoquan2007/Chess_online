@@ -143,3 +143,9 @@ Next: continue local engine/clock/game-rule QA and arrange isolated Rookline Sup
 - The user explicitly approved GitHub push and a public Vercel deployment. Supabase credentials and live database validation remain absent; hosted Auth, RLS/RPC, two-user multiplayer and ratings are unverified. All 20 product acceptance gates remain OPEN; product status **IN_PROGRESS**.
 
 Next: push the tested development branch, deploy the Vercel frontend under the requested `chessonline.vercel.app` hostname if available, and record the actual deployment URL and outcome.
+
+- Pushed commit `69a426c` to `origin/codex/chess-platform-foundation` (no merge to `main`). Created Vercel project `hnquan/chessonline`, set the Next.js framework, and deployed production build `dpl_CJn1D3pbYsBEvAa1LFuCi3xGjhCU` (READY, 17/17 generated pages).
+- `chessonline.vercel.app` could not be assigned because Vercel reports the alias **already in use**. Created `chessonline-hnquan.vercel.app` instead; Vercel also assigned `chessonline-delta.vercel.app`.
+- Browserless HTTP checks returned Vercel's **Login – Vercel** page rather than the Rookline application. Project SSO deployment protection is set to `all_except_custom_domains`. Automatic approval review rejected disabling SSO for the entire project as a broad persistent access-control change; the protection settings remain unchanged. Public smoke test is BLOCKED pending separately authorized access-control adjustment or an appropriate user-owned domain.
+
+Next: resolve public access authorization, verify unauthenticated Rookline routes, and continue independent Supabase staging acceptance tests. Full product status remains IN_PROGRESS.

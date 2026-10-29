@@ -13,7 +13,7 @@ Track acceptance 1–20 exactly as specified in the owner's `/goal`:
 | 14: Community | NOT IMPLEMENTED | Auth-based features and tests |
 | 15–16: UX and all test suites | PARTIAL | Local mobile no-overflow, theme, coordinate keyboard paths and focus-trapped promotion in local/analysis, lint/typecheck/49 unit/34 E2E/Webpack build pass at checkpoint 14; broader keyboard/visual audit and live DB integration missing |
 | 17: Zero high/critical findings | UNVERIFIED | Current npm audit failed registry DNS; external security/DB checks absent |
-| 18: Vercel build/deployment guide verified | PARTIAL | Local Webpack build passes; preview/staging deployment unverified |
+| 18: Vercel build/deployment guide verified | PARTIAL | Vercel production deployment `dpl_CJn1D3pbYsBEvAa1LFuCi3xGjhCU` is READY and builds 17 static pages, but public access redirects to Vercel Authentication; requested hostname already taken, and preview/staging/hosted Supabase verification remain incomplete |
 | 19: No placeholders/fake controls | FAIL | Online/friend and absent pages |
 | 20: Independent final audit | NOT RUN | All preceding evidence |
 
