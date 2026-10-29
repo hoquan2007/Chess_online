@@ -135,3 +135,11 @@ Next: continue local engine/timing correctness and accessibility review; use ded
 - Hosted Rookline Auth/RLS/RPC/2-client matches and CI/preview remain unverified, five SQL migrations unrun. All 20 complete product acceptance gates remain OPEN; status **IN_PROGRESS**.
 
 Next: continue local engine/clock/game-rule QA and arrange isolated Rookline Supabase staging for real multiplayer acceptance evidence.
+
+## 2026-10-29, checkpoint 15 — Vercel release build verification
+
+- Changed the production build command to `next build --webpack` in `package.json`, following the bundled Next.js 16.4.3 documentation. The default local Turbopack build failed while spawning its CSS PostCSS worker; the Webpack build completed successfully.
+- Verified `npm run check`: lint PASS, strict TypeScript PASS, Vitest **49/49** PASS, Webpack production build PASS with **17/17** generated static pages. Full Playwright suite passed **34/34** (1.1 min) under native execution.
+- The user explicitly approved GitHub push and a public Vercel deployment. Supabase credentials and live database validation remain absent; hosted Auth, RLS/RPC, two-user multiplayer and ratings are unverified. All 20 product acceptance gates remain OPEN; product status **IN_PROGRESS**.
+
+Next: push the tested development branch, deploy the Vercel frontend under the requested `chessonline.vercel.app` hostname if available, and record the actual deployment URL and outcome.
