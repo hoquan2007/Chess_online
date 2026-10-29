@@ -1,7 +1,7 @@
 # Active task
 
-**CH-05/06/07/08:** Eight migrations have been applied to Supabase `chessonline`, including profile grant hardening, restricted RLS event-trigger execution and foreign-key indexes. Database structural/grant/advisor checks passed. Prior local chess and accessibility regressions remain covered. Next prove real authenticated hosted moves, locks, clocks, reconnect and result settlement.
+**CH-05/06/07/08 — checkpoint 21:** Eight migrations have been applied to dedicated Supabase `chessonline`; structural RLS/grant/advisor checks passed. Added a guarded three-identity, independent-browser hosted acceptance test in `e2e/staging-online.spec.ts`. It is **not yet executed** because local Supabase runtime credentials are absent. Next prove real authenticated hosted moves, RLS, locks, clocks, reconnect and result settlement.
 
-Latest checkpoint 19 independent stages all pass on the current checkout: ESLint, strict TypeScript, **52/52 Vitest**, native Webpack **17/17** generated pages and native **40/40** local/mocked Playwright (1.3m). The composite check encountered a concurrent build lock, and a default-sandbox build hit `.next` `EPERM` before the native build passed. Server routes and RPC code still need end-to-end proof with real test accounts; hosted migration installation alone cannot establish it.
+Checkpoint 21 native `npm run check` **PASS**: lint, strict TypeScript, **52/52 Vitest**, Webpack **17/17** pages. Native Playwright **40 PASS / 1 guarded staging test SKIP**. A default-sandbox build still produces `.next` `EPERM`; native-permission build passed. These local results cannot establish hosted correctness.
 
 Current status: IN_PROGRESS. Database migrations are deployed; Next.js runtime credentials and verified two-account hosted tests remain outstanding. All 20 acceptance gates remain open.

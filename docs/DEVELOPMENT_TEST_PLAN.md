@@ -1,13 +1,13 @@
 # Rookline — development and verification execution plan
 
-Date: 2026-10-29. Status: QA-00 **local checks passed** (checkpoint 18: 40 browser, 52 unit, native Webpack build); AUTH-01 onward **not accepted** pending dedicated staging and further implementation. Source of truth: `PROJECT_VISION.md`, `agent-state/BACKLOG.md`, `SECURITY_MODEL.md`, `ARCHITECTURE.md`, `FINAL_AUDIT.md`.
+Date: 2026-10-30. Status: QA-00 **local checks passed** (checkpoint 21: 40 browser pass / 1 gated staging skip, 52 unit, native Webpack build); AUTH-01 onward **not accepted** pending actual authenticated staging runs and further implementation. Source of truth: `PROJECT_VISION.md`, `agent-state/BACKLOG.md`, `SECURITY_MODEL.md`, `ARCHITECTURE.md`, `FINAL_AUDIT.md`.
 
 ## Delivery rules
 
 - Work exclusively on development branches; no automatic merge to main or production deployment.
 - Each vertical slice: baseline → failing reproduction/acceptance test → minimum change → unit/integration/browser checks → security/UX review → evidence in `TEST_RESULTS.md` and `AUTONOMOUS_PROGRESS.md` → reviewable commit.
 - Require `npm run check` plus applicable `npm run test:e2e -- --workers=1`; no false PASS for mocked services. Record command, result, environment, timestamp, issues and links to evidence.
-- Database validation needs an isolated Rookline staging Supabase project with real test accounts. Never run migrations on an unrelated project; keep service-role secrets server-only. Apply migration `06000` after the existing five, then run `STAGING_CLOCK_CONCURRENCY_TEST.md` to verify lock-wait time, 26-day expiration and privileged grants under real PostgreSQL concurrency.
+- Database validation uses the dedicated Rookline staging Supabase project (`tyvczicinpjixmxgjhjn`), where all eight migrations are applied. Never run migrations on an unrelated project; keep server secrets server-only. Execute guarded `e2e/staging-online.spec.ts` with real test accounts, then `STAGING_CLOCK_CONCURRENCY_TEST.md` to verify lock-wait time, 26-day expiration and privileged grants under real PostgreSQL concurrency.
 - Blocked external checks are `BLOCKED_EXTERNAL`, not complete. The product remains `IN_PROGRESS` until all 20 acceptance gates in `FINAL_AUDIT.md` have evidence.
 
 ## Ordered slices and gates
@@ -48,5 +48,5 @@ Track: task ID, branch/commit, changed files, acceptance scenario, actual comman
 ## Known baseline and blockers (at planning time)
 
 - Verified checkpoint 18: 52/52 Vitest, 40/40 local/mocked Playwright and 17-page Webpack build PASS when invoked with native Windows build permissions; restricted `.next` writes can raise `EPERM`. The still-running checkpoint 20 Playwright attempt must be recorded separately when it terminates.
-- No configured staging Supabase credentials; all hosted Auth/SQL/multiplayer gates remain unverified. Six SQL migrations are still unrun.
+- No configured Next.js staging runtime credentials. Eight SQL migrations have been installed remotely, but hosted Auth, user-specific RLS, concurrent RPC, Realtime and real two-user UI gates remain unverified; `e2e/staging-online.spec.ts` has intentionally never run with the opt-in enabled.
 - Vercel frontend was built, but public verification is blocked by deployment authentication. Production action needs explicit owner approval.

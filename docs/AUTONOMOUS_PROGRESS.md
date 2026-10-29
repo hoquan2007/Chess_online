@@ -1,5 +1,13 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 21 — prepare independent staging multiplayer acceptance test
+
+- Created guarded `e2e/staging-online.spec.ts` for three actual Auth users, independent sign-in contexts, private join, adversarial access and write denial, illegal/replayed/out-of-turn moves, server-authoritative checkmate after reload and racing requests. Disposable users and games have explicit cleanup; staging project hostname is pinned.
+- Full native `npm run check` **PASS**: lint, strict TypeScript, 52/52 Vitest, Next.js 16.4.3 Webpack build 17/17 generated pages. Full local Chromium **40 PASS, 1 opt-in staging test SKIPPED**. A restricted filesystem build initially failed `EPERM` writing `.next`; a native-permission rerun passed.
+- This is **test-harness readiness only**: no runtime Supabase credentials are configured, so it has not exercised the deployed DB. Real Auth/RLS/concurrency/realtime/rated match acceptance is open. Project **IN_PROGRESS**, all 20 gates **OPEN**. No production deployment or main merge.
+
+Next: provision dedicated staging runtime credentials securely, set `$env:ROOKLINE_STAGING_E2E='1'` in PowerShell and run `npx playwright test e2e/staging-online.spec.ts --workers=1`; unset the flag afterward. Inspect and fix any actual live failures, then complete the separate two-connection late-clock/26-day/rated settlement protocol in `docs/STAGING_CLOCK_CONCURRENCY_TEST.md`. Preserve Supabase remote migration history when preparing subsequent migrations.
+
 ## 2026-10-30, checkpoint 20 — recover corrupt local history and rerun local QA
 
 - Completed an independent local-history correctness slice: tolerate malformed existing archive JSON when saving a newly finished game. The extended Chromium case exercises Fool's Mate, checks the stored result, then navigates to `/games`. Corrected its `addInitScript` fixture to seed damage only once per browser session. Focused run **1/1 PASS**, full Chromium **40/40 PASS**.
