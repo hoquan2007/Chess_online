@@ -1,6 +1,6 @@
 # Rookline — development and verification execution plan
 
-Date: 2026-10-30. Status: QA-00 **local checks passed** (checkpoint 21: 40 browser pass / 1 gated staging skip, 52 unit, native Webpack build); AUTH-01 onward **not accepted** pending actual authenticated staging runs and further implementation. Source of truth: `PROJECT_VISION.md`, `agent-state/BACKLOG.md`, `SECURITY_MODEL.md`, `ARCHITECTURE.md`, `FINAL_AUDIT.md`.
+Date: 2026-10-30. Status: QA-00 **local checks passed** (checkpoint 22: 40 browser pass / 1 gated staging skip, 52 unit, native Webpack 17 pages). Hosted structural SQL **passed** on the dedicated Supabase project, but AUTH-01 onward **not accepted** pending actual authenticated staging runs and further implementation. Source of truth: `PROJECT_VISION.md`, `agent-state/BACKLOG.md`, `SECURITY_MODEL.md`, `ARCHITECTURE.md`, `FINAL_AUDIT.md`.
 
 ## Delivery rules
 
@@ -8,6 +8,7 @@ Date: 2026-10-30. Status: QA-00 **local checks passed** (checkpoint 21: 40 brows
 - Each vertical slice: baseline → failing reproduction/acceptance test → minimum change → unit/integration/browser checks → security/UX review → evidence in `TEST_RESULTS.md` and `AUTONOMOUS_PROGRESS.md` → reviewable commit.
 - Require `npm run check` plus applicable `npm run test:e2e -- --workers=1`; no false PASS for mocked services. Record command, result, environment, timestamp, issues and links to evidence.
 - Database validation uses the dedicated Rookline staging Supabase project (`tyvczicinpjixmxgjhjn`), where all eight migrations are applied. Never run migrations on an unrelated project; keep server secrets server-only. Execute guarded `e2e/staging-online.spec.ts` with real test accounts, then `STAGING_CLOCK_CONCURRENCY_TEST.md` to verify lock-wait time, 26-day expiration and privileged grants under real PostgreSQL concurrency.
+- `supabase/tests/structural-acceptance.sql` is a rerunnable read-only baseline for hosted RLS enablement, grants, indexes and FIDE helper execution (checkpoint 22 PASS). Run it only on the dedicated project, through an authenticated SQL console. It cannot replace actual Auth users, RLS policy tests, transactional row-lock contention or Realtime delivery.
 - Blocked external checks are `BLOCKED_EXTERNAL`, not complete. The product remains `IN_PROGRESS` until all 20 acceptance gates in `FINAL_AUDIT.md` have evidence.
 
 ## Ordered slices and gates
@@ -47,6 +48,6 @@ Track: task ID, branch/commit, changed files, acceptance scenario, actual comman
 
 ## Known baseline and blockers (at planning time)
 
-- Verified checkpoint 18: 52/52 Vitest, 40/40 local/mocked Playwright and 17-page Webpack build PASS when invoked with native Windows build permissions; restricted `.next` writes can raise `EPERM`. The still-running checkpoint 20 Playwright attempt must be recorded separately when it terminates.
+- Verified checkpoint 22: 52/52 Vitest, 40/40 local/mocked Playwright with 1 gated staging skip and 17-page native Webpack build PASS; restricted `.next` writes caused `EPERM` in the default composite check. Hosted structural SQL passed independently. The native full Chromium run has finished with exit 0.
 - No configured Next.js staging runtime credentials. Eight SQL migrations have been installed remotely, but hosted Auth, user-specific RLS, concurrent RPC, Realtime and real two-user UI gates remain unverified; `e2e/staging-online.spec.ts` has intentionally never run with the opt-in enabled.
 - Vercel frontend was built, but public verification is blocked by deployment authentication. Production action needs explicit owner approval.

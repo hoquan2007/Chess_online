@@ -140,12 +140,34 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     const raceId = (await raceCreate.json()).id as string;
     createdGames.push(raceId);
     expect((await blackContext.request.post(`/api/games/${raceId}/join`)).status()).toBe(200);
+    await Promise.all([whitePage.goto(`/game/${raceId}`), blackPage.goto(`/game/${raceId}`)]);
+    await expect(blackPage.getByText("Your game room")).toBeVisible();
     const [raceA, raceB] = await Promise.all([
       move(whiteContext, raceId, "e2", "e4", 0),
       move(whiteContext, raceId, "d2", "d4", 0),
     ]);
     expect([raceA.status(), raceB.status()].sort()).toEqual([200, 409]);
     expect((await gameState(whiteContext, raceId)).ply).toBe(1);
+
+    // The opponent must converge through live hints or polling without a reload.
+    await expect.poll(async () => (
+      await blackPage.locator('[aria-label="Move history"] strong').first().textContent()
+    )?.trim(), { timeout: 15_000 }).toMatch(/^(e4|d4)$/);
+
+    // Verify authoritative resignation remains visible after a disconnected
+    // opponent comes back online, even when Realtime messages were missed.
+    await blackContext.setOffline(true);
+    try {
+      const resigned = await whiteContext.request.post(`/api/games/${raceId}/resign`);
+      expect(resigned.status()).toBe(200);
+    } finally {
+      await blackContext.setOffline(false);
+    }
+    await blackPage.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await expect(blackPage.getByText("Game finished", { exact: false }).first()).toBeVisible({ timeout: 15_000 });
+    expect(await gameState(blackContext, raceId)).toMatchObject({
+      ply: 1, status: "completed", result: "resignation", winner_id: blackId,
+    });
 
     await whitePage.goto("/play/online");
     await whitePage.getByRole("button", { name: "Sign out" }).first().click();
