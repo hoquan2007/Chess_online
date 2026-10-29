@@ -373,6 +373,50 @@ test("computer worker plays a legal first move when player chooses Black", async
   await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
 });
 
+test("a stale computer worker error cannot interrupt a new game", async ({ page }) => {
+  await page.addInitScript(() => {
+    class ControlledWorker {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+      request = 0;
+      constructor() { workers.push(this); }
+      postMessage(data: { request: number }) { this.request = data.request; }
+      terminate() { /* Keep a queued error deliverable after termination. */ }
+      emitError() { this.onerror?.(new Event("error")); }
+      emitMove() {
+        this.onmessage?.(new MessageEvent("message", {
+          data: { request: this.request, move: { from: "e2", to: "e4" } },
+        }));
+      }
+    }
+    const workers: ControlledWorker[] = [];
+    Object.assign(window, { Worker: ControlledWorker, __rooklineTestWorkers: workers });
+  });
+  await page.goto("/play/computer");
+  await page.getByRole("button", { name: "Black", exact: true }).click();
+  const workerCount = () => page.evaluate(() =>
+    (window as typeof window & { __rooklineTestWorkers: unknown[] }).__rooklineTestWorkers.length);
+  await expect.poll(workerCount).toBe(1);
+  await page.getByRole("button", { name: "New game" }).click();
+  await expect.poll(workerCount).toBe(2);
+
+  await page.evaluate(() => {
+    const workers = (window as typeof window & {
+      __rooklineTestWorkers: { emitError(): void; emitMove(): void }[];
+    }).__rooklineTestWorkers;
+    workers[0].emitError();
+  });
+  await expect(page.getByRole("alert").filter({ hasText: "Computer engine could not start" })).toHaveCount(0);
+  await page.evaluate(() => {
+    const workers = (window as typeof window & {
+      __rooklineTestWorkers: { emitMove(): void }[];
+    }).__rooklineTestWorkers;
+    workers[1].emitMove();
+  });
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(page.getByText("Black to move")).toBeVisible();
+});
+
 test("corrupt browser saves do not crash a complete local game", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));

@@ -233,7 +233,10 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
       if (event.data.error) { setBotError(event.data.error); return; }
       if (event.data.move) completeMove(event.data.move.from, event.data.move.to, event.data.move.promotion, true);
     };
-    worker.onerror = () => setBotError("Computer engine could not start. Reset to retry.");
+    worker.onerror = () => {
+      if (requestId.current !== request) return;
+      setBotError("Computer engine could not start. Reset to retry.");
+    };
     worker.postMessage({ request, pgn: game.pgn(), level });
     const outstandingRequest = requestId;
     return () => { outstandingRequest.current++; worker.terminate(); };

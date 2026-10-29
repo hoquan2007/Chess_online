@@ -117,3 +117,12 @@ Next: continue local keyboard accessibility and long-game correctness QA; valida
 - Verification: focused Playwright **1/1**, complete **31/31** (~1.0 min), lint/typecheck, **49/49** Vitest, Webpack build **17/17** static pages all PASS. No real hosted or CI validation; five SQL migrations unrun, all 20 gates OPEN, status **IN_PROGRESS**.
 
 Next: audit another local game/engine edge case while awaiting an isolated Rookline staging database for live two-user tests.
+
+## 2026-10-29, checkpoint 13 — isolate stale computer Worker errors after reset
+
+- Detected that an old computer Worker failure could set an error on the newly reset game, stopping its fresh Worker. `onmessage` already checked request identity; `onerror` now applies the same guard.
+- Added a browser race scenario with a controlled Worker that delivers an obsolete error after reset. It failed before the fix and passed after; the full suite also retains a separate real Worker chess-move test.
+- Verification: escalated focused Playwright **1/1** PASS after observed pre-fix failure, full **32/32** (~1.0 min) PASS, lint/typecheck PASS, Vitest **49/49** PASS, Webpack build **17/17** static pages PASS. A default-sandbox browser startup stalled and was interrupted before running tests.
+- Five SQL migrations remain unrun, Rookline staging/auth keys absent, real hosted clients/RLS/RPC/realtime/rated settlement and CI/preview unverified. All 20 full acceptance gates OPEN, status **IN_PROGRESS**.
+
+Next: continue local engine/timing correctness and accessibility review; use dedicated Rookline staging for actual two-account multiplayer verification when available.
