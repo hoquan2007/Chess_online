@@ -217,7 +217,13 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     worker.onmessage = (event: MessageEvent<{ request: number; move?: { from: Square; to: Square; promotion?: "q" | "r" | "b" | "n" }; error?: string }>) => {
       if (event.data.request !== request || requestId.current !== request) return;
       if (event.data.error) { setBotError(event.data.error); return; }
-      if (event.data.move) completeMove(event.data.move.from, event.data.move.to, event.data.move.promotion, true);
+      const move = event.data.move;
+      if (move && completeMove(move.from, move.to, move.promotion, true)) return;
+      // A malformed or illegal worker reply must not leave the player waiting
+      // forever. An expired clock is handled as a timeout, not an engine error.
+      if (clockRef.current[engine.current.turn()] > 0 && !gameResult(engine.current).finished) {
+        setBotError("Computer returned an invalid move. Start a new game to retry.");
+      }
     };
     worker.onerror = () => {
       if (requestId.current !== request) return;

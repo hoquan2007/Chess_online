@@ -1,6 +1,6 @@
 # Rookline — development and verification execution plan
 
-Date: 2026-10-29. Status: QA-00 **local checks passed** (39 browser, 49 unit, build); AUTH-01 onward **not accepted** pending dedicated staging and further implementation. Source of truth: `PROJECT_VISION.md`, `agent-state/BACKLOG.md`, `SECURITY_MODEL.md`, `ARCHITECTURE.md`, `FINAL_AUDIT.md`.
+Date: 2026-10-29. Status: QA-00 **local checks passed** (checkpoint 17: 40 browser, 49 unit, native Webpack build); AUTH-01 onward **not accepted** pending dedicated staging and further implementation. Source of truth: `PROJECT_VISION.md`, `agent-state/BACKLOG.md`, `SECURITY_MODEL.md`, `ARCHITECTURE.md`, `FINAL_AUDIT.md`.
 
 ## Delivery rules
 

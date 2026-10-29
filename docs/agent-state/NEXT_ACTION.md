@@ -1,6 +1,6 @@
 # Next action after context compaction
 
-**Current priority, 2026-10-29:** QA-00 local regression is verified: `npm run check` PASS (49/49 Vitest, 17/17 Next build), full Playwright **39/39 PASS**, and focused audio/brand **3/3 PASS**. Continue with AUTH-01 and DATA-02 only against a dedicated Rookline staging Supabase project, then GAME-03 for two genuine independent accounts. Meanwhile audit additional local chess/accessibility/security cases. Maintain existing security constraints; no hosted claims from mocked browser tests.
+**Current priority, 2026-10-29 (checkpoint 17):** The invalid computer Worker response defect is reproduced and fixed, and the browser clock-reload test is stable under pre-mount simulated elapsed time. Local regression verified **49/49 unit, 40/40 Chromium E2E (2.4 minutes), native Webpack build (17/17 pages)**; restricted sandbox writes to `.next` can return `EPERM`. Record checkpoint-17 commit, then continue local chess/accessibility/security audits. AUTH-01 and DATA-02 require an isolated Rookline staging Supabase project before live integration; GAME-03 requires independent authenticated clients.
 
 **Latest verification:** Native Next Webpack production build PASS (17/17 pages), lint/typecheck PASS, Vitest **49/49 PASS**, native Playwright **39/39 PASS**. Online audio now waits for a verified server ledger; Rookline favicon and mobile mark verified in Chromium. `.env.local` Supabase keys missing; connected account only contains unrelated QuanShop project. See `docs/TEST_RESULTS.md`.
 

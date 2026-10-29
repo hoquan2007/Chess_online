@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-29 — checkpoint 17: invalid computer reply and stable reload-clock test
+
+- Reproduced the missing-engine-error bug with a controlled browser Worker: an illegal computer move left the board unchanged and the user stuck in `Computer is thinking…`. Added a request-scoped failure message and a reset recovery path. The new Playwright scenario failed before the fix and passed afterward; it checks that the illegal ply is not recorded and that the next Worker can move after `New game`.
+- The existing local-clock reload E2E had a race: editing the saved `savedAt` while the game was running competed with the app's 250 ms persistence. The test now applies a per-reload clock jump through `addInitScript` before React mounts. A focused rerun passed; no production clock algorithm was changed for that test.
+- Previous checkpoint-17 full suite passed **40/40 Playwright** after these changes. Current checkout revalidation: ESLint PASS, strict TypeScript PASS and **49/49 Vitest** PASS. The restricted-sandbox Next.js build returned `EPERM` on `.next` directory creation twice; running the same Webpack build with native elevated filesystem access passed compilation, TypeScript, and **17/17 generated pages**. This is an environment-specific build-path failure, not a demonstrated source compilation issue.
+- Current checkout full Chromium E2E rerun **40/40 PASS** (`npx playwright test --workers=1`, 2.4 minutes). Includes the controlled invalid Worker reply and clock reload tests. The online game snapshots in this browser suite remain mocked. Hosted Rookline Auth/RLS/RPC, independent two-account play, live server clocks and ratings still have no staging evidence. All 20 product acceptance gates remain OPEN; status **IN_PROGRESS**.
+
 ## 2026-10-29 — QA-00 complete local regression (checkpoint 16)
 
 - Verified **`npm run check` PASS**, exit 0: ESLint, TypeScript strict, **49/49 Vitest** in 7 suites, Next.js 16.4.3 Webpack production build with **17/17 generated static pages**.

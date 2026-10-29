@@ -572,6 +572,50 @@ test("a stale computer worker error cannot interrupt a new game", async ({ page 
   await expect(page.getByText("Black to move")).toBeVisible();
 });
 
+test("an invalid computer worker move reports failure and can recover on reset", async ({ page }) => {
+  await page.addInitScript(() => {
+    class ControlledWorker {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      request = 0;
+      constructor() { workers.push(this); }
+      postMessage(data: { request: number }) { this.request = data.request; }
+      terminate() { /* Do not discard an already queued worker reply. */ }
+      emitMove(from: string, to: string) {
+        this.onmessage?.(new MessageEvent("message", {
+          data: { request: this.request, move: { from, to } },
+        }));
+      }
+    }
+    const workers: ControlledWorker[] = [];
+    Object.assign(window, { Worker: ControlledWorker, __rooklineTestWorkers: workers });
+  });
+
+  await page.goto("/play/computer");
+  await page.getByRole("button", { name: "Black", exact: true }).click();
+  const count = () => page.evaluate(() =>
+    (window as typeof window & { __rooklineTestWorkers: unknown[] }).__rooklineTestWorkers.length);
+  await expect.poll(count).toBe(1);
+  await page.evaluate(() => {
+    const workers = (window as typeof window & {
+      __rooklineTestWorkers: { emitMove(from: string, to: string): void }[];
+    }).__rooklineTestWorkers;
+    workers[0].emitMove("e7", "e5"); // Black's move while the worker owns White's turn.
+  });
+  await expect(page.getByRole("alert").filter({ hasText: "Computer returned an invalid move" })).toBeVisible();
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "New game" }).click();
+  await expect.poll(count).toBe(2);
+  await page.evaluate(() => {
+    const workers = (window as typeof window & {
+      __rooklineTestWorkers: { emitMove(from: string, to: string): void }[];
+    }).__rooklineTestWorkers;
+    workers[1].emitMove("e2", "e4");
+  });
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(page.getByText("Black to move")).toBeVisible();
+});
+
 test("resigning while the computer thinks resigns the human side", async ({ page }) => {
   await page.addInitScript(() => {
     class WaitingWorker {
@@ -664,6 +708,16 @@ test("undo restores the previous chess clock and survives reload", async ({ page
 });
 
 test("an active local clock charges elapsed time across reload and rejects an expired turn", async ({ page }) => {
+  // Apply each simulated wall-clock jump before the app mounts on reload.
+  // Editing the save on a live page races its 250 ms persistence interval.
+  await page.addInitScript(() => {
+    const jump = localStorage.getItem("rookline-test-reload-jump");
+    if (!jump) return;
+    localStorage.removeItem("rookline-test-reload-jump");
+    const snapshot = JSON.parse(localStorage.getItem("rookline-session-local")!);
+    snapshot.savedAt = Date.now() - Number(jump);
+    localStorage.setItem("rookline-session-local", JSON.stringify(snapshot));
+  });
   await page.goto("/play/local");
   await page.getByRole("button", { name: "3+2" }).click();
   const entry = page.getByRole("textbox", { name: /Keyboard move/ });
@@ -674,11 +728,7 @@ test("an active local clock charges elapsed time across reload and rejects an ex
     JSON.parse(localStorage.getItem("rookline-session-local") ?? "{}").running)).toBe(true);
 
   // Last persisted tick was 42 seconds before the browser was reloaded.
-  await page.evaluate(() => {
-    const snapshot = JSON.parse(localStorage.getItem("rookline-session-local")!);
-    snapshot.savedAt = Date.now() - 42_000;
-    localStorage.setItem("rookline-session-local", JSON.stringify(snapshot));
-  });
+  await page.evaluate(() => localStorage.setItem("rookline-test-reload-jump", "42000"));
   await page.reload();
   await expect.poll(() => page.evaluate(() => {
     const { seconds, running } = JSON.parse(localStorage.getItem("rookline-session-local")!);
@@ -686,11 +736,7 @@ test("an active local clock charges elapsed time across reload and rejects an ex
   })).toBe(true);
   await expect(page.getByLabel("Black clock")).toContainText("02:1");
 
-  await page.evaluate(() => {
-    const snapshot = JSON.parse(localStorage.getItem("rookline-session-local")!);
-    snapshot.savedAt = Date.now() - 200_000;
-    localStorage.setItem("rookline-session-local", JSON.stringify(snapshot));
-  });
+  await page.evaluate(() => localStorage.setItem("rookline-test-reload-jump", "200000"));
   await page.reload();
   await expect(page.getByLabel("Game controls").locator('[role="status"]')).toHaveText("Timeout");
   await expect(page.getByLabel("Black clock")).toHaveText("00:00");

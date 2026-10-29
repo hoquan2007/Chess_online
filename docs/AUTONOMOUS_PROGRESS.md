@@ -162,3 +162,11 @@ Next: resolve public access authorization, verify unauthenticated Rookline route
 - Added the same vector brand mark as `src/app/icon.svg` and responsive topbar branding, with a real Chromium test of SVG response, desktop/mobile display and mobile horizontal overflow.
 - **`npm run check` PASS** (ESLint, strict TypeScript, Vitest **49/49**, Next Webpack build **17/17 pages**); focused browser audio/brand **3/3 PASS**; complete native Playwright **39/39 PASS** (~1.8 min). Earlier transient `.next` EPERM did not recur in native build.
 - Supabase account lists only the unrelated **QuanShop** project; Rookline staging keys absent. Hosted account registration, RLS/RPC, real two-player matches and five migrations remain **BLOCKED_EXTERNAL**. No production deployment, main merge or unrelated-project database writes. All **20 full-product gates OPEN**; status **IN_PROGRESS**.
+
+## 2026-10-29, checkpoint 17 — computer reply recovery and stable local clock testing
+
+- Invalid computer Worker replies were accepted as terminal callbacks without any error or visible recovery action, leaving the player waiting indefinitely. Added explicit failure feedback for absent/illegal Worker moves while preserving request-ID isolation and clock-expiry/game-over precedence; `New game` recovers normally.
+- Added a controlled-Worker Chromium regression covering wrong-turn reply, no recorded invalid move, reset, and a valid move in the new game. Confirmed the test failed before the fix and passed afterward.
+- Fixed a timing race in the browser clock regression by adjusting the saved clock timestamp before page initialization on reload. Focused regression passed; production clock implementation is unchanged.
+- Verification of current checkout: lint PASS, strict typecheck PASS, Vitest **49/49** PASS, full Chromium regression **40/40 PASS** (2.4 minutes). Two restricted-filesystem Webpack builds failed with `EPERM` creating `.next` subdirectories; the same native elevated build completed with **17/17** generated pages.
+- Live Supabase staging, the five unrun migrations, credentialed two-user matches and hosted security/rating verification remain unavailable. All 20 gates OPEN, status IN_PROGRESS.
