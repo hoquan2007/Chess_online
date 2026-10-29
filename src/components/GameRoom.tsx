@@ -8,6 +8,7 @@ import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag } from "lucide-rea
 import { browserSupabase } from "@/lib/supabase/client";
 import { displayedClock, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame } from "@/lib/online/games";
 import { availableDrawClaims, parseCoordinateMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
+import { PromotionDialog } from "@/components/PromotionDialog";
 
 type Viewer = "w" | "b";
 type Promotion = "q" | "r" | "b" | "n";
@@ -28,6 +29,7 @@ export function GameRoom({ id }: { id: string }) {
   const [notice, setNotice] = useState("");
   const [selected, setSelected] = useState<Square | null>(null);
   const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
+  const syncButtonRef = useRef<HTMLButtonElement>(null);
   const [keyboardMove, setKeyboardMove] = useState("");
   const [keyboardError, setKeyboardError] = useState("");
   const [flipped, setFlipped] = useState(false);
@@ -225,11 +227,11 @@ export function GameRoom({ id }: { id: string }) {
         {keyboardError && <p className="panel-sub" role="alert">{keyboardError}</p>}
       </form>
       <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void copyInvite()}><ClipboardCopy size={16} /> Copy link</button><button className="btn ghost" type="button" onClick={downloadPgn}><ArrowDownToLine size={16} /> Export PGN</button><button className="btn ghost" type="button" onClick={() => setFlipped(!flipped)}><ArrowLeftRight size={16} /> Flip</button></div>
-      <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void load()}>Sync</button><button className="btn ghost" disabled={busy || game.status !== "active"} type="button" onClick={() => void action("resign")}><Flag size={16} /> Resign</button><Link className="btn ghost" href="/play/online">My games</Link></div>
+      <div className="game-actions"><button ref={syncButtonRef} className="btn ghost" type="button" onClick={() => void load()}>Sync</button><button className="btn ghost" disabled={busy || game.status !== "active"} type="button" onClick={() => void action("resign")}><Flag size={16} /> Resign</button><Link className="btn ghost" href="/play/online">My games</Link></div>
       <div className="game-actions" aria-label="Draw claim controls"><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.repetition} onClick={() => void claimDraw("repetition")}>Claim threefold draw</button><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.fiftyMoves} onClick={() => void claimDraw("fiftyMoves")}>Claim 50-move draw</button></div>
       {error && <p className="status" role="alert">{error}</p>}{notice && <p className="status" role="status">{notice}</p>}
       <p className="panel-sub">Clocks are calculated by the server. Live updates use secure snapshots after each move; polling covers network interruptions.</p>
     </aside></div>
-    {promotion && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose promotion piece"><div className="promotion-box"><h2>Choose your promotion</h2><div className="promotion-choices">{(["q", "r", "b", "n"] as const).map((piece) => <button key={piece} type="button" aria-label={`Promote to ${piece}`} onClick={() => void makeMove(promotion.from, promotion.to, piece)}>{({ q: "♛", r: "♜", b: "♝", n: "♞" })[piece]}</button>)}</div><button className="btn ghost" type="button" onClick={() => setPromotion(null)}>Cancel</button></div></div>}
+    {promotion && <PromotionDialog fallbackFocusRef={syncButtonRef} onChoose={(piece) => void makeMove(promotion.from, promotion.to, piece)} onCancel={() => setPromotion(null)} />}
   </section>;
 }

@@ -146,7 +146,7 @@ test("analysis keyboard moves validate legality and offer underpromotion", async
   await input.fill("a7a8");
   await input.press("Enter");
   await expect(page.getByRole("dialog", { name: "Choose promotion piece" })).toBeVisible();
-  await page.getByRole("button", { name: "Promote to n" }).click();
+  await page.getByRole("button", { name: "Promote to knight" }).click();
   await expect(page.getByLabel("Analysis moves").getByText("a8=N")).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Choose promotion piece" })).toHaveCount(0);
 
@@ -154,8 +154,98 @@ test("analysis keyboard moves validate legality and offer underpromotion", async
   await page.locator('[data-square="a7"]').click();
   await page.locator('[data-square="a8"]').click();
   await expect(page.getByRole("dialog", { name: "Choose promotion piece" })).toBeVisible();
-  await page.getByRole("button", { name: "Promote to q" }).click();
+  await page.getByRole("button", { name: "Promote to queen" }).click();
   await expect(page.getByLabel("Analysis moves").getByText(/a8=Q/)).toBeVisible();
+});
+
+test("analysis promotion traps keyboard focus, cancels on Escape, and restores the move input", async ({ page }) => {
+  await page.goto("/analysis");
+  await page.getByRole("textbox", { name: "FEN position" }).fill("4k3/P7/8/8/8/8/8/4K3 w - - 0 1");
+  await page.getByRole("button", { name: "Load FEN" }).click();
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("a7a8");
+  await input.press("Enter");
+
+  const dialog = page.getByRole("dialog", { name: "Choose promotion piece" });
+  const queen = dialog.getByRole("button", { name: "Promote to queen" });
+  const cancel = dialog.getByRole("button", { name: "Cancel" });
+  await expect(dialog).toBeVisible();
+  await expect(queen).toBeFocused();
+  await queen.press("Shift+Tab");
+  await expect(cancel).toBeFocused();
+  await cancel.press("Tab");
+  await expect(queen).toBeFocused();
+  await queen.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(input).toBeFocused();
+  await expect(page.getByLabel("Analysis moves").getByText("a8=Q")).toHaveCount(0);
+
+  await input.fill("a7a8");
+  await input.press("Enter");
+  await expect(queen).toBeFocused();
+  await queen.press("Tab");
+  await expect(dialog.getByRole("button", { name: "Promote to rook" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
+  const knight = dialog.getByRole("button", { name: "Promote to knight" });
+  await expect(knight).toBeFocused();
+  await knight.press("Enter");
+  await expect(dialog).toHaveCount(0);
+  await expect(input).toBeFocused();
+  await expect(page.getByLabel("Analysis moves").getByText("a8=N")).toBeVisible();
+});
+
+test("local promotion is keyboard accessible and cancel preserves the position", async ({ page }) => {
+  // Keep a rook on the board so underpromoting to a knight does not end
+  // the game by insufficient material and disable the input being restored.
+  const setup = new Chess("4k2r/P7/8/8/8/8/8/4K3 w - - 0 1");
+  await page.addInitScript((pgn) => {
+    localStorage.setItem("rookline-session-local", JSON.stringify({
+      pgn, control: "5+0", seconds: { w: 300, b: 300 },
+      manualResult: null, orientation: "white", playingSide: "w",
+      undoClocks: [], gameId: "local-keyboard-promotion",
+    }));
+  }, setup.pgn());
+  await page.goto("/play/local");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("a7a8");
+  await input.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Choose promotion piece" });
+  await expect(dialog.getByRole("button", { name: "Promote to queen" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(input).toBeFocused();
+  await expect(page.getByLabel("Move history").getByText("a8=Q")).toHaveCount(0);
+
+  await input.fill("a7a8");
+  await input.press("Enter");
+  await dialog.getByRole("button", { name: "Promote to knight" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(dialog).toHaveCount(0);
+  await expect(input).toBeFocused();
+  await expect(page.getByLabel("Move history").getByText("a8=N")).toBeVisible();
+});
+
+test("promotion ending a local game restores focus to an available action", async ({ page }) => {
+  const setup = new Chess("4k3/P7/8/8/8/8/8/4K3 w - - 0 1");
+  await page.addInitScript((pgn) => {
+    localStorage.setItem("rookline-session-local", JSON.stringify({
+      pgn, control: "5+0", seconds: { w: 300, b: 300 },
+      manualResult: null, orientation: "white", playingSide: "w",
+      undoClocks: [], gameId: "local-final-promotion",
+    }));
+  }, setup.pgn());
+  await page.goto("/play/local");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("a7a8");
+  await input.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Choose promotion piece" });
+  await expect(dialog.getByRole("button", { name: "Promote to queen" })).toBeFocused();
+  await dialog.getByRole("button", { name: "Promote to knight" }).press("Enter");
+  await expect(dialog).toHaveCount(0);
+  await expect(input).toBeDisabled();
+  await expect(page.getByRole("button", { name: "PGN", exact: true })).toBeFocused();
+  await expect(page.getByLabel("Move history").getByText("a8=N")).toBeVisible();
 });
 
 test("online service fails clearly without credentials and mobile does not overflow", async ({ page }) => {

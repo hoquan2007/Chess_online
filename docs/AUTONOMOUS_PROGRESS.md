@@ -101,3 +101,11 @@ Next: keep tightening independent local correctness and accessibility. When dedi
 - Five SQL migrations still unrun on PostgreSQL; no staging Rookline Auth/RLS/RPC/realtime, CI or Vercel deployment verification. All 20 acceptance gates remain OPEN; status **IN_PROGRESS**.
 
 Next: investigate local accessibility and sustained chess timing/engine correctness independently. Once dedicated staging access exists, execute the five migrations and two-real-account verification before claiming hosted multiplayer or rated results.
+
+## 2026-10-29, checkpoint 11 — accessible keyboard promotion in all game modes
+
+- Consolidated local/computer, analysis and online game-room promotion into a shared accessible dialog with labeled piece choices, initial focus, trapped Tab/Shift+Tab, Escape cancellation and focus restoration. When the game ends on promotion and disables keyboard moves, focus falls back to PGN; online room has a Sync fallback.
+- Three Playwright cases verify analysis selection/cancel/reopen, local cancellation and knight underpromotion, and endgame fallback focus. Full **30/30** Playwright passed on an isolated rerun (58.0 s), **49/49** Vitest passed, lint/typecheck passed. Next 16.4.3 Webpack production build passed with 17/17 static pages on final code. Dev server emitted a non-failing Fast Refresh reload warning.
+- No dedicated Rookline Supabase staging, live Auth/SQL/RLS/RPC/realtime/concurrency, rated settlement, GitHub CI or Vercel preview evidence. Five migrations remain unrun; all 20 product acceptance gates remain OPEN. Status **IN_PROGRESS**.
+
+Next: continue local keyboard accessibility and long-game correctness QA; validate hosted game-room promotion and all five migrations using dedicated staging accounts once provisioned.

@@ -5,6 +5,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowLeft, ArrowRight, Download, RotateCcw } from "lucide-react";
 import { applyLegalMove, parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
+import { PromotionDialog } from "@/components/PromotionDialog";
 
 type Analysis = { start: string; san: string[]; index: number };
 
@@ -174,6 +175,6 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       {message && <p className="status" role="status">{message}</p>}
       <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setImportedPgn(null); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
     </aside>
-    {promotion && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose promotion piece"><div className="promotion-box"><h2>Choose your promotion</h2><div className="promotion-choices">{(["q", "r", "b", "n"] as const).map((piece) => <button key={piece} type="button" aria-label={`Promote to ${piece}`} onClick={() => makeMove(promotion.from, promotion.to, piece)}>{({ q: "♛", r: "♜", b: "♝", n: "♞" })[piece]}</button>)}</div><button type="button" className="btn ghost" onClick={() => setPromotion(null)}>Cancel</button></div></div>}
+    {promotion && <PromotionDialog onChoose={(piece) => makeMove(promotion.from, promotion.to, piece)} onCancel={() => setPromotion(null)} />}
   </div>;
 }

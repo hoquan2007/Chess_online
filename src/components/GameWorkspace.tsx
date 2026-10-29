@@ -8,6 +8,7 @@ import { ArrowDownToLine, ArrowLeftRight, RotateCcw, Undo2, Volume2, VolumeX, Fl
 import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, parseCoordinateMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
 import { advanceLocalClock } from "@/lib/chess/clocks";
 import type { Difficulty } from "@/lib/chess/bot";
+import { PromotionDialog } from "@/components/PromotionDialog";
 
 type Side = "w" | "b";
 type Control = "3+2" | "5+0" | "10+0";
@@ -45,6 +46,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   const [level, setLevel] = useState<Difficulty>("medium");
   const [selected, setSelected] = useState<Square | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
+  const exportPgnButtonRef = useRef<HTMLButtonElement>(null);
   const [keyboardMove, setKeyboardMove] = useState("");
   const [keyboardError, setKeyboardError] = useState("");
   const [manualResult, setManualResult] = useState<string | null>(null);
@@ -372,7 +374,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
           <button type="button" className="btn ghost" onClick={undo} disabled={history.length === 0 || (mode === "computer" && playingSide === "b" && history.length === 1)}><Undo2 size={16} /> Undo</button>
           <button type="button" className="btn ghost" onClick={() => setOrientation((prev) => prev === "white" ? "black" : "white")}><ArrowLeftRight size={16} /> Flip</button>
           <button type="button" className="icon-btn" aria-label={sound ? "Mute moves" : "Enable move sounds"} title="Move sound" onClick={toggleSound}>{sound ? <Volume2 size={17} /> : <VolumeX size={17} />}</button>
-          <button type="button" className="btn ghost" onClick={downloadPgn}><ArrowDownToLine size={16} /> PGN</button>
+          <button ref={exportPgnButtonRef} type="button" className="btn ghost" onClick={downloadPgn}><ArrowDownToLine size={16} /> PGN</button>
         </div>
         <div className="game-actions">
           <button type="button" className="btn primary" onClick={reset}><RotateCcw size={16} /> New game</button>
@@ -380,9 +382,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
           <button type="button" className="btn ghost" disabled={!!outcome || history.length === 0} onClick={() => { if (!settleClock()) return; setManualResult(resignationResult(game, game.turn()).label); setRunning(false); }}><Flag size={16} /> Resign</button>
         </div>
       </aside>
-      {pendingPromotion && <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Choose a promotion piece">
-        <div className="promotion-box"><h2>Choose your promotion</h2><div className="promotion-choices">{(["q", "r", "b", "n"] as const).map((piece) => <button key={piece} type="button" aria-label={`Promote to ${piece === "q" ? "queen" : piece === "r" ? "rook" : piece === "b" ? "bishop" : "knight"}`} onClick={() => { completeMove(pendingPromotion.from, pendingPromotion.to, piece); beep(); }}>{({ q: "♛", r: "♜", b: "♝", n: "♞" })[piece]}</button>)}</div><button className="btn ghost" type="button" onClick={() => setPendingPromotion(null)}>Cancel</button></div>
-      </div>}
+      {pendingPromotion && <PromotionDialog fallbackFocusRef={exportPgnButtonRef} onChoose={(piece) => { if (completeMove(pendingPromotion.from, pendingPromotion.to, piece)) beep(); }} onCancel={() => setPendingPromotion(null)} />}
     </div>
   );
 }
