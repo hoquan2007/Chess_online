@@ -68,6 +68,25 @@ test("local resignation exports a replayable PGN with the correct winner", async
   expect(review.getHeaders().Result).toBe("1-0");
 });
 
+test("undoing a completed local game withdraws its obsolete archive result", async ({ page }) => {
+  await page.goto("/play/local");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("e2e4");
+  await input.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await page.getByRole("button", { name: "Resign" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Black resigned" })).toBeVisible();
+  const archiveLength = () => page.evaluate(() => JSON.parse(localStorage.getItem("rookline-history") ?? "[]").length as number);
+  await expect.poll(archiveLength).toBe(1);
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByLabel("Move history").getByText("e4")).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "White to move" })).toBeVisible();
+  await expect.poll(archiveLength).toBe(0);
+  await page.goto("/games");
+  await expect(page.getByRole("region", { name: "Local game archive" }).getByText("No completed games saved on this device yet.")).toBeVisible();
+});
+
 test("resignation awards a draw when the opponent has only a king", async ({ page }) => {
   const setup = new Chess("4k3/8/8/8/8/8/8/4K2Q b - - 0 1");
   setup.move("Kd7");

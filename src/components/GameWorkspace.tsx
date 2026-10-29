@@ -37,6 +37,20 @@ function storeFinishedGame(id: string, pgn: string, outcome: string, mode: strin
   }
 }
 
+function withdrawFinishedGame(id: string) {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem("rookline-history") || "[]");
+    if (!Array.isArray(parsed)) return;
+    const remaining = parsed.filter((record: unknown) =>
+      !(typeof record === "object" && record !== null && "id" in record && record.id === id));
+    if (remaining.length !== parsed.length) {
+      localStorage.setItem("rookline-history", JSON.stringify(remaining));
+    }
+  } catch {
+    // A corrupted or unavailable archive must not block local Undo.
+  }
+}
+
 export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" }) {
   const engine = useRef(new Chess());
   const [fen, setFen] = useState(() => new Chess().fen());
@@ -265,6 +279,8 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
 
   const undo = () => {
     if (game.history().length === 0) return;
+    // A locally reversible result must not remain in the completed-game archive.
+    if (outcome) withdrawFinishedGame(gameId);
     requestId.current++;
     engine.current.undo();
     let undone = 1;

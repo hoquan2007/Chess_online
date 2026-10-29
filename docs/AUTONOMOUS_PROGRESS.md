@@ -109,3 +109,11 @@ Next: investigate local accessibility and sustained chess timing/engine correctn
 - No dedicated Rookline Supabase staging, live Auth/SQL/RLS/RPC/realtime/concurrency, rated settlement, GitHub CI or Vercel preview evidence. Five migrations remain unrun; all 20 product acceptance gates remain OPEN. Status **IN_PROGRESS**.
 
 Next: continue local keyboard accessibility and long-game correctness QA; validate hosted game-room promotion and all five migrations using dedicated staging accounts once provisioned.
+
+## 2026-10-29, checkpoint 12 — retract stale archived result after local Undo
+
+- Reproduced a data consistency defect: a completed local resignation appeared in `/games` even after Undo reopened the game. Added browser coverage that failed on the old behavior (archive count stayed 1) and then passed after the fix.
+- When Undo reopens a completed local/computer game, remove only that game ID from the browser-only completed archive. New game resets still preserve legitimate completed records. The archive removal fails safely if localStorage is unavailable or malformed.
+- Verification: focused Playwright **1/1**, complete **31/31** (~1.0 min), lint/typecheck, **49/49** Vitest, Webpack build **17/17** static pages all PASS. No real hosted or CI validation; five SQL migrations unrun, all 20 gates OPEN, status **IN_PROGRESS**.
+
+Next: audit another local game/engine edge case while awaiting an isolated Rookline staging database for live two-user tests.
