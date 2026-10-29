@@ -5,12 +5,14 @@ import Link from "next/link";
 import { browserSupabase } from "@/lib/supabase/client";
 import { safeNext } from "@/lib/online/redirect";
 
-export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: string }) {
+export function AuthForm({ mode, next, confirmationError = false }: { mode: "login" | "register"; next?: string; confirmationError?: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageIsError, setMessageIsError] = useState(false);
   const client = browserSupabase();
   const destination = safeNext(next);
   const isRegister = mode === "register";
@@ -18,8 +20,11 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: st
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!client || busy) return;
+    if (isRegister && !displayName.trim()) { setMessage("Enter a display name."); setMessageIsError(true); return; }
+    if (isRegister && password !== confirmPassword) { setMessage("Passwords do not match."); setMessageIsError(true); return; }
     setBusy(true);
     setMessage("");
+    setMessageIsError(false);
     try {
       if (isRegister) {
         const { data, error } = await client.auth.signUp({ email, password, options: {
@@ -28,7 +33,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: st
         } });
         if (error) throw error;
         if (!data.session) {
-          setMessage("Check your email for a confirmation link, then sign in.");
+          setMessage("Check your email and open the confirmation link. You will return to the game afterward.");
           return;
         }
       } else {
@@ -37,6 +42,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: st
       }
       window.location.assign(destination);
     } catch (error) {
+      setMessageIsError(true);
       setMessage(error instanceof Error ? error.message : "Authentication failed. Please try again.");
     } finally {
       setBusy(false);
@@ -50,9 +56,10 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: st
         {isRegister && <label className="label">Display name<input required maxLength={80} className="field" autoComplete="nickname" value={displayName} onChange={(e) => setDisplayName(e.target.value)} /></label>}
         <label className="label">Email<input className="field" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>
         <label className="label">Password<input className="field" type="password" minLength={8} autoComplete={isRegister ? "new-password" : "current-password"} required value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+        {isRegister && <label className="label">Confirm password<input className="field" type="password" minLength={8} autoComplete="new-password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} /></label>}
         <button type="submit" disabled={busy} className="btn primary">{busy ? "Working…" : isRegister ? "Create account" : "Sign in"}</button>
       </form>}
-    {message && <p className="status" role="status">{message}</p>}
+    {(message || confirmationError) && <p className="status" role={messageIsError || (!message && confirmationError) ? "alert" : "status"}>{message || "The confirmation link is invalid or has expired. Please sign in or create a new account."}</p>}
     <p className="muted">{isRegister ? "Already have an account?" : "New here?"} <Link href={`${isRegister ? "/login" : "/register"}?next=${encodeURIComponent(destination)}`} style={{ textDecoration: "underline" }}>{isRegister ? "Sign in" : "Create an account"}</Link></p>
   </div>;
 }

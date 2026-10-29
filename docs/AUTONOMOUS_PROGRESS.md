@@ -149,3 +149,16 @@ Next: push the tested development branch, deploy the Vercel frontend under the r
 - Browserless HTTP checks returned Vercel's **Login – Vercel** page rather than the Rookline application. Project SSO deployment protection is set to `all_except_custom_domains`. Automatic approval review rejected disabling SSO for the entire project as a broad persistent access-control change; the protection settings remain unchanged. Public smoke test is BLOCKED pending separately authorized access-control adjustment or an appropriate user-owned domain.
 
 Next: resolve public access authorization, verify unauthenticated Rookline routes, and continue independent Supabase staging acceptance tests. Full product status remains IN_PROGRESS.
+## 2026-10-29 — account access, board audio and Rookline brand refresh (working slice)
+
+- Auth registration now checks display name and matching passwords, handles confirmation links and returns to the intended page; online lobby already supports private challenge links and authenticated sign-out. Added visible account entry points and session-aware sign-out in the global navigation.
+- Local, computer and hosted room move sound implementation is present in the working tree, with persisted on/off preference and an online room toggle; browser interaction is required before playback. Introduced an original vector rook/R monogram in the site sidebar.
+- Verification: ESLint clean, strict TypeScript clean, Vitest 49/49 passed. Production Webpack code compilation and TypeScript succeeded, but final prerender blocked by filesystem EPERM creating `.next/server/app/analysis.segments/analysis`; full build and new browser tests are not yet validated.
+- `.env.local` lacks Supabase URL and publishable key: real account registration, the five database migrations, two-account hosted multiplayer and Supabase authorization remain BLOCKED_EXTERNAL. Do not mark authenticated multiplayer complete until verified against a real staging project. No production deployment or main merge in this slice.
+
+## 2026-10-29 — checkpoint 16: QA-00 local auth/audio/logo regression
+
+- Reviewed the uncommitted account-entry, registration, local/online move sound and original rook/R logo changes. Reproduced an online sound bug with a failing test: an increased ply from an inconsistent PGN/FEN played audio before chess.js verification. Moved audio triggering to the verified, applied snapshot. Remount game-room state when the route game ID changes.
+- Added the same vector brand mark as `src/app/icon.svg` and responsive topbar branding, with a real Chromium test of SVG response, desktop/mobile display and mobile horizontal overflow.
+- **`npm run check` PASS** (ESLint, strict TypeScript, Vitest **49/49**, Next Webpack build **17/17 pages**); focused browser audio/brand **3/3 PASS**; complete native Playwright **39/39 PASS** (~1.8 min). Earlier transient `.next` EPERM did not recur in native build.
+- Supabase account lists only the unrelated **QuanShop** project; Rookline staging keys absent. Hosted account registration, RLS/RPC, real two-player matches and five migrations remain **BLOCKED_EXTERNAL**. No production deployment, main merge or unrelated-project database writes. All **20 full-product gates OPEN**; status **IN_PROGRESS**.

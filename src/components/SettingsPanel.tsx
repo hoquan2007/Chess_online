@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { moveSoundsEnabled, setMoveSoundsEnabled } from "@/lib/chess/sound";
 
 export function SettingsPanel() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [sounds, setSounds] = useState(false);
+  const [sounds, setSounds] = useState(true);
 
   useEffect(() => {
     queueMicrotask(() => {
       setTheme(localStorage.getItem("rookline-theme") === "light" ? "light" : "dark");
-      setSounds(localStorage.getItem("rookline-sound") === "on");
+      setSounds(moveSoundsEnabled());
     });
   }, []);
 
@@ -22,8 +23,7 @@ export function SettingsPanel() {
   }
 
   function updateSounds(enabled: boolean) {
-    localStorage.setItem("rookline-sound", enabled ? "on" : "off");
-    window.dispatchEvent(new Event("rookline:preferences-changed"));
+    setMoveSoundsEnabled(enabled);
     setSounds(enabled);
   }
 
@@ -38,7 +38,7 @@ export function SettingsPanel() {
       </div>
     </section>
     <section className="text-panel stack" aria-labelledby="audio-heading">
-      <div><h2 id="audio-heading">Board sounds</h2><p className="muted">Play a move tone in local chess and computer games.</p></div>
+      <div><h2 id="audio-heading">Board sounds</h2><p className="muted">Hear your moves, computer moves and online opponents. Sound is on by default; choose Off to mute.</p></div>
       <div className="game-actions" role="group" aria-label="Move sounds preference">
         <button type="button" className={`btn ${sounds ? "primary" : "ghost"}`}
           aria-pressed={sounds} onClick={() => updateSounds(true)}>On</button>

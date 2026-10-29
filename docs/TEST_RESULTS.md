@@ -1,5 +1,21 @@
 # Test evidence ledger
 
+## 2026-10-29 — QA-00 complete local regression (checkpoint 16)
+
+- Verified **`npm run check` PASS**, exit 0: ESLint, TypeScript strict, **49/49 Vitest** in 7 suites, Next.js 16.4.3 Webpack production build with **17/17 generated static pages**.
+- Verified **`npx playwright test --workers=1` PASS, 39/39** (~1.8 minutes) in native local Chromium; focused audio/brand tests **3/3 PASS**. Browser cases cover registration confirmation error, sound preference and move playback, a synchronized opponent move playing exactly once, a corrupt server PGN/FEN remaining silent, and original responsive Rookline logo plus `/icon.svg`.
+- The corrupt-ledger audio defect was reproduced in a failing Playwright case before fixing it. Game-room audio now plays only after a valid replayed server snapshot is applied. Changing game-room IDs remounts the room to isolate its state. Verified desktop/mobile brand test and favicon response.
+- Local `.env.local` has no Supabase URL, publishable key, or service key. Connected Supabase account lists only **QuanShop**; no Rookline staging project exists. **No SQL migrations applied to QuanShop.** Five SQL migrations, actual registration/login, database RLS/RPC, two-client hosted games, clocks and ratings remain **BLOCKED_EXTERNAL / NOT VERIFIED**. The 20 full-project gates remain **OPEN**.
+- Native Vercel public-browser smoke, GitHub CI and current dependency audit remain outside this local verification. This checkpoint completes QA-00's local regression, **not** the product acceptance audit.
+
+## 2026-10-29 — QA-00 regression run (current working tree)
+
+- `npm run lint` and `npm run typecheck`: PASS. Vitest: **49/49 PASS** in previous current-tree check.
+- Full native Playwright initially **35/37 PASS**: two test harness expectations failed. After a browser reload, the in-page audio spy is recreated, so the original test incorrectly expected its count to carry over; the confirmation alert locator also matched Next.js's extra route-announcer alert. Corrected those two assertions without changing application behavior; focused regressions **2/2 PASS**, then full suite **37/37 PASS** (1.2 minutes).
+- Native `npm run build`: PASS, Next.js 16.4.3 Webpack, 17/17 generated static pages. Earlier sandboxed build failed with filesystem `EPERM` in `.next`; this is an execution-environment difference, not evidence of a production compile failure.
+- No real Supabase credentials or hosted 2-player test. Five migrations, Auth/RLS/RPC and realtime remain `BLOCKED_EXTERNAL`; 20 project acceptance gates remain OPEN.
+
+
 Date: 2026-10-29. Workspace: `D:\Chess_online`; branch `codex/chess-platform-foundation`.
 
 | Check | Observed result | Evidence boundary |

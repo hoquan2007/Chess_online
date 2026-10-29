@@ -362,6 +362,161 @@ test("settings persist theme and move sounds across navigation", async ({ page }
   await expect(page.locator("html")).not.toHaveClass(/theme-light/);
 });
 
+test("move audio defaults on, plays from keyboard and persists mute across navigation", async ({ page }) => {
+  await page.addInitScript(() => {
+    const audioWindow = window as unknown as Window & { __rooklineAudioStarts: number };
+    audioWindow.__rooklineAudioStarts = 0;
+    class FakeAudioContext {
+      state = "running";
+      currentTime = 0;
+      destination = {};
+      createOscillator() {
+        return {
+          type: "triangle", frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+          connect() { return { connect() {} }; }, disconnect() {},
+          start() { audioWindow.__rooklineAudioStarts++; }, stop() {}, onended: null,
+        };
+      }
+      createGain() {
+        return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, disconnect() {} };
+      }
+      resume() { return Promise.resolve(); }
+    }
+    Object.defineProperty(window, "AudioContext", { value: FakeAudioContext });
+  });
+  const played = () => page.evaluate(() => (window as unknown as Window & { __rooklineAudioStarts: number }).__rooklineAudioStarts);
+  await page.goto("/play/local");
+  await expect(page.getByRole("button", { name: "Mute moves" })).toBeVisible();
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("e2e4"); await input.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  expect(await played()).toBe(1);
+  await page.getByRole("button", { name: "Mute moves" }).click();
+  await input.fill("e7e5"); await input.press("Enter");
+  expect(await played()).toBe(1);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Enable move sounds" })).toBeVisible();
+  await page.getByRole("button", { name: "Enable move sounds" }).click();
+  expect(await played()).toBe(1); // Page reload resets the per-document audio spy; the toggle previews the sound.
+  await input.fill("g1f3"); await input.press("Enter");
+  expect(await played()).toBe(2);
+});
+
+test("online room rings once for each newly synchronized opponent move", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000099";
+  const chess = new Chess();
+  let game = {
+    id, white_id: "white-id", black_id: "black-id", status: "active", pgn: chess.pgn(), fen: chess.fen(),
+    turn: chess.turn(), ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000,
+    black_ms: 300000, clock_anchor_at: new Date().toISOString(),
+    result: null, winner_id: null, rated: false, created_at: new Date().toISOString(),
+  };
+  await page.addInitScript(() => {
+    const audioWindow = window as unknown as Window & { __rooklineAudioStarts: number };
+    audioWindow.__rooklineAudioStarts = 0;
+    class FakeAudioContext {
+      state = "running";
+      currentTime = 0;
+      destination = {};
+      createOscillator() {
+        return { type: "triangle", frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+          connect() { return { connect() {} }; }, disconnect() {},
+          start() { audioWindow.__rooklineAudioStarts++; }, stop() {}, onended: null };
+      }
+      createGain() { return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, disconnect() {} }; }
+      resume() { return Promise.resolve(); }
+    }
+    Object.defineProperty(window, "AudioContext", { value: FakeAudioContext });
+  });
+  await page.route(`**/api/games/${id}`, (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ game, viewerColor: "b" }),
+  }));
+  const played = () => page.evaluate(() => (window as unknown as Window & { __rooklineAudioStarts: number }).__rooklineAudioStarts);
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  expect(await played()).toBe(0); // Opening an existing room should be silent.
+  chess.move("e4");
+  game = { ...game, pgn: chess.pgn(), fen: chess.fen(), ply: 1, turn: chess.turn() };
+  await page.getByRole("button", { name: "Sync", exact: true }).click();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  expect(await played()).toBe(1);
+  await page.getByRole("button", { name: "Sync", exact: true }).click();
+  expect(await played()).toBe(1); // Polling the same ply is silent.
+  await page.getByRole("button", { name: "Mute moves" }).click();
+  chess.move("e5");
+  game = { ...game, pgn: chess.pgn(), fen: chess.fen(), ply: 2, turn: chess.turn() };
+  await page.getByRole("button", { name: "Sync", exact: true }).click();
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
+  expect(await played()).toBe(1);
+});
+
+test("online room does not sound an inconsistent server ledger before a valid move arrives", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000098";
+  const chess = new Chess();
+  const initial = {
+    id, white_id: "white-id", black_id: "black-id", status: "active", pgn: chess.pgn(), fen: chess.fen(),
+    turn: chess.turn(), ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000,
+    black_ms: 300000, clock_anchor_at: new Date().toISOString(), result: null, winner_id: null,
+    rated: false, created_at: new Date().toISOString(),
+  };
+  chess.move("e4");
+  const valid = { ...initial, pgn: chess.pgn(), fen: chess.fen(), ply: 1, turn: chess.turn() };
+  const inconsistent = { ...valid, pgn: "" };
+  let snapshot = initial;
+  await page.addInitScript(() => {
+    const audioWindow = window as unknown as Window & { __audioPlays: number };
+    audioWindow.__audioPlays = 0;
+    class FakeAudioContext {
+      state = "running";
+      currentTime = 0;
+      destination = {};
+      createOscillator() {
+        return { type: "triangle", frequency: { setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+          connect() { return { connect() {} }; }, disconnect() {},
+          start() { audioWindow.__audioPlays++; }, stop() {}, onended: null };
+      }
+      createGain() { return { gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, disconnect() {} }; }
+      resume() { return Promise.resolve(); }
+    }
+    Object.defineProperty(window, "AudioContext", { value: FakeAudioContext });
+  });
+  await page.route(`**/api/games/${id}`, (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ game: snapshot, viewerColor: "b" }),
+  }));
+  const played = () => page.evaluate(() => (window as unknown as Window & { __audioPlays: number }).__audioPlays);
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  snapshot = inconsistent;
+  await page.getByRole("button", { name: "Sync", exact: true }).click();
+  await expect(page.getByText("Server game ledger could not be verified. Stop play and contact support.")).toBeVisible();
+  expect(await played()).toBe(0);
+  snapshot = valid;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  expect(await played()).toBe(1);
+});
+
+test("original Rookline mark appears on desktop, mobile and the browser icon", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator(".sidebar .brand svg[aria-label='Rookline logo']")).toBeVisible();
+  const favicon = page.locator('head link[rel="icon"]').first();
+  await expect(favicon).toHaveAttribute("href", /\/icon\.svg/);
+  const icon = await page.request.get(await favicon.getAttribute("href") ?? "/icon.svg");
+  expect(icon.ok()).toBe(true);
+  expect(await icon.text()).toContain('fill="#193C33"');
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(page.getByRole("link", { name: "Rookline home" })).toBeVisible();
+  await expect(page.locator(".topbar .mobile-brand svg[aria-label='Rookline logo']")).toBeVisible();
+  const right = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+  expect(right).toBe(true);
+});
+
+test("expired confirmation links surface a useful sign-in error", async ({ page }) => {
+  await page.goto("/login?error=confirmation&next=%2Fplay%2Fonline");
+  await expect(page.locator(".status[role='alert']")).toContainText("confirmation link is invalid or has expired");
+  await expect(page.getByRole("link", { name: "Create an account" })).toHaveAttribute("href", "/register?next=%2Fplay%2Fonline");
+});
+
 test("computer worker plays a legal first move when player chooses Black", async ({ page }) => {
   await page.goto("/play/computer");
   await page.getByRole("button", { name: "easy", exact: true }).click();

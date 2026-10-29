@@ -4,11 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
-import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag } from "lucide-react";
+import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { displayedClock, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame } from "@/lib/online/games";
 import { availableDrawClaims, parseCoordinateMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
+import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
 
 type Viewer = "w" | "b";
 type Promotion = "q" | "r" | "b" | "n";
@@ -36,6 +37,15 @@ export function GameRoom({ id }: { id: string }) {
   const [now, setNow] = useState(() => Date.now());
   const nextLoadId = useRef(0);
   const lastAppliedLoadId = useRef(0);
+  const lastAudiblePly = useRef<number | null>(null);
+  const [sound, setSound] = useState(true);
+
+  useEffect(() => {
+    const syncSound = () => setSound(moveSoundsEnabled());
+    queueMicrotask(syncSound);
+    window.addEventListener("rookline:preferences-changed", syncSound);
+    return () => window.removeEventListener("rookline:preferences-changed", syncSound);
+  }, []);
 
   const load = useCallback(async () => {
     const loadId = ++nextLoadId.current;
@@ -86,6 +96,15 @@ export function GameRoom({ id }: { id: string }) {
     try { return { chess: replayGame(game), valid: true }; }
     catch { return { chess: new Chess(), valid: false }; }
   }, [game]);
+  useEffect(() => {
+    if (!game) { lastAudiblePly.current = null; return; }
+    // A broken server PGN/FEN must never ring or advance the audible sequence.
+    // React's verified, applied snapshot is the only source for move audio.
+    if (!position.valid) return;
+    const previousPly = lastAudiblePly.current;
+    if (previousPly !== null && game.ply > previousPly) playMoveSound();
+    if (previousPly === null || game.ply > previousPly) lastAudiblePly.current = game.ply;
+  }, [game, position.valid]);
   const chess = position.chess;
   const history = chess.history({ verbose: true });
   const last = history.at(-1);
@@ -202,7 +221,7 @@ export function GameRoom({ id }: { id: string }) {
   const bottom = orientation === "white" ? "w" : "b";
   const playerStrip = (color: Viewer) => <div className="player-strip"><span className="player-name"><span className="player-avatar" aria-hidden="true">{color === "w" ? "♙" : "♟"}</span>{color === viewer ? "You" : color === "w" ? "White opponent" : game.black_id ? "Black opponent" : "Waiting for Black"}</span><span className={`clock ${game.status === "active" && game.turn === color ? "running" : ""}`} aria-label={`${color === "w" ? "White" : "Black"} clock`}>{clockLabel(clocks[color])}</span></div>;
 
-  return <section className="stack">
+  return <section className="stack" onPointerDownCapture={unlockMoveAudio} onKeyDownCapture={unlockMoveAudio}>
     <div><p className="overline">Private online chess · Unrated</p><h1 className="page-title">Your game room</h1><p className="muted">{game.status === "waiting" ? "Invite an opponent to begin." : game.status === "active" ? `${game.turn === viewer ? "Your turn" : "Opponent’s turn"} · ${game.ply} half-moves played` : `Game finished · ${game.result ?? "Finished"}`}</p></div>
     <div className="game-grid"><section className="board-shell" aria-label="Online chess game">
       {playerStrip(top)}
@@ -226,7 +245,7 @@ export function GameRoom({ id }: { id: string }) {
         <div className="keyboard-move-row"><input id="online-keyboard-move" value={keyboardMove} onChange={(event) => { setKeyboardMove(event.target.value); setKeyboardError(""); }} disabled={!myTurn || busy} maxLength={12} autoComplete="off" placeholder="e2e4" /><button className="btn ghost" disabled={!myTurn || busy} type="submit">Move</button></div>
         {keyboardError && <p className="panel-sub" role="alert">{keyboardError}</p>}
       </form>
-      <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void copyInvite()}><ClipboardCopy size={16} /> Copy link</button><button className="btn ghost" type="button" onClick={downloadPgn}><ArrowDownToLine size={16} /> Export PGN</button><button className="btn ghost" type="button" onClick={() => setFlipped(!flipped)}><ArrowLeftRight size={16} /> Flip</button></div>
+      <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void copyInvite()}><ClipboardCopy size={16} /> Copy link</button><button className="btn ghost" type="button" onClick={downloadPgn}><ArrowDownToLine size={16} /> Export PGN</button><button className="btn ghost" type="button" onClick={() => setFlipped(!flipped)}><ArrowLeftRight size={16} /> Flip</button><button className="btn ghost" type="button" aria-label={sound ? "Mute moves" : "Enable move sounds"} aria-pressed={sound} onClick={() => { setMoveSoundsEnabled(!sound); setSound(!sound); }}>{sound ? <Volume2 size={16} /> : <VolumeX size={16} />} Sound {sound ? "on" : "off"}</button></div>
       <div className="game-actions"><button ref={syncButtonRef} className="btn ghost" type="button" onClick={() => void load()}>Sync</button><button className="btn ghost" disabled={busy || game.status !== "active"} type="button" onClick={() => void action("resign")}><Flag size={16} /> Resign</button><Link className="btn ghost" href="/play/online">My games</Link></div>
       <div className="game-actions" aria-label="Draw claim controls"><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.repetition} onClick={() => void claimDraw("repetition")}>Claim threefold draw</button><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.fiftyMoves} onClick={() => void claimDraw("fiftyMoves")}>Claim 50-move draw</button></div>
       {error && <p className="status" role="alert">{error}</p>}{notice && <p className="status" role="status">{notice}</p>}

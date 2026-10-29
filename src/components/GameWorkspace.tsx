@@ -9,6 +9,7 @@ import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, parseC
 import { advanceLocalClock } from "@/lib/chess/clocks";
 import type { Difficulty } from "@/lib/chess/bot";
 import { PromotionDialog } from "@/components/PromotionDialog";
+import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
 
 type Side = "w" | "b";
 type Control = "3+2" | "5+0" | "10+0";
@@ -69,7 +70,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   const [undoClocks, setUndoClocks] = useState<Clocks[]>([]);
   const [running, setRunning] = useState(false);
   const [botError, setBotError] = useState("");
-  const [sound, setSound] = useState(false);
+  const [sound, setSound] = useState(true);
   const [gameId, setGameId] = useState("local-0");
   const requestId = useRef(0);
   const tickAt = useRef(0);
@@ -138,7 +139,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
         } else {
           setGameId(`local-${Date.now()}`);
         }
-        setSound(localStorage.getItem("rookline-sound") === "on");
+        setSound(moveSoundsEnabled());
       } catch {
         engine.current = new Chess();
         clockRef.current = { w: 300, b: 300 };
@@ -185,22 +186,6 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     storeFinishedGame(gameId, pgnDownload(engine.current, pgnResult), outcome, mode);
   }, [outcome, gameId, mode, pgnResult]);
 
-  const beep = () => {
-    if (!sound) return;
-    try {
-      const context = new AudioContext();
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.frequency.value = 480;
-      gain.gain.setValueAtTime(.035, context.currentTime);
-      gain.gain.exponentialRampToValueAtTime(.001, context.currentTime + .07);
-      oscillator.connect(gain).connect(context.destination);
-      oscillator.start();
-      oscillator.stop(context.currentTime + .08);
-      oscillator.onended = () => void context.close();
-    } catch { /* Sound can be unavailable in headless browsers. */ }
-  };
-
   const completeMove = useCallback((from: Square, to: Square, promotion?: "q" | "r" | "b" | "n", byBot = false) => {
     if (outcome || (!byBot && botTurn)) return false;
     // Browser intervals may be throttled for minutes in a background tab. A
@@ -221,6 +206,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     setRunning(true);
     setPendingPromotion(null);
     sync();
+    playMoveSound();
     return true;
   }, [outcome, botTurn, sync, control, settleClock]);
 
@@ -245,7 +231,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   const trySquare = (square: string) => {
     if (outcome || botTurn) return;
     const destination = square as Square;
-    if (selected && selected !== destination && completeMove(selected, destination)) { beep(); return; }
+    if (selected && selected !== destination && completeMove(selected, destination)) return;
     const piece = game.get(destination);
     setSelected(piece?.color === game.turn() ? destination : null);
   };
@@ -323,7 +309,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   };
 
   const toggleSound = () => {
-    localStorage.setItem("rookline-sound", sound ? "off" : "on");
+    setMoveSoundsEnabled(!sound);
     setSound(!sound);
   };
 
@@ -336,7 +322,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     if (!completeMove(move.from, move.to, move.promotion)) {
       if (clockRef.current[game.turn()] <= 0) { setKeyboardError("Time expired. Start a new game to continue."); return; }
       if (!promotionNeeded) { setKeyboardError("That move is not legal in this position."); return; }
-    } else beep();
+    }
     setKeyboardMove("");
     setKeyboardError("");
   };
@@ -350,7 +336,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   );
 
   return (
-    <div className="game-grid">
+    <div className="game-grid" onPointerDownCapture={unlockMoveAudio} onKeyDownCapture={unlockMoveAudio}>
       <section className="board-shell" aria-label="Chess game">
         {renderPlayer(orientation === "white" ? "b" : "w")}
         <div className="board-wrap">
@@ -364,7 +350,6 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
             onPieceDrop: ({ sourceSquare, targetSquare }) => {
               if (!targetSquare) return false;
               const succeeded = completeMove(sourceSquare as Square, targetSquare as Square);
-              if (succeeded) beep();
               return succeeded;
             },
             onSquareClick: ({ square }) => trySquare(square),
@@ -401,7 +386,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
           <button type="button" className="btn ghost" disabled={!!outcome || history.length === 0} onClick={() => { if (!settleClock()) return; setManualResult(resignationResult(game, mode === "computer" ? playingSide : game.turn()).label); setRunning(false); }}><Flag size={16} /> Resign</button>
         </div>
       </aside>
-      {pendingPromotion && <PromotionDialog fallbackFocusRef={exportPgnButtonRef} onChoose={(piece) => { if (completeMove(pendingPromotion.from, pendingPromotion.to, piece)) beep(); }} onCancel={() => setPendingPromotion(null)} />}
+      {pendingPromotion && <PromotionDialog fallbackFocusRef={exportPgnButtonRef} onChoose={(piece) => { completeMove(pendingPromotion.from, pendingPromotion.to, piece); }} onCancel={() => setPendingPromotion(null)} />}
     </div>
   );
 }
