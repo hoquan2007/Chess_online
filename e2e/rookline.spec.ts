@@ -664,6 +664,8 @@ test("corrupt browser saves do not crash a complete local game", async ({ page }
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   await page.addInitScript(() => {
+    if (sessionStorage.getItem("rookline-corruption-seeded")) return;
+    sessionStorage.setItem("rookline-corruption-seeded", "true");
     localStorage.setItem("rookline-session-local", JSON.stringify({ pgn: "", control: "5+0", seconds: { w: null, b: -1 }, gameId: "local-bad" }));
     localStorage.setItem("rookline-history", "{invalid JSON");
   });
@@ -674,6 +676,15 @@ test("corrupt browser saves do not crash a complete local game", async ({ page }
   }
   await expect(page.getByLabel("Game controls").locator('[role="status"]')).toHaveText("Checkmate");
   expect(pageErrors).toEqual([]);
+  // A corrupted previous archive must not silently lose the newly completed game.
+  await expect.poll(() => page.evaluate(() => {
+    try {
+      const games = JSON.parse(localStorage.getItem("rookline-history") ?? "[]");
+      return Array.isArray(games) && games.some((entry) => entry.outcome === "Checkmate" && entry.mode === "local");
+    } catch { return false; }
+  })).toBe(true);
+  await page.goto("/games");
+  await expect(page.getByRole("region", { name: "Local game archive" }).getByText("Local game · Checkmate")).toBeVisible();
 });
 
 test("local threefold repetition requires the player to claim the draw", async ({ page }) => {

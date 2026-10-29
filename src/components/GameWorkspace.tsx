@@ -28,13 +28,18 @@ function clockText(value: number) {
 
 function storeFinishedGame(id: string, pgn: string, outcome: string, mode: string) {
   try {
-    const parsed: unknown = JSON.parse(localStorage.getItem("rookline-history") || "[]");
+    let parsed: unknown = [];
+    try {
+      parsed = JSON.parse(localStorage.getItem("rookline-history") || "[]");
+    } catch {
+      // Recover a damaged archive so this completed game is still saved.
+    }
     const existing = Array.isArray(parsed) ? parsed.filter((item): item is { id: string } =>
       typeof item === "object" && item !== null && typeof item.id === "string") : [];
     const data = { id, pgn, outcome, mode, date: new Date().toISOString() };
     localStorage.setItem("rookline-history", JSON.stringify([data, ...existing.filter((record) => record.id !== id)].slice(0, 80)));
   } catch {
-    // Corrupt data, private browsing restrictions or storage quota must not interrupt a game.
+    // Storage restrictions or quota must not interrupt a game.
   }
 }
 
