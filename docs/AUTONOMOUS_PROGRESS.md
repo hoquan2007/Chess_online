@@ -1,5 +1,14 @@
 # Autonomous progress ledger
 
+## 2026-10-29, checkpoint 18 — trusted database clock after row lock
+
+- Reviewed the authority rules in `ARCHITECTURE.md` and `SECURITY_MODEL.md`; found pre-lock timestamp use in the move/draw-claim RPCs and elapsed-integer overflow in game expiration.
+- Added ordered migration `20261029060000_locked_move_and_claim_clocks.sql` to sample trusted time after row locks, handle >24-day expiration, and freeze timely claimed-draw clocks. Added 3 Vitest source guards and a real two-connection staging test recipe. Source hardening is complete; live SQL verification is pending.
+- Native `npm run check` PASS (ESLint, TS, 52/52 Vitest, Webpack 17/17 pages); native Chromium **40/40 PASS**. The restricted build had `.next` EPERM, but the native build succeeded. Browser app behavior is unchanged.
+- Dedicated Supabase Rookline staging is still unavailable. Six migrations unapplied, no real hosted game, Auth/RLS/realtime/concurrent RPC/rating evidence. Project **IN_PROGRESS** and 20 acceptance gates **OPEN**.
+
+Next: verify migrations 1–6 on dedicated Rookline staging, then run lock-wait, late claim, 26-day timeout, grants, RLS and two-real-account browser scenarios from `STAGING_CLOCK_CONCURRENCY_TEST.md`. Continue independent local correctness QA meanwhile; never touch the unrelated QuanShop project or deploy/merge without approval.
+
 ## 2026-10-29, checkpoint 1
 
 - Inspected existing branch, package and application structure; read the full `/goal` reference.

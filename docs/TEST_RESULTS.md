@@ -1,5 +1,13 @@
 # Test evidence ledger
 
+## 2026-10-29 — checkpoint 18: PostgreSQL locked-clock source hardening
+
+- Source audit found a pre-lock `clock_timestamp()` read in both `rookline_commit_move` and `rookline_claim_draw`; under game-row lock contention, the effective elapsed time could be stale. `rookline_expire_game` converted milliseconds to 32-bit integer, risking overflow after ~24.85 days. These are source findings, not live database reproductions.
+- Added migration `20261029060000_locked_move_and_claim_clocks.sql`: all three RPCs now read trusted time **after** locking, use `bigint` elapsed milliseconds, and the draw-claim RPC freezes the active clock. Service-only execute grants are reasserted; the five previous migrations remain intact.
+- Added three Vitest SQL source-order guards and `docs/STAGING_CLOCK_CONCURRENCY_TEST.md` with a two-connection PostgreSQL regression protocol. Source tests cannot prove real row-lock behavior, Auth or RLS.
+- Native `npm run check` **PASS**: ESLint, strict TypeScript, **52/52 Vitest in 8 files**, Webpack production build **17/17 pages**. Earlier default-sandbox run passed lint/typecheck/49 unit but failed Webpack with `EPERM mkdir .next/static/chunks/app/api/games`; native rerun passed.
+- Full native `npx playwright test --workers=1` **40/40 PASS (1.3m)**. Online browser flows remain mocked; none exercised these RPCs. **All six migrations are unapplied** to PostgreSQL. Real Auth/RLS/RPC/rating and two-account multiplayer remain **BLOCKED_EXTERNAL**; product **IN_PROGRESS**, all **20 acceptance gates OPEN**.
+
 ## 2026-10-29 — checkpoint 17: invalid computer reply and stable reload-clock test
 
 - Reproduced the missing-engine-error bug with a controlled browser Worker: an illegal computer move left the board unchanged and the user stuck in `Computer is thinking…`. Added a request-scoped failure message and a reset recovery path. The new Playwright scenario failed before the fix and passed afterward; it checks that the illegal ply is not recorded and that the next Worker can move after `New game`.

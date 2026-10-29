@@ -1,13 +1,13 @@
 # Rookline — development and verification execution plan
 
-Date: 2026-10-29. Status: QA-00 **local checks passed** (checkpoint 17: 40 browser, 49 unit, native Webpack build); AUTH-01 onward **not accepted** pending dedicated staging and further implementation. Source of truth: `PROJECT_VISION.md`, `agent-state/BACKLOG.md`, `SECURITY_MODEL.md`, `ARCHITECTURE.md`, `FINAL_AUDIT.md`.
+Date: 2026-10-29. Status: QA-00 **local checks passed** (checkpoint 18: 40 browser, 52 unit, native Webpack build); AUTH-01 onward **not accepted** pending dedicated staging and further implementation. Source of truth: `PROJECT_VISION.md`, `agent-state/BACKLOG.md`, `SECURITY_MODEL.md`, `ARCHITECTURE.md`, `FINAL_AUDIT.md`.
 
 ## Delivery rules
 
 - Work exclusively on development branches; no automatic merge to main or production deployment.
 - Each vertical slice: baseline → failing reproduction/acceptance test → minimum change → unit/integration/browser checks → security/UX review → evidence in `TEST_RESULTS.md` and `AUTONOMOUS_PROGRESS.md` → reviewable commit.
 - Require `npm run check` plus applicable `npm run test:e2e -- --workers=1`; no false PASS for mocked services. Record command, result, environment, timestamp, issues and links to evidence.
-- Database validation needs an isolated Rookline staging Supabase project with real test accounts. Never run migrations on an unrelated project; keep service-role secrets server-only.
+- Database validation needs an isolated Rookline staging Supabase project with real test accounts. Never run migrations on an unrelated project; keep service-role secrets server-only. Apply migration `06000` after the existing five, then run `STAGING_CLOCK_CONCURRENCY_TEST.md` to verify lock-wait time, 26-day expiration and privileged grants under real PostgreSQL concurrency.
 - Blocked external checks are `BLOCKED_EXTERNAL`, not complete. The product remains `IN_PROGRESS` until all 20 acceptance gates in `FINAL_AUDIT.md` have evidence.
 
 ## Ordered slices and gates
@@ -47,6 +47,6 @@ Track: task ID, branch/commit, changed files, acceptance scenario, actual comman
 
 ## Known baseline and blockers (at planning time)
 
-- Historical checkpoint: 49/49 Vitest and 34/34 Playwright. More recent edited auth/audio/logo tree has lint/types/49 unit PASS, but latest full build failed with `EPERM` at `.next/server/app/analysis.segments/analysis`. Re-run browser suite and full build after repairing this environment failure.
-- No configured staging Supabase credentials; all hosted Auth/SQL/multiplayer gates remain unverified. Five SQL migrations are still unrun.
+- Verified checkpoint 18: 52/52 Vitest, 40/40 local/mocked Playwright and 17-page Webpack build PASS when invoked with native Windows build permissions; restricted `.next` writes can raise `EPERM`. The still-running checkpoint 20 Playwright attempt must be recorded separately when it terminates.
+- No configured staging Supabase credentials; all hosted Auth/SQL/multiplayer gates remain unverified. Six SQL migrations are still unrun.
 - Vercel frontend was built, but public verification is blocked by deployment authentication. Production action needs explicit owner approval.
