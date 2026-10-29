@@ -314,7 +314,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   };
 
   const claimDraw = () => {
-    if (outcome) return;
+    if (outcome || botTurn) return;
     if (!settleClock()) return;
     const available = availableDrawClaims(engine.current);
     if (!available.repetition && !available.fiftyMoves) return;
@@ -397,8 +397,8 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
         </div>
         <div className="game-actions">
           <button type="button" className="btn primary" onClick={reset}><RotateCcw size={16} /> New game</button>
-          <button type="button" className="btn ghost" disabled={!!outcome || (!drawClaims.repetition && !drawClaims.fiftyMoves)} onClick={claimDraw}>Claim draw</button>
-          <button type="button" className="btn ghost" disabled={!!outcome || history.length === 0} onClick={() => { if (!settleClock()) return; setManualResult(resignationResult(game, game.turn()).label); setRunning(false); }}><Flag size={16} /> Resign</button>
+          <button type="button" className="btn ghost" disabled={!!outcome || botTurn || (!drawClaims.repetition && !drawClaims.fiftyMoves)} onClick={claimDraw}>Claim draw</button>
+          <button type="button" className="btn ghost" disabled={!!outcome || history.length === 0} onClick={() => { if (!settleClock()) return; setManualResult(resignationResult(game, mode === "computer" ? playingSide : game.turn()).label); setRunning(false); }}><Flag size={16} /> Resign</button>
         </div>
       </aside>
       {pendingPromotion && <PromotionDialog fallbackFocusRef={exportPgnButtonRef} onChoose={(piece) => { if (completeMove(pendingPromotion.from, pendingPromotion.to, piece)) beep(); }} onCancel={() => setPendingPromotion(null)} />}

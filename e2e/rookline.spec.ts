@@ -417,6 +417,50 @@ test("a stale computer worker error cannot interrupt a new game", async ({ page 
   await expect(page.getByText("Black to move")).toBeVisible();
 });
 
+test("resigning while the computer thinks resigns the human side", async ({ page }) => {
+  await page.addInitScript(() => {
+    class WaitingWorker {
+      postMessage() { /* The computer is still thinking. */ }
+      terminate() { /* No pending reply. */ }
+    }
+    Object.assign(window, { Worker: WaitingWorker });
+  });
+  await page.goto("/play/computer");
+  const entry = page.getByRole("textbox", { name: /Keyboard move/ });
+  await entry.fill("e2e4");
+  await entry.press("Enter");
+  await expect(page.getByText("Computer is thinking…")).toBeVisible();
+  await page.getByRole("button", { name: "Resign" }).click();
+  await expect(page.getByLabel("Game controls").locator('[role="status"]')).toHaveText("White resigned");
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "PGN", exact: true }).click();
+  const exported = new Chess();
+  exported.loadPgn(await readFile(await (await pending).path(), "utf8"));
+  expect(exported.getHeaders().Result).toBe("0-1");
+});
+
+test("the human cannot claim a computer-turn repetition draw", async ({ page }) => {
+  const game = new Chess();
+  for (const san of ["Nf3", "Nf6", "Ng1", "Ng8", "Nf3", "Nf6", "Ng1", "Ng8", "Nf3"]) game.move(san);
+  expect(game.isThreefoldRepetition()).toBe(true);
+  await page.addInitScript((pgn) => {
+    class WaitingWorker {
+      postMessage() { /* Keep Black's turn pending. */ }
+      terminate() { /* No pending reply. */ }
+    }
+    Object.assign(window, { Worker: WaitingWorker });
+    localStorage.setItem("rookline-session-computer", JSON.stringify({
+      pgn, control: "5+0", seconds: { w: 300, b: 300 },
+      manualResult: null, orientation: "white", playingSide: "w",
+      gameId: "local-computer-draw-turn", undoClocks: Array.from({ length: 9 }, () => ({ w: 300, b: 300 })),
+    }));
+  }, game.pgn());
+  await page.goto("/play/computer");
+  await expect(page.getByLabel("Move history").getByText("Nf3").last()).toBeVisible();
+  await expect(page.getByText("Computer is thinking…")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Claim draw" })).toBeDisabled();
+});
+
 test("corrupt browser saves do not crash a complete local game", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));

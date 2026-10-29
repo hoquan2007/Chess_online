@@ -126,3 +126,12 @@ Next: audit another local game/engine edge case while awaiting an isolated Rookl
 - Five SQL migrations remain unrun, Rookline staging/auth keys absent, real hosted clients/RLS/RPC/realtime/rated settlement and CI/preview unverified. All 20 full acceptance gates OPEN, status **IN_PROGRESS**.
 
 Next: continue local engine/timing correctness and accessibility review; use dedicated Rookline staging for actual two-account multiplayer verification when available.
+
+## 2026-10-29, checkpoint 14 — computer turn ownership for resignation and draw claims
+
+- Reproduced two human/computer rule violations in Playwright before implementation: resigning while the computer thought incorrectly reported the computer resigned, and a human could claim a threefold draw on the computer's turn.
+- Computer-game resignation now always identifies the human's chosen side, including while the Worker is thinking; local over-the-board resignation continues to use the current side. Draw claims are rejected and disabled during the computer's turn.
+- Both focused tests failed before the fix and passed **2/2** afterward. Full isolated Playwright **34/34** (~1.0 min), lint/typecheck PASS, Vitest **49/49**, Next.js 16.4.3 Webpack build PASS (17/17 static pages).
+- Hosted Rookline Auth/RLS/RPC/2-client matches and CI/preview remain unverified, five SQL migrations unrun. All 20 complete product acceptance gates remain OPEN; status **IN_PROGRESS**.
+
+Next: continue local engine/clock/game-rule QA and arrange isolated Rookline Supabase staging for real multiplayer acceptance evidence.
