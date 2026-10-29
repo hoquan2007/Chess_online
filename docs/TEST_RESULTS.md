@@ -1,5 +1,22 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 20: recover completed games after corrupt local archive
+
+- Browser regression now verifies that finishing a local checkmate replaces malformed `rookline-history` JSON with a valid saved game and that `/games` displays `Local game · Checkmate`. The test's one-time fixture was corrected after its first run erroneously reseeded corrupt storage on navigation; the resulting focused rerun **1/1 PASS**.
+- `storeFinishedGame` now falls back to an empty prior archive on JSON parse failure, while preserving storage/quota exception handling, ID deduplication and the 80-record limit. No hosted game data or server state was modified.
+- Native `npm run test:e2e -- --workers=1` **40/40 PASS** (1.4 minutes). Native `npm run check` **PASS**: ESLint, strict TypeScript, Vitest **52/52 in 8 files**, Next.js 16.4.3 Webpack production build **17/17 pages**, exit 0. A restricted Playwright server startup stalled and was interrupted; the equivalent native run passed. This replaces the checkpoint 19 local build `EPERM` result for the current code.
+- The staging migrations and grant checks described in checkpoint 19 are separate evidence. Two real Auth users, cross-user RLS, RPC concurrency, hosted Realtime, exact-once rated settlement and public preview remain **UNVERIFIED**. All 20 full-project gates **OPEN**; status **IN_PROGRESS**.
+
+## 2026-10-30 — checkpoint 19: connected Supabase migration and structural security validation
+
+- Verified the dedicated hosted `chessonline` project and applied all **eight** ordered SQL migrations. See `docs/SUPABASE_MIGRATION_HISTORY.md` for original-to-remote version mapping; the CLI migration history needs reconciliation before `db push`.
+- Confirmed seven public Rookline tables have RLS enabled. Authenticated clients have no direct INSERT/UPDATE/DELETE to authoritative games, moves, ratings, rating history or rate limits; profiles allow updating presentation columns only. `anon` / `authenticated` cannot execute the privileged Rookline RPCs, profile trigger or automatic-RLS event trigger. `service_role` can execute trusted functions. These checks establish privileges, **not** user-specific RLS behavior or application authentication.
+- Added a migration to restrict the previously exposed `rls_auto_enable()` SECURITY DEFINER event-trigger function and to cover three missing foreign-key indexes. Remote SQL verification returned **anon=false, authenticated=false, service_role=true** for function EXECUTE and **3/3 indexes exist**. Security advisor now reports **zero WARN** and one INFO: `game_rate_limits` has RLS and intentionally no policy. Performance advisor has only INFO unused-index observations, unsurprising before traffic.
+- Latest `npm run check` attempt in the handoff: lint PASS, strict TypeScript PASS, **52/52 Vitest PASS**; **full check FAIL** because Webpack build could not create `.next/types/app/api/games` (`EPERM`, filesystem). Previous checkpoint 18 native build and **40/40** local or mocked Playwright remain historical passes, not current reruns. Hosted Auth, separate-user RLS, HTTP RPC, concurrent row-lock/flag tests, 26-day expiration, real Realtime and exact-once rating **NOT YET TESTED**. All **20** gates remain OPEN; project **IN_PROGRESS**.
+- Current checkout recheck (2026-10-30): `npm run check` lint PASS, strict TS PASS and Vitest **52/52 PASS**, but its build stage stopped because another Next build already held the build lock. Separate default-sandbox `npm run build` then failed `EPERM` creating `.next/types/app/play/online`. Running the identical build with native filesystem permissions **PASSED**, including **17/17** generated pages. Native `npx playwright test --workers=1` **40/40 PASS (1.3m)**; prior sandbox browser invocation did not start its tests and was interrupted. All online browser fixtures remain mocked, so no hosted multiplayer acceptance gate closes.
+
+Earlier checkpoint entries below describe what was true at their date; references to unapplied migrations or an absent project have been superseded by checkpoint 19.
+
 ## 2026-10-29 — checkpoint 18: PostgreSQL locked-clock source hardening
 
 - Source audit found a pre-lock `clock_timestamp()` read in both `rookline_commit_move` and `rookline_claim_draw`; under game-row lock contention, the effective elapsed time could be stale. `rookline_expire_game` converted milliseconds to 32-bit integer, risking overflow after ~24.85 days. These are source findings, not live database reproductions.

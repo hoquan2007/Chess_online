@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 export function hasSupabaseConfig() {
-  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY));
 }
 
 export async function serverSupabase() {
@@ -25,7 +25,7 @@ export async function serverSupabase() {
 
 export function adminSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !secret) return null;
   return createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
 }

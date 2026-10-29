@@ -1,5 +1,25 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 20 — recover corrupt local history and rerun local QA
+
+- Completed an independent local-history correctness slice: tolerate malformed existing archive JSON when saving a newly finished game. The extended Chromium case exercises Fool's Mate, checks the stored result, then navigates to `/games`. Corrected its `addInitScript` fixture to seed damage only once per browser session. Focused run **1/1 PASS**, full Chromium **40/40 PASS**.
+- Native `npm run check` **PASS** with lint, strict TypeScript, **52/52 Vitest**, and Webpack static generation **17/17 pages**. Initial restricted browser startup did not reach the test runner; native execution completed. Unrelated staged-database changes were preserved.
+- Staging SQL migration/grant evidence remains checkpoint 19; real two-account Auth/RLS/RPC/realtime/rating verification is still outstanding. Project **IN_PROGRESS**, all 20 acceptance gates **OPEN**.
+
+Next: configure the dedicated Rookline staging runtime securely, then run two real authenticated players through registration/login, create/join, legal and invalid moves, reconnect, forced concurrency and clock timing per `docs/STAGING_CLOCK_CONCURRENCY_TEST.md`; verify rating settlement and ACL before enabling rated matches. Keep hosting/public access and external CI audits open.
+
+## 2026-10-30, checkpoint 19 — Supabase migration installation and grant hardening
+
+- Identified and used the owner-supplied, connected `chessonline` Supabase project. Applied the six existing migrations in order and two new hardening migrations. The latter restrict profile updates, remove client EXECUTE on the profile trigger and existing `rls_auto_enable()` event trigger, and add three covering foreign-key indexes. All eight migrations appear in remote history; local filename timestamps differ from MCP-generated versions. Recorded precise mapping in `docs/SUPABASE_MIGRATION_HISTORY.md`.
+- Verified remote RLS on seven tables, service-only authoritative mutations, permitted presentation-field profile updates, service-only privileged RPCs, event-trigger EXECUTE denial for untrusted roles and 3/3 new indexes. Supabase security advisor reports no WARN, only the intended rate-limit RLS INFO; performance advisor reports unused-index INFO. No independent authenticated RLS or transaction/concurrency tests have run.
+- Previous in-turn `npm run check` reached 52/52 unit tests after lint/typecheck but failed a Webpack `.next` mkdir with filesystem `EPERM`. Previous successful native build and local/mocked 40/40 browser tests remain checkpoint-18 evidence. Current test suite needs a rerun with write access; real two-account hosted play and rating settlement remain unproven.
+- Final current-checkout rerun: lint, strict TS, **52/52** Vitest PASS; the composite check encountered an overlapping Next build, and a separate default sandbox build failed with `EPERM`. Native-permission build **PASS (17/17 pages)** and native Playwright **40/40 PASS (1.3m)**. The browser suite tests local paths and mocked online responses.
+- Backend remains **IN_PROGRESS**; all **20** acceptance gates **OPEN**. No main merge or production deployment. Unrelated uncommitted application edits were preserved; credentials were excluded from files and reports.
+
+Next: configure isolated staging runtime secrets, create two disposable authenticated test users, run authenticated RLS and browser scenarios, the two-session lock/late-clock protocol and exact-once rated result tests. Reconcile Supabase CLI migration history before `db push`; rotate previously disclosed privileged credentials before production.
+
+Historical checkpoint entries below retain their original observations and may describe previously missing migrations.
+
 ## 2026-10-29, checkpoint 18 — trusted database clock after row lock
 
 - Reviewed the authority rules in `ARCHITECTURE.md` and `SECURITY_MODEL.md`; found pre-lock timestamp use in the move/draw-claim RPCs and elapsed-integer overflow in game expiration.

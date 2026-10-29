@@ -2,7 +2,9 @@
 
 This test is **PENDING**, not a passing result. Run only against an isolated
 Rookline staging Supabase PostgreSQL database after applying migrations
-`20261029010000` through `20261029060000` in order. Do not run on another
+`20261029010000` through `20261029080000` in order. These eight migrations
+have now been applied to the dedicated project, but **the protocol below has
+not been executed**. Do not run on another
 project's database. Use two distinct authorized test accounts, a disposable
 unrated active game between them, and two SQL connections to the same database.
 
@@ -15,7 +17,7 @@ converted milliseconds to `integer`, which overflows after ~24.85 days.
 ## Preparation
 
 1. Confirm the target database is the dedicated Rookline staging project.
-   Record the project ref without exposing credentials. Apply all six ordered
+   Record the project ref without exposing credentials. Verify all eight ordered
    migrations; inspect `pg_proc`, security-definer flags, function grants, RLS,
    and rate-limit policies. Verify unauthenticated and ordinary authenticated
    roles cannot execute `rookline_commit_move`, `rookline_claim_draw`, or
