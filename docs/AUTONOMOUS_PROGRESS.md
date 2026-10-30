@@ -1,5 +1,9 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 73 — CI migration parity gate
+
+- After publishing source/remote parity evidence as commit `7e2fe5a`, audited `.github/workflows/quality.yml`: CI explicitly ran lint, types, tests and build rather than `npm run check`, so the new parity script was not included. Added `npm run verify:migrations` immediately after `npm ci` on the existing `codex/**` push/PR workflow. Existing 9/9 SQL hashes use LF in the Git index; the Node check remains offline. No web/API code, DB schema or deployed environment changed. Remote CI status must be checked separately.
+
 ## 2026-10-31, checkpoint 72 — staging migration source parity
 
 - Completed/pushed checkpoint 71 evidence commit `b8e98b5` on development branch. Queried the dedicated staging migration history read-only: all nine installed entries have a single stored SQL statement and hashes matching their local SQL sources after the final LF is excluded. Added local `verify:migrations` safeguard to the standard check pipeline. Remote version IDs still differ; `db push` requires reviewed history reconciliation/backup.

@@ -1,5 +1,9 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 73: GitHub Actions parity enforcement
+
+- Workflow inspection showed `.github/workflows/quality.yml` runs separate `npm ci`, audit, lint, TypeScript, Vitest, build and Playwright steps; it did not invoke the new `verify:migrations` command from `npm run check`. Added the read-only local checksum step immediately after `npm ci`, so future `codex/**` pushes and PRs fail if any of the nine previously deployed SQL files drift. `git ls-files --eol` confirmed the SQL and checker are stored with LF in the Git index. See following checkpoint for full local test evidence. Remote GitHub Actions conclusion remains unverified until a workflow run is inspected; this workflow edit does not complete hosted multiplayer acceptance.
+
 ## 2026-10-31 — checkpoint 72: migration SQL parity evidence
 
 - **Live read only:** Supabase `list_migrations` returned 9 entries. `information_schema.columns` confirmed `supabase_migrations.schema_migrations.statements` is an array. `select version,name,cardinality(statements),md5(array_to_string(statements,E'\n'))` returned exactly one stored statement per entry, each corresponding by name to `docs/SUPABASE_MIGRATION_HISTORY.md`.
