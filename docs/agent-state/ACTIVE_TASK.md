@@ -1,5 +1,7 @@
 # Active task
 
+**Checkpoint 72 (2026-10-31):** Nine hosted migration SQL bodies matched source byte-for-byte after one terminal LF normalization. `verify:migrations` now guards local drift; full approved `npm run check` PASS (lint/types, 175 unit, 17-page build). Remote timestamps remain divergent; do not `db push` or mutate history without reviewed backup/reconciliation. S0 requires a securely configured server-only staging credential and three real HTTPS Auth identities. **20 gates OPEN, rated OFF, IN_PROGRESS.**
+
 **Checkpoint 71 (2026-10-31):** Puzzle slice committed/pushed as `7387dfa`; remote SHA verified. Protected Preview `dpl_GWwGiiDrqaBx27CqFkBXzPs2B9mf` READY, remote 17-page build PASS, four HTTP 200s, anonymous game API 503 and preferences 401, npm audit zero. Missing server-only Preview Supabase secret blocks genuine three-user HTTPS Auth/RLS and S1–S6. **20 gates OPEN, rated OFF, IN_PROGRESS; no production deployment/main merge.**
 
 **Checkpoint 70 (2026-10-31):** CH-13 original puzzle promotion now presents accessible `PromotionDialog` on board input, allowing a genuine knight underpromotion fork rather than automatic queen selection. Full verification **175 Vitest PASS, 73 local/mock Chromium PASS / 1 genuine hosted SKIP, lint/types and native Webpack 17-page production build PASS**, all exit 0. Code reviewed for development-branch commit/push; S0 still requires server-only Supabase staging secret and three real HTTPS Auth users. S1–S6 and all **20 release gates OPEN**, rated OFF. Production withheld until acceptance.

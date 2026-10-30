@@ -1,5 +1,16 @@
 # Supabase migration history — chessonline staging
 
+**Revalidated 2026-10-31, checkpoint 72 — remote SQL content parity:** Queried `supabase_migrations.schema_migrations` in dedicated staging `tyvczicinpjixmxgjhjn` (read only). All nine installed entries each contain one stored SQL statement. Comparing `md5(array_to_string(statements, E'\n'))` for each entry to the corresponding local UTF-8 SQL file after removing exactly one terminal `LF` gave **9/9 identical hashes**. Thus the currently recorded migration SQL bodies match the tracked source; the local and remote *version identifiers still differ*, so `supabase db push` remains prohibited until deliberate history reconciliation and backup. The tenth rated migration remains unapplied. `npm run verify:migrations` now checks these pinned fingerprints locally as a drift safeguard; this local script is a snapshot check and cannot replace a future live database comparison. No database writes or credentials were used in this verification.
+
+Read-only remote revalidation query:
+
+```sql
+select version, name, cardinality(statements) as statement_count,
+  md5(coalesce(array_to_string(statements, E'\n'), '')) as statements_md5
+from supabase_migrations.schema_migrations
+order by version;
+```
+
 **Revalidated 2026-10-31, checkpoint 62:** Connected `list_migrations` returned these same nine remote versions and names. Read-only queries confirmed all seven public tables have RLS enabled; games, moves, ratings, rating_history, profiles and game_rate_limits disallow direct authenticated writes, while preferences allows authenticated writes subject to RLS. Security advisor still reports one INFO for deliberately policy-free `game_rate_limits`, and performance advisor two unused-index INFO notices. The mapping remains a record of names/versions and **does not independently prove remote SQL text equals the local files**. No history or schema changes were made.
 
 Verified 2026-10-30 against the connected Supabase project `tyvczicinpjixmxgjhjn`. The table shows the **local filename** and the **remote version** recorded by Supabase when the MCP migration tool applied its SQL. Project identifiers and timestamps are not authentication secrets. No credentials belong in this document.

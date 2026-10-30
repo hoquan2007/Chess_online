@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 72 — staging migration source parity
+
+- Completed/pushed checkpoint 71 evidence commit `b8e98b5` on development branch. Queried the dedicated staging migration history read-only: all nine installed entries have a single stored SQL statement and hashes matching their local SQL sources after the final LF is excluded. Added local `verify:migrations` safeguard to the standard check pipeline. Remote version IDs still differ; `db push` requires reviewed history reconciliation/backup.
+- Full `npm run check` PASS with approved filesystem permission: 9/9 checksum, ESLint, strict TypeScript, 175/175 Vitest and 17/17 Webpack pages. An initial restricted packaging attempt failed on `.next/standalone` `EPERM` after successful compilation; no code change was needed to pass the privileged re-run. No browser rerun because UI/API source is unchanged.
+- No Auth credentials appeared in the local runtime. S0 live HTTPS three-user Auth/RLS remains BLOCKED_EXTERNAL, rated OFF and all 20 release gates OPEN. No schema mutation, `main` merge or production deploy.
+
 ## 2026-10-31, checkpoint 71 — Preview of published puzzle slice
 
 - Commit `7387dfa` was pushed to the development branch and independently verified on origin. Created READY protected Vercel Preview `dpl_GWwGiiDrqaBx27CqFkBXzPs2B9mf` with remote TypeScript and 17-page build PASS; four page routes HTTP 200. Anonymous game API remains 503, account preferences 401.

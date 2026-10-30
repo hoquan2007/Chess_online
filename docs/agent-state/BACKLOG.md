@@ -1,5 +1,7 @@
 # Prioritized backlog
 
+**Checkpoint 72 (2026-10-31):** S0 migration *content* comparison now PASS 9/9 against live stored SQL, and pinned local checksum validation is in `npm run check`. The remote timestamp/version mismatch still needs a reviewed backup and history reconciliation before DB CLI sync. Priority remains server-only secret in isolated Preview plus genuine three-user HTTPS Auth/RLS. S1–S6 pending; 20 gates OPEN, rated OFF.
+
 **Checkpoint 71 (2026-10-31):** Published `7387dfa` to development branch and refreshed protected READY Preview `dpl_GWwGiiDrqaBx27CqFkBXzPs2B9mf`; four webpage routes 200, anonymous games 503, preferences 401. Build 17 pages, npm audit zero. S0 still BLOCKED_EXTERNAL: Preview has public Supabase URL/key but no server-only secret or three verified real identities. Continue S0–S6; 20 gates OPEN, rated OFF; production withheld.
 
 **Checkpoint 70 (2026-10-31):** CH-13 local promotion-choice usability slice VERIFIED: an original 21st puzzle teaches knight underpromotion with legal check/fork; a shared keyboard-accessible piece chooser handles board promotions and Retry. **175 Vitest, 73 local/mock Chromium PASS / 1 true hosted SKIP, 17-page Webpack build, lint/types PASS**. CH-13 PARTIAL; wider curriculum/hosted learning remains. Critical S0 still needs server-only Preview Supabase credential plus three real users and HTTPS Auth/RLS; S1 genuine Realtime → S2 independent PG transactions → S3 rated → S4 learning/engine → S5 community → S6 independent 20-gate audit. **20 OPEN, rated OFF, IN_PROGRESS.**

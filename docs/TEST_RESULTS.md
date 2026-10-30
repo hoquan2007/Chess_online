@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 72: migration SQL parity evidence
+
+- **Live read only:** Supabase `list_migrations` returned 9 entries. `information_schema.columns` confirmed `supabase_migrations.schema_migrations.statements` is an array. `select version,name,cardinality(statements),md5(array_to_string(statements,E'\n'))` returned exactly one stored statement per entry, each corresponding by name to `docs/SUPABASE_MIGRATION_HISTORY.md`.
+- **Source comparison:** For all nine local migration files, PowerShell/.NET read the UTF-8 SQL and removed one terminal LF before MD5. All 9 digest values exactly matched the remote stored SQL texts. Explicit local and remote version IDs remain different. Tenth rated SQL is deliberately not installed or included in parity snapshot.
+- **Safeguard:** `npm run verify:migrations` checks the pinned 2026-10-31 remote hashes in the local source tree. It cannot prove present-day remote contents without the separate read-only remote query. No database edits or keys exposed; 20 product acceptance gates remain OPEN.
+- **Verification:** Native `npm run check` initially passed fingerprint validation, lint, strict TypeScript and **175/175 Vitest** but ended exit 1 on Windows `EPERM` while creating `.next/standalone/node_modules/next/dist/compiled/@next/font/dist` after compiling and generating 17 pages. Re-running the complete unchanged `npm run check` with Codex-approved filesystem permission exited **0**: snapshot parity 9/9, ESLint PASS, TypeScript PASS, **175/175 Vitest across 25 files PASS**, and Webpack production build **17/17 static pages PASS**. `node --check` and `git diff --check` exited 0. Browser tests were not re-run; no application UI or API source changed. Rollback: revert checksum script, package.json script wiring, and checkpoint-72 ledger entries.
+
 ## 2026-10-31 — checkpoint 71: published development slice and protected Preview
 
 - **Git:** Reviewed ten source/test/ledger files and `git diff --check` PASS, committed `7387dfa` on `codex/chess-platform-foundation`, and pushed successfully. Independent `git ls-remote` verified full remote SHA `7387dfa064c42ad14e0830897301f418e060ac32`.
