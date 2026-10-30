@@ -209,6 +209,22 @@ test("analysis imports PGN and navigates positions", async ({ page }) => {
   expect(savedPgn).toContain("Nf3 Nc6");
 });
 
+test("analysis position snapshot follows move navigation and detects mate", async ({ page }) => {
+  await page.goto("/analysis");
+  const insight = page.getByRole("region", { name: "Position insight" });
+  await expect(insight.getByText("Turn: White · Status: Game in progress")).toBeVisible();
+  await expect(insight.getByText("Material points: Even · Legal moves: 20")).toBeVisible();
+  await page.getByRole("textbox", { name: "PGN game" }).fill("1. e4 d5 2. exd5");
+  await page.getByRole("button", { name: "Import PGN" }).click();
+  await expect(insight.getByText(/Material points: White \+1/)).toBeVisible();
+  await page.getByRole("button", { name: "Previous move" }).click();
+  await expect(insight.getByText(/Material points: Even/)).toBeVisible();
+  await page.getByRole("textbox", { name: "PGN game" }).fill("1. f3 e5 2. g4 Qh4#");
+  await page.getByRole("button", { name: "Import PGN" }).click();
+  await expect(insight.getByText("Turn: White · Status: Checkmate — Black wins")).toBeVisible();
+  await expect(insight.getByText(/Legal moves: 0/)).toBeVisible();
+});
+
 test("analysis keyboard moves validate legality and offer underpromotion", async ({ page }) => {
   await page.goto("/analysis");
   const input = page.getByRole("textbox", { name: /Keyboard move/ });

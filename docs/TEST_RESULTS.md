@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 29: position snapshot in analysis
+
+- Implemented descriptive `positionInsight` for reconstructed analysis positions: side to move, terminal/checkmate status, piece-point material difference (P1/N3/B3/R5/Q9), legal move count and available threefold/50-move draw claims. The UI clearly distinguishes material arithmetic from a chess-engine evaluation and updates when importing PGN, manually playing and navigating moves. No game state mutation or hosted database change.
+- **Verified native `npm run check` PASS**, exit 0: ESLint, strict TypeScript, **59/59 Vitest in 9 suites**, optimized Webpack **17/17 static pages**. Focused Chromium snapshot test **1/1 PASS**, exit 0, including PGN import, capture, rewind and checkmate. **Full native `npm run test:e2e -- --workers=1` PASS**, exit 0: **45 local/mock Chromium PASS; 1 guarded real staging SKIP**. A preceding restricted Playwright invocation failed to bring up the web server and was interrupted; the equivalent native run passed.
+- Value-free `@next/env` presence probe: all four staging runtime variables absent (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY`). No real Auth/RLS/Realtime, two-connection authoritative-clock testing or rated settlement occurred. CH-12 remains `PARTIAL` until licensed engine/hosted analysis and broader review acceptance; all **20 gates OPEN**, project `IN_PROGRESS`. No staging mutation, production deployment or `main` merge. Rollback: revert the four source/test files and checkpoint-29 documentation commit.
+
 ## 2026-10-30 — checkpoint 28: puzzle topic practice and unsolved-first navigation
 
 - Added explicit tactical themes (`Checkmate`, `Fork`, `Pin`, `Capture`, `Promotion`) and levels 1–3 to the existing ten original legal puzzles. A labeled topic selector filters the puzzle controls, reports per-topic solved progress, and starts with the first unfinished position. "Next puzzle" advances to another unsolved position within the selected topic and wraps for review when finished. Selected puzzle buttons expose `aria-pressed`.

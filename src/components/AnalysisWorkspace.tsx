@@ -5,6 +5,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowLeft, ArrowRight, Download, RotateCcw } from "lucide-react";
 import { applyLegalMove, parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
+import { positionInsight } from "@/lib/chess/insights";
 import { PromotionDialog } from "@/components/PromotionDialog";
 
 type Analysis = { start: string; san: string[]; index: number };
@@ -132,6 +133,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   };
 
   const lastMove = board.history({ verbose: true }).at(-1);
+  const insight = positionInsight(board);
   const styles: Record<string, React.CSSProperties> = {};
   if (lastMove) styles[lastMove.to] = { boxShadow: "inset 0 0 0 3px var(--color-accent)" };
   if (selected) {
@@ -160,6 +162,13 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     <aside className="game-panel">
       <h2 className="panel-title">Explore the position</h2>
       <p className="panel-sub">Import PGN, paste a FEN, or move the pieces. Use the move navigator to replay positions.</p>
+      <section aria-label="Position insight" className="stack" style={{ gap: 5 }}>
+        <h3 className="panel-sub">Position snapshot</h3>
+        <p className="muted">Turn: {insight.turn} · Status: {insight.status}</p>
+        <p className="muted">Material points: {insight.material} · Legal moves: {insight.legalMoves}</p>
+        {insight.drawClaim && <p className="muted">Draw claim available: {insight.drawClaim}.</p>}
+        <p className="panel-sub">Material uses standard piece points, not an engine evaluation.</p>
+      </section>
       <label className="label">PGN game<textarea className="field" rows={4} value={pgn} onChange={(event) => setPgn(event.target.value)} placeholder="1. e4 e5 2. Nf3 Nc6" /></label>
       <button type="button" className="btn primary" onClick={importPgn}>Import PGN</button>
       <label className="label">FEN position<input className="field" value={fenText} onChange={(event) => setFenText(event.target.value)} placeholder="Paste FEN here" /></label>

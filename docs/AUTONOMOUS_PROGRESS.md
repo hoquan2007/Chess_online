@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 29 — descriptive analysis position insight
+
+- Added pure chess.js snapshot calculation and visible analysis summary covering side to move, outcome, material points, legal-move count and draw claims. Unit checks cover immutability, captures, mate/stalemate and repetition; Chromium verifies analysis import/replay/mate.
+- Native `npm run check` PASS (lint, strict TS, **59 Vitest / 9 files**, Webpack **17/17** pages), focused Chromium **1 PASS**, complete Chromium **45 local/mock PASS / 1 real staging SKIP**. All four staging credential variables were confirmed absent without printing values.
+- CH-12 `PARTIAL`, **20 gates OPEN**, `IN_PROGRESS`. Next external priority S0 Auth/RLS using dedicated staging; meanwhile continue locally verifiable learning/security work. No production deployment or `main` merge.
+
 ## 2026-10-30, checkpoint 28 — topic-driven puzzle practice verified
 
 - Implemented theme/level metadata and topic-scoped tactic navigation for the ten original puzzles. Accessible topic filtering, completed counts, unsolved-first next-step selection and local progress reload are verified through actual browser practice; puzzle content and move authority still use `chess.js`.
