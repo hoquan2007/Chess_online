@@ -174,6 +174,26 @@ test("mate-in-one puzzle credits alternative correct checkmate", async ({ page }
   await expect(page.getByRole("status").filter({ hasText: "Correct! Qf8#" })).toBeVisible();
 });
 
+test("puzzle topic navigation prioritizes unsolved tactics and survives a reload", async ({ page }) => {
+  await page.goto("/puzzles");
+  await page.getByLabel("Practice topic").selectOption("Fork");
+  await expect(page.getByRole("heading", { name: "Knight fork" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Puzzle 1", exact: true })).toHaveCount(0);
+  await expect(page.getByText("Fork: 0 / 2 solved.")).toBeVisible();
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("e4d6");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Nd6+" })).toBeVisible();
+  await expect(page.getByText("Fork: 1 / 2 solved.")).toBeVisible();
+  await page.getByRole("button", { name: "Next puzzle" }).click();
+  await expect(page.getByRole("heading", { name: "A second knight fork" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Solved 1 / 10 positions on this device.")).toBeVisible();
+  await page.getByLabel("Practice topic").selectOption("Fork");
+  await expect(page.getByRole("heading", { name: "A second knight fork" })).toBeVisible();
+  await expect(page.getByText("Fork: 1 / 2 solved.")).toBeVisible();
+});
+
 test("analysis imports PGN and navigates positions", async ({ page }) => {
   await page.goto("/analysis");
   await page.getByRole("textbox", { name: "PGN game" }).fill("1. e4 e5 2. Nf3 Nc6");

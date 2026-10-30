@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 28: puzzle topic practice and unsolved-first navigation
+
+- Added explicit tactical themes (`Checkmate`, `Fork`, `Pin`, `Capture`, `Promotion`) and levels 1–3 to the existing ten original legal puzzles. A labeled topic selector filters the puzzle controls, reports per-topic solved progress, and starts with the first unfinished position. "Next puzzle" advances to another unsolved position within the selected topic and wraps for review when finished. Selected puzzle buttons expose `aria-pressed`.
+- Added two unit cases for topic coverage/levels and unsolved-first selection, plus one real Chromium browser case for fork filtering, keyboard completion, next-puzzle navigation, reload persistence, and the next unsolved fork. The first focused browser run failed due to an inexact test selector matching "Puzzle 10"; using an exact accessible-name match fixed the test. **Final focused rerun: 4/4 PASS**, exit 0.
+- **Final native `npm run check` PASS**, exit 0: ESLint, TypeScript strict, **57/57 Vitest across 8 suites**, Webpack **17/17** generated pages. **Full native `npm run test:e2e -- --workers=1` PASS**, exit 0: **44 Chromium local/mock PASS; 1 real-hosted staging SKIP**. Confirmed by a boolean-only `@next/env` check that all four Supabase Next.js runtime credential variables remain absent; no secrets printed.
+- Hosted Auth/RLS, real two-client Realtime and authoritative clock/concurrency, rated settlement and remaining product capabilities are **unverified**. CH-13 remains `PARTIAL`; all **20 final gates OPEN** and project `IN_PROGRESS`. No hosted mutation, production deploy or `main` merge. Rollback: revert the focused topic UI/domain/test commit.
+
 ## 2026-10-30 — checkpoint 27: expanded original tactics and accessible input
 
 - Implemented **10 original hand-authored, legal puzzles** (previously 3), with checkmate, fork, pin, capture and underpromotion-choice practice. `evaluatePuzzleMove` uses `chess.js` to distinguish illegal from legal-but-wrong moves; mate-in-one accepts every actual checkmate (including the alternative `Qf8#` in puzzle 2). Existing `isPuzzleSolution` callers remain compatible.

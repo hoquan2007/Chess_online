@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 28 — topic-driven puzzle practice verified
+
+- Implemented theme/level metadata and topic-scoped tactic navigation for the ten original puzzles. Accessible topic filtering, completed counts, unsolved-first next-step selection and local progress reload are verified through actual browser practice; puzzle content and move authority still use `chess.js`.
+- Native `npm run check` **PASS**: lint, strict types, **57/57 Vitest** and **17/17** Next.js build pages. Focused Chromium **4 PASS** and complete suite **44 PASS / 1 guarded hosted staging SKIP**. The first focused run exposed only an inexact Playwright selector, corrected before both successful final test runs.
+- Supabase runtime presence-only check: four required public/server key variables **absent**. S0–S2 remain `BLOCKED_EXTERNAL` for real identity/RLS/clock/reconnect acceptance. Next: enable isolated staging and verify S0→S1→S2; continue independently testable local slices while credentials are unavailable, then complete S3 rated, S4 learning, S5 community and S6 final audit. CH-13 `PARTIAL`, **20 gates OPEN**, project `IN_PROGRESS`.
+
 ## 2026-10-30, checkpoint 27 — puzzle curriculum and keyboard practice
 
 - Expanded the original chess puzzle collection from 3 to 10 validated positions; evaluator now accepts all genuine mate-in-one alternatives, differentiates illegal versus wrong legal attempts and validates chosen promotion. Added coordinate keyboard practice and resilient device-local completion persistence, with focused unit and browser regressions.

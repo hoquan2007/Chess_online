@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowRight, Lightbulb, RotateCcw } from "lucide-react";
-import { evaluatePuzzleMove, puzzles } from "@/lib/chess/puzzles";
+import { evaluatePuzzleMove, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, type PuzzleTheme } from "@/lib/chess/puzzles";
 import { parseCoordinateMove } from "@/lib/chess/rules";
 
 export function PuzzleTrainer() {
@@ -15,7 +15,9 @@ export function PuzzleTrainer() {
   const [feedback, setFeedback] = useState("");
   const [complete, setComplete] = useState<string[]>([]);
   const [keyboardMove, setKeyboardMove] = useState("");
+  const [theme, setTheme] = useState<PuzzleTheme>("All");
   const current = puzzles[active];
+  const visible = puzzleIndicesForTheme(theme);
 
   useEffect(() => {
     try {
@@ -65,6 +67,11 @@ export function PuzzleTrainer() {
     attempt(parsed.from, parsed.to, parsed.promotion);
   };
 
+  const chooseTheme = (value: PuzzleTheme) => {
+    setTheme(value);
+    open(nextPracticePuzzleIndex(-1, value, complete));
+  };
+
   return <div className="game-grid">
     <section className="board-shell"><div className="board-wrap"><Chessboard options={{ id: "rookline-puzzle", position: fen, lightSquareStyle: { backgroundColor: "var(--board-light)" }, darkSquareStyle: { backgroundColor: "var(--board-dark)" },
       onPieceDrop: ({ sourceSquare, targetSquare }) => !!targetSquare && attempt(sourceSquare as Square, targetSquare as Square),
@@ -72,9 +79,15 @@ export function PuzzleTrainer() {
       squareStyles: selected ? { [selected]: { boxShadow: "inset 0 0 0 3px var(--color-focus)" } } : {},
     }} /></div></section>
     <aside className="game-panel">
-      <p className="overline">Puzzle {active + 1} of {puzzles.length}</p>
+      <p className="overline">Puzzle {active + 1} of {puzzles.length} · {current.theme} · Level {current.level}</p>
       <h2 className="panel-title">{current.title}</h2><p>{current.description}</p>
       <div className="status" role="status">{feedback || "Drag a piece or click two squares to play your answer."}</div>
+      <label className="stack" htmlFor="puzzle-topic" style={{ gap: 7 }}>
+        <span className="panel-sub">Practice topic</span>
+        <select className="field" id="puzzle-topic" value={theme} onChange={(event) => chooseTheme(event.target.value as PuzzleTheme)}>
+          {puzzleThemes.map((item) => <option key={item} value={item}>{item === "All" ? "All topics" : item}</option>)}
+        </select>
+      </label>
       <form onSubmit={submitKeyboardMove} className="stack" style={{ gap: 7 }}>
         <label htmlFor="puzzle-keyboard-move" className="panel-sub">Keyboard move · e2e4 or a7a8q</label>
         <div className="keyboard-move-row">
@@ -83,12 +96,13 @@ export function PuzzleTrainer() {
           <button type="submit" className="btn ghost" disabled={solved}>Move</button>
         </div>
       </form>
-      <div className="pill-group">{puzzles.map((item, index) => <button key={item.id} type="button" aria-label={`Puzzle ${index + 1}`} className={`pill ${active === index ? "active" : ""}`} onClick={() => open(index)}>{index + 1}{complete.includes(item.id) ? " ✓" : ""}</button>)}</div>
+      <div className="pill-group">{visible.map((index) => <button key={puzzles[index].id} type="button" aria-label={`Puzzle ${index + 1}`} aria-pressed={active === index} className={`pill ${active === index ? "active" : ""}`} onClick={() => open(index)}>{index + 1}{complete.includes(puzzles[index].id) ? " ✓" : ""}</button>)}</div>
       <p className="muted">Solved {complete.length} / {puzzles.length} positions on this device.</p>
+      <p className="panel-sub">{theme === "All" ? "All topics" : theme}: {visible.filter((index) => complete.includes(puzzles[index].id)).length} / {visible.length} solved.</p>
       <div className="game-actions" style={{ marginTop: "auto" }}>
         <button type="button" className="btn ghost" onClick={() => setFeedback(current.hint)}><Lightbulb size={16} /> Hint</button>
         <button type="button" className="btn ghost" onClick={() => open(active)}><RotateCcw size={16} /> Retry</button>
-        {solved && <button type="button" className="btn primary" onClick={() => open((active + 1) % puzzles.length)}>Next puzzle <ArrowRight size={16} /></button>}
+        {solved && <button type="button" className="btn primary" onClick={() => open(nextPracticePuzzleIndex(active, theme, complete))}>Next puzzle <ArrowRight size={16} /></button>}
       </div>
     </aside>
   </div>;

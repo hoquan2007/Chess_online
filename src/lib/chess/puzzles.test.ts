@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { evaluatePuzzleMove, isPuzzleSolution, puzzles } from "./puzzles";
+import { evaluatePuzzleMove, isPuzzleSolution, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes } from "./puzzles";
 
 describe("original puzzle set", () => {
   it("contains legal, solvable positions", () => {
@@ -30,5 +30,18 @@ describe("original puzzle set", () => {
   it("requires correct promotion piece on endgame puzzle", () => {
     expect(evaluatePuzzleMove("endgame-009", "a7", "a8", "n").status).toBe("incorrect");
     expect(evaluatePuzzleMove("endgame-009", "a7", "a8", "q")).toMatchObject({ status: "correct", san: "a8=Q+" });
+  });
+  it("assigns every puzzle exactly one available practice topic and an explicit level", () => {
+    const all = puzzleIndicesForTheme("All");
+    expect(all).toEqual(puzzles.map((_, index) => index));
+    expect(puzzleThemes.slice(1).flatMap(puzzleIndicesForTheme).sort((a, b) => a - b)).toEqual(all);
+    for (const puzzle of puzzles) expect([1, 2, 3]).toContain(puzzle.level);
+  });
+  it("prioritizes unsolved positions within a topic and cycles after finishing them", () => {
+    expect(puzzleIndicesForTheme("Fork")).toEqual([4, 9]);
+    expect(nextPracticePuzzleIndex(-1, "Fork", [])).toBe(4);
+    expect(nextPracticePuzzleIndex(4, "Fork", ["fork-005"])).toBe(9);
+    expect(nextPracticePuzzleIndex(9, "Fork", ["fork-005", "fork-010"])).toBe(4);
+    expect(nextPracticePuzzleIndex(9, "All", ["mate-001"])).toBe(1);
   });
 });
