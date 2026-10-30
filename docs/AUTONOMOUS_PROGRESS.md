@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 71 — Preview of published puzzle slice
+
+- Commit `7387dfa` was pushed to the development branch and independently verified on origin. Created READY protected Vercel Preview `dpl_GWwGiiDrqaBx27CqFkBXzPs2B9mf` with remote TypeScript and 17-page build PASS; four page routes HTTP 200. Anonymous game API remains 503, account preferences 401.
+- Dependency audit found zero vulnerabilities, dedicated Supabase project is `ACTIVE_HEALTHY`, but Preview has only public Supabase URL/key and no server secret. S0 genuine hosted Auth/RLS remains BLOCKED_EXTERNAL; S1–S6 still need evidence. No production deploy/main merge; **20 OPEN, rated OFF**.
+- No app code changed in this checkpoint. Refer to `TEST_RESULTS.md` for exact commands and rollback deployment.
+
 ## 2026-10-31, checkpoint 66 — clock time after device sleep
 
 - Local/computer game clock previously relied on `performance.now()` even though that monotonic source can stop during system suspend. `GameWorkspace` now records both monotonic and wall-time tick samples and settles the positive greater elapsed duration. In a real Chromium regression `Date.now` advances by 181 seconds while `performance.now` does not; a `3+2` Black move after wake is rejected, clock reads `00:00`, and game reports Timeout.

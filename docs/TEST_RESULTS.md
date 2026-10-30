@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 71: published development slice and protected Preview
+
+- **Git:** Reviewed ten source/test/ledger files and `git diff --check` PASS, committed `7387dfa` on `codex/chess-platform-foundation`, and pushed successfully. Independent `git ls-remote` verified full remote SHA `7387dfa064c42ad14e0830897301f418e060ac32`.
+- **Vercel Preview:** `vercel deploy --yes --scope hnquan` exited 0, deployment `dpl_GWwGiiDrqaBx27CqFkBXzPs2B9mf` READY at `https://chessonline-cprv5ovps-hnquan.vercel.app` (protected, non-production). Remote Next 16.4.3 build and 17/17 static pages PASS. Authenticated CLI `vercel curl` returned HTTP **200** for `/`, `/puzzles`, `/play/local`, `/analysis`; anonymous `/api/games` **503**, `/api/preferences` **401**.
+- **Infrastructure/security:** `vercel env ls preview` showed only `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, **no server-only credential**. Supabase staging project `tyvczicinpjixmxgjhjn` reported `ACTIVE_HEALTHY`. `npm audit --audit-level=high` returned zero vulnerabilities, exit 0.
+- **Scope:** Preview HTTP/build health is verified, genuine HTTPS Auth/RLS, two authenticated browsers, PostgreSQL concurrency/clocks, Realtime, ratings, and release acceptance are still OPEN. **20 gates OPEN**, rated OFF, no production release. Previous protected deployment `dpl_C7zcUmt9TisWiSwaeurPYnwkZcqL` remains a rollback candidate.
+
 ## 2026-10-31 — checkpoint 70: accessible knight-underpromotion tactic
 
 - **Implementation:** Added original puzzle `promotion-021` with legal SAN `g8=N+`, which forks Black's king and queen; a legal queen promotion is intentionally an incorrect answer. `PuzzleTrainer` now invokes the reusable `PromotionDialog` on board-selected pawn promotions, supports all promotion choices, clears pending choices on Retry/change and restores focus through the shared dialog fallback.
