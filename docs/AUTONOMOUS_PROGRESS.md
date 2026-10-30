@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 76 — immutable terminal game records
+
+- Reproduced a same-status, same-ply terminal snapshot regression: a late HTTP response could replace a finished game's winner, result, clocks or PGN/FEN while retaining `completed` status. A mismatched game ID was also accepted. Tightened `isOlderGameSnapshot` to preserve all committed terminal fields by key and reject foreign IDs, while permitting identical records regardless of object key order.
+- RED focused Vitest before repair (1 failed), then **22/22 focused and 177/177 total unit tests PASS**. Strengthened the Chromium regression to await completed HTTP responses and animation frames before checking final resignation, frozen clock and disabled controls. Focused Chromium **1 PASS**, full local/mock Chromium **75 PASS / 1 real Supabase SKIP**. Complete elevated **`npm run check` exit 0**: 9/9 offline migration hashes, lint, strict TypeScript, unit tests and 17/17 Webpack pages.
+- Remaining release-critical S0 requires secure Preview-only server credentials and actual three-user HTTPS Auth/RLS/Origin checks. Remote migration version IDs still differ from nine content-matched SQL files; no CLI push until backed-up reconciliation. S1 real Realtime, S2 independent PG concurrency/clocks, S3 rated ledger, S4 learning/engine, S5 community and S6 independent 20-gate audit remain. **All 20 OPEN; rated OFF, IN_PROGRESS.**
+
 ## 2026-10-31, checkpoint 75 — terminal online state cannot be resurrected
 
 - Confirmed the previously pushed `bd7b4cf` finished Linux Actions run `41139635719` with all quality steps GREEN, including browser checks. Its protected Vercel Preview `dpl_59SVisnhrskhKTgW2CFgXaPJBpDj` was READY; Preview has two public Supabase settings and no server-only key.

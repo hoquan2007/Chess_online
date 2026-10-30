@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 76: same-ply terminal record immutability
+
+- **Regression:** `npx vitest run src/lib/online/games.test.ts -t 'entire committed terminal record'` returned exit 1 before the fix (late terminal field changes incorrectly accepted); after the fix 22/22 focused and **177/177 complete Vitest PASS**. All terminal fields, foreign IDs and equal-content records with reversed key insertion order are covered.
+- **Full check:** elevated `npm run check` exit 0; offline source-pinned migration hashes 9/9 (no live remote query), ESLint PASS, strict TypeScript PASS, 25 unit test files / 177 tests PASS, optimized Next.js Webpack build **17/17 generated pages** PASS. `git diff --check` checked separately. No Next.js route API or database/schema changes.
+- **Chromium:** strengthened same-ply HTTP reply regression **1 PASS**, checking after response completion and browser paint; complete `npm run test:e2e -- --workers=1` on authorized localhost port 3218 exited 0 with **75 local/mock PASS, 1 actual hosted Supabase SKIP** (76 discovered). One unprivileged attempt on default port 3100 failed with `EADDRINUSE`; an unprivileged alternate-port attempt never opened a local server and was interrupted; an elevated port 3218 test succeeded.
+- **Limitations:** Local mocked HTTP results do not prove live Auth/RLS, Origin/Host on HTTPS, Realtime delivery, two-connection PostgreSQL locks/clocks, durable rated settlement or product-wide readiness. Nine installed SQL sources match pinned hashes but remote migration versions require reconciliation. **All 20 final gates OPEN, rated OFF.**
+
 ## 2026-10-31 — checkpoint 75: terminal snapshot monotonicity
 
 - **Previously pushed commit:** GitHub Actions Linux run `41139635719` for `bd7b4cf` ended **SUCCESS**, including Playwright. Protected Vercel Preview `dpl_59SVisnhrskhKTgW2CFgXaPJBpDj` is READY from that commit; neither status verifies the changes in this checkpoint.

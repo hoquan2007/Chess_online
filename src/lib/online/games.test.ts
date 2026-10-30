@@ -160,6 +160,29 @@ describe("out-of-order authoritative snapshots", () => {
     expect(isOlderGameSnapshot(snapshot({ ply: 2, status: "active" }), snapshot({ ply: 3, status: "waiting" }))).toBe(true);
     expect(isOlderGameSnapshot(snapshot({ ply: 2, status: "active" }), snapshot({ ply: 3, status: "completed" }))).toBe(false);
   });
+  it("keeps the entire committed terminal record stable across repeated HTTP replies", () => {
+    const completed = snapshot({ status: "completed", result: "Resignation", winner_id: "black-id", clock_anchor_at: null });
+    const cancelled = snapshot({ status: "cancelled", black_id: null, clock_anchor_at: null });
+    expect(isOlderGameSnapshot(completed, { ...completed })).toBe(false);
+    expect(isOlderGameSnapshot(cancelled, { ...cancelled })).toBe(false);
+    expect(isOlderGameSnapshot(completed, Object.fromEntries(Object.entries(completed).reverse()) as OnlineGame)).toBe(false);
+    for (const changed of [
+      { ...completed, result: "Checkmate" },
+      { ...completed, winner_id: "white-id" },
+      { ...completed, fen: "corrupted FEN" },
+      { ...completed, pgn: "1. e4" },
+      { ...completed, turn: "b" as const },
+      { ...completed, white_ms: 0 },
+      { ...completed, black_ms: 0 },
+      { ...completed, white_id: "another-player" },
+      { ...completed, created_at: "2026-10-29T01:00:00.000Z" },
+      { ...completed, rated: true },
+      { ...completed, id: "00000000-0000-4000-8000-000000000002" },
+      { ...cancelled, black_id: "black-id" },
+      { ...cancelled, result: "Unexpected result" },
+    ]) expect(isOlderGameSnapshot(changed.status === "cancelled" ? cancelled : completed, changed)).toBe(true);
+    expect(isOlderGameSnapshot(snapshot(), snapshot({ id: "00000000-0000-4000-8000-000000000002" }))).toBe(true);
+  });
 });
 
 describe("auth redirects", () => {

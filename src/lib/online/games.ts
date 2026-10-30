@@ -30,15 +30,16 @@ export type OnlineGame = {
 export const validUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 export const validSquare = (value: unknown): value is string => typeof value === "string" && /^[a-h][1-8]$/.test(value);
 
-/** Avoid applying an older HTTP response after a newer move or game termination.
+/** Avoid applying an older or contradictory HTTP response after an accepted game snapshot.
  * A game can only advance in ply, then in lifecycle phase at the same ply.
  */
 export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
-  if (current.id !== incoming.id) return false;
-  // A committed terminal game cannot resume, change terminal kind or gain
-  // moves. Reject contradictory responses even if their ply is higher.
+  if (current.id !== incoming.id) return true;
+  // Every field in a committed terminal game is immutable. Compare values by
+  // key rather than JSON serialization so equivalent key order stays valid.
   if (current.status === "completed" || current.status === "cancelled") {
-    return incoming.status !== current.status || incoming.ply !== current.ply;
+    const keys = Object.keys(current) as (keyof OnlineGame)[];
+    return keys.length !== Object.keys(incoming).length || keys.some((key) => current[key] !== incoming[key]);
   }
   const phase: Record<OnlineGame["status"], number> = {
     waiting: 0, active: 1, completed: 2, cancelled: 2,

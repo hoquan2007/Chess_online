@@ -1506,6 +1506,39 @@ test("game room never resumes a completed game from a contradictory higher-ply s
   await expect(page.getByLabel("Move history").getByText("e4")).toHaveCount(0);
 });
 
+test("game room preserves its final result and clock across contradictory same-ply HTTP snapshots", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000082";
+  const now = new Date().toISOString();
+  const completed = { id, white_id: "white-id", black_id: "black-id", status: "completed",
+    pgn: "", fen: new Chess().fen(), turn: "w", ply: 0, base_ms: 300000, increment_ms: 0,
+    white_ms: 300000, black_ms: 300000, clock_anchor_at: null,
+    result: "Resignation", winner_id: "black-id", rated: false, created_at: now };
+  const changed = [
+    { ...completed, result: "Checkmate", winner_id: "white-id", white_ms: 0 },
+    { ...completed, fen: "invalid FEN" },
+    { ...completed },
+  ];
+  let requests = 0;
+  await page.route(`**/api/games/${id}`, (route) => {
+    const game = requests++ === 0 ? completed : changed[Math.min(requests - 2, changed.length - 1)];
+    return route.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify({ game, viewerColor: "w" }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByText("Game finished · Resignation")).toBeVisible();
+  for (let i = 2; i <= 4; i++) {
+    const completedReply = page.waitForResponse((response) =>
+      response.url().endsWith(`/api/games/${id}`) && response.status() === 200);
+    await page.getByRole("button", { name: "Sync" }).click();
+    await (await completedReply).finished();
+    await expect.poll(() => requests).toBeGreaterThanOrEqual(i);
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await expect(page.getByText("Game finished · Resignation")).toBeVisible();
+    await expect(page.getByLabel("White clock")).toHaveText("05:00");
+    await expect(page.getByRole("button", { name: "Resign" })).toBeDisabled();
+  }
+});
+
 test("online clock uses server time even when the device clock is an hour fast", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000011";
   const anchor = new Date().toISOString();
