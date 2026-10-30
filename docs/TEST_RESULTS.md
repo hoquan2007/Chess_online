@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 67: post-auth navigation stays on Rookline
+
+- **Security defect and fix:** `safeNext` previously allowed `/\t/evil.example`, which the WHATWG URL parser can normalize to an external origin. The guard now rejects backslashes, ASCII control characters, non-path inputs and cross-origin resolution while preserving valid internal query strings and fragments. Login and registration links use the safe fallback `/play/online` for hostile `next` values.
+- **Observed tests:** New focused redirect Vitest **3/3 PASS**; Chromium auth-navigation regression **PASS**; ESLint, TypeScript and full **174/174 Vitest across 25 files PASS**. Full independently executed native Chromium suite: **72 local/mock PASS, 1 genuine hosted test SKIP**, exit 0. Separately approved native Next 16.4.3 Webpack production build **PASS**, 17/17 pages, exit 0. The initial restricted composite build hit Windows `EPERM` after the lint/type/unit stages; separate native build resolved build verification.
+- **Scope:** The regression establishes local redirect safety and browser navigation behavior. It does not prove real Supabase Auth/RLS or HTTPS public-origin behavior. Local staging runtime credentials are still unavailable; **20 acceptance gates OPEN, rated OFF, IN_PROGRESS**, no production release.
+
 ## 2026-10-31 — checkpoint 66: local clock advances through device suspend
 
 - **Implementation:** `src/components/GameWorkspace.tsx` tracks both monotonic and wall tick timestamps. `settleClock` charges the greater nonnegative elapsed interval when a local/computer game resumes from sleep; existing control increments and move timeout guard remain. The new `e2e/rookline.spec.ts` test simulates 181 seconds of sleeping wall time and verifies the expired move is refused with Black `00:00` and Timeout outcome.

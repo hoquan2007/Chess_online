@@ -1011,6 +1011,15 @@ test("expired confirmation links surface a useful sign-in error", async ({ page 
   await expect(page.getByRole("link", { name: "Create an account" })).toHaveAttribute("href", "/register?next=%2Fplay%2Fonline");
 });
 
+test("malicious login return paths cannot escape the app origin", async ({ page }) => {
+  await page.goto("/login?next=%2F%09%2Fevil.example");
+  const register = page.getByRole("link", { name: "Create an account" });
+  await expect(register).toHaveAttribute("href", "/register?next=%2Fplay%2Fonline");
+  await register.click();
+  await expect(page).toHaveURL(/\/register\?next=%2Fplay%2Fonline$/);
+  await expect(page.locator(".text-panel").getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login?next=%2Fplay%2Fonline");
+});
+
 test("computer worker plays a legal first move when player chooses Black", async ({ page }) => {
   await page.goto("/play/computer");
   await page.getByRole("button", { name: "easy", exact: true }).click();

@@ -1,5 +1,7 @@
 # Rookline feature matrix
 
+**Checkpoint 67:** CH-05 authentication redirect isolation locally fixed and browser-verified: hostile `next=/\t/evil.example` falls back to `/play/online`, preventing URL-parser origin escape. **174 Vitest, 72 local/mock Chromium PASS / 1 real hosted SKIP**, lint/types and native **17-page build PASS**. S0 real hosted three-identity Auth/RLS remains blocked by missing runtime secrets. **20 release gates OPEN, rated OFF, IN_PROGRESS.**
+
 **Checkpoint 66:** CH-03/04 device-local and computer clock resumption now compares `performance.now()` with positive wall-time elapsed to account for OS sleep. A real Chromium case rejects a 181-second-overdue move. **71 local/mock Chromium PASS / 1 hosted SKIP**, **171 unit PASS**, lint, TypeScript and native **17-page production build PASS**. Online server clocks remain authoritative and unmodified. CH-03/04 locally improved; S0 secure three-user live Auth/RLS remains blocked by unconfigured runtime credentials. **20 release gates OPEN, rated OFF, IN_PROGRESS.**
 
 **Checkpoint 64:** CH-03 local game recovery and CH-05 online game creation now reject inherited Object prototype property names as time controls. Four server deny tests, a valid-control insert test and a Chromium saved-session recovery regression pass. **170 Vitest / 24 files, 70 local/mock Chromium, native 17-page production build, lint/types PASS**; one genuine hosted scenario SKIP. CH-03 locally tested; CH-05 hosted validation still BLOCKED_EXTERNAL. **20 release gates OPEN, rated OFF, IN_PROGRESS.**
