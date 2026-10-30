@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 57: study mastery survives simultaneous tabs and blocked storage
+
+- CH-14: Extracted shared allowlisted, deduplicated mastery helpers across openings and lessons. Each completion merges current device storage with in-memory state to prevent stale-tab overwrites in the tested sequential flow. Storage events refresh catalogue badges, and quota-rejected saves keep mastery visible in active memory. New Chromium cases exercise Italian/French completed from two simultaneous tabs and a lesson completed despite `QuotaExceededError`.
+- **Observed verification:** ESLint PASS, strict TypeScript PASS, **157/157 Vitest in 21 files PASS**. Default-sandbox composite `npm run check` exited 1 because Next packaging hit Windows `EPERM` creating `.next/types/app/api`; a separate authorized native `npm run build` **PASS** with **17 generated pages**. Focused native Playwright **2/2 PASS**; full native `npx playwright test --workers=1` **65 local/mock PASS / 1 guarded genuine hosted SKIP (66 discovered), exit 0**. An earlier restricted browser startup stalled and was interrupted before the successful native runs. Restored generated `next-env.d.ts` to the tracked import baseline.
+- Four required Supabase runtime settings **absent** in the prior value-free process/`.env.local` probe. Hosted three-user Auth/RLS/HTTPS Origin, two-client Realtime/reconnect, independent PG locking/clocks and durable rated settlement **not tested**. CH-14 is LOCALLY_TESTED with hosted progress and broader curriculum pending; **20 acceptance gates OPEN, rated OFF, IN_PROGRESS**. No database writes, production deployment or main merge.
+
 ## 2026-10-30 — checkpoint 56: puzzle progress across local browser tabs
 
 - CH-13 fixes lost device-local completed puzzles and review scores when distinct open tabs solve positions. Storage events refresh the other tab and every write reads fresh sanitized storage; blocked device writes retain adaptive counters in memory. Two real-tab Chromium scenarios test cross-tab solved IDs, practice errors/solves after reload, and quota-rejected writes preserving adaptive priority.

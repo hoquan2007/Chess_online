@@ -664,6 +664,59 @@ test("lesson practice preserves completed openings across page navigation", asyn
   await expect(page.getByText("Practice completed on this device")).toBeVisible();
 });
 
+test("two live study tabs retain different mastered lines and refresh their catalogue badges", async ({ page, context }) => {
+  await page.goto("/openings");
+  const second = await context.newPage();
+  try {
+    await second.goto("/openings");
+    await second.getByRole("button", { name: /French Defense/ }).click();
+    await page.getByRole("button", { name: "Practice as White" }).click();
+    await second.getByRole("button", { name: "Practice as White" }).click();
+
+    const italianInput = page.getByRole("textbox", { name: /Keyboard move/ });
+    for (const move of ["e2e4", "g1f3", "f1c4"]) {
+      await italianInput.fill(move);
+      await italianInput.press("Enter");
+    }
+    await expect(page.locator("p[role='status']")).toContainText("Line complete!");
+    await expect(second.getByRole("button", { name: /Italian Game/ })).toContainText("Practice completed on this device");
+
+    const frenchInput = second.getByRole("textbox", { name: /Keyboard move/ });
+    for (const move of ["e2e4", "d2d4", "b1c3"]) {
+      await frenchInput.fill(move);
+      await frenchInput.press("Enter");
+    }
+    await expect(second.locator("p[role='status']")).toContainText("Line complete!");
+    await expect(page.getByRole("button", { name: /French Defense/ })).toContainText("Practice completed on this device");
+
+    await page.reload();
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("rookline-study-practice") ?? "[]")))
+      .toEqual(expect.arrayContaining(["italian:w", "french:w"]));
+  } finally {
+    await second.close();
+  }
+});
+
+test("study mastery remains visible when local storage refuses writes", async ({ page }) => {
+  await page.addInitScript(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "rookline-study-practice") throw new DOMException("Storage quota reached", "QuotaExceededError");
+      return original.call(this, key, value);
+    };
+  });
+  await page.goto("/learn");
+  await page.getByRole("button", { name: "Practice as White" }).click();
+  const entry = page.getByRole("textbox", { name: /Keyboard move/ });
+  for (const move of ["e2e4", "g1f3", "f1c4"]) {
+    await entry.fill(move);
+    await entry.press("Enter");
+  }
+  await expect(page.locator("p[role='status']")).toContainText("Line complete!");
+  await expect(page.getByText("This line is mastered.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Develop with a purpose/ })).toContainText("Practice completed on this device");
+});
+
 test("new French defense and king-safety lesson are playable and retain separate mastery", async ({ page }) => {
   await page.goto("/openings");
   await page.getByRole("button", { name: /French Defense/ }).click();

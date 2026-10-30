@@ -4,20 +4,9 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ChevronLeft, ChevronRight, Lightbulb, RotateCcw } from "lucide-react";
-import { evaluatePracticeMove, lessonLines, openingLines, practiceNextPly, studyPosition, type PracticeSide, type StudyLine } from "@/lib/chess/study";
+import { evaluatePracticeMove, practiceNextPly, studyPosition, type PracticeSide, type StudyLine } from "@/lib/chess/study";
 import { parseCoordinateMove } from "@/lib/chess/rules";
-
-const progressKey = "rookline-study-practice";
-const knownPracticeKeys = new Set([...openingLines, ...lessonLines].flatMap((line) => [`${line.id}:w`, `${line.id}:b`]));
-
-function readCompletedPractice(): string[] {
-  try {
-    const stored: unknown = JSON.parse(localStorage.getItem(progressKey) ?? "[]");
-    return Array.isArray(stored)
-      ? [...new Set(stored.filter((entry): entry is string => typeof entry === "string" && knownPracticeKeys.has(entry)))]
-      : [];
-  } catch { return []; }
-}
+import { mergeStudyCompletions, readStudyCompletions, recordStudyCompletion, studyProgressKey } from "@/lib/chess/study-progress";
 
 export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
   const [selectedId, setSelectedId] = useState(lines[0].id);
@@ -34,7 +23,14 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
   const completedKey = `${selected.id}:${side}`;
 
   useEffect(() => {
-    queueMicrotask(() => setCompleted(readCompletedPractice()));
+    queueMicrotask(() => setCompleted((current) => mergeStudyCompletions(current, readStudyCompletions())));
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === studyProgressKey || event.key === null) {
+        setCompleted((current) => mergeStudyCompletions(current, readStudyCompletions()));
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const resetInputs = () => { setKeyboardMove(""); setSelectedSquare(null); setFeedback(""); };
@@ -43,10 +39,7 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
     setMode("practice"); setSide(color); setPly(practiceNextPly(selected, color, 0)); resetInputs();
   };
   const saveCompletion = () => {
-    const next = [...new Set([...readCompletedPractice(), ...completed, completedKey])];
-    setCompleted(next);
-    try { localStorage.setItem(progressKey, JSON.stringify(next)); }
-    catch { /* Practice remains usable when storage is disabled or full. */ }
+    setCompleted(recordStudyCompletion(completed, completedKey));
   };
   const attempt = (from: Square, to: Square, promotion?: "q" | "r" | "b" | "n") => {
     if (mode !== "practice" || finished) return false;

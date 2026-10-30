@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 57 — concurrent study tabs and browser storage failure
+
+- CH-14: Shared opening and lesson mastery helpers sanitize known side-specific IDs and merge stored/current in-memory completions before each save. Active tabs react to storage updates so catalogue badges change without refresh; `QuotaExceededError` preserves completed practice in memory. Two new real-browser regressions verify both Italian/French completions and lesson mastery when storage refuses writes.
+- Evidence: **157/157 Vitest in 21 files**, ESLint and strict TypeScript PASS; focused Chromium **2 PASS**, full **65 local/mock Chromium PASS / 1 true hosted SKIP**, separate native **17-page Webpack production build PASS**. The restricted composite `npm run check` failed only at `.next/types/app/api` with Windows `EPERM`; successful isolated native build confirms packaging validity, while composite itself is not claimed PASS. Generated Next typing imports restored.
+- S0 HTTPS hosted three-identity Auth/RLS remains BLOCKED_EXTERNAL (four staging runtime settings absent at last value-free probe), then S1 live Realtime → S2 independent PostgreSQL clocks → S3 rated/matching → S4 engine/hosted study → S5 community → S6 independent audit. CH-14 LOCALLY_TESTED, wider/hosted curriculum pending; **20 gates OPEN, rated OFF, IN_PROGRESS**. No database push, production deploy or main merge.
+
 ## 2026-10-30, checkpoint 56 — two-tab puzzle progress integrity
 
 - CH-13: Two open puzzle tabs now refresh completed IDs and adaptive practice counters from shared device storage. Before saving a solution or score, the active tab reads the latest stored state, avoiding ordinary stale-tab overwrites. Restored completion IDs are deduplicated and limited to known puzzles. If the browser refuses storage writes, practice counters continue in memory.
