@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 41: 20 original tactical puzzles and full native browser regression
+
+- Added ten legal positions (20 total) across checkmate, fork, pin, capture and promotion; unit test verifies unique IDs, legal authored SAN and true mate for every explicit `goal: "mate"` entry. Black-to-move examples and promotion choices are validated through `evaluatePuzzleMove`, and topic cycling exercises the expanded four-fork catalogue. Existing device-local save IDs remain stable.
+- ESLint PASS, strict TypeScript PASS, **79/79 Vitest PASS (12 suites)**. `npm run check` failed only at Next build with Windows `EPERM: operation not permitted, mkdir 'D:\\Chess_online\\.next\\server\\app\\api\\games'`; separate `npm run build` in native elevated environment **PASS (17/17 pages)**. Composite command itself is not reported PASS.
+- Full `npm run test:e2e -- --workers=1`: **54 local/mock Chromium PASS, 1 guarded live staging SKIP, exit 0 (2.8m)**. Includes a new Black-to-move mate and underpromotion rejection / queen promotion, verified black board orientation by square layout, and persistence. An initial targeted run exposed a non-exact Playwright selector `Puzzle 2` colliding with `Puzzle 20`; selectors were made exact, and the full suite passed afterward. Live Auth, Realtime and independent DB clock/rating contention remain unverified; 20 gates OPEN. Rollback: revert checkpoint-41 catalogue, UI, tests and ledger edits. No remote writes, deploy or main merge.
+
 ## 2026-10-30 — checkpoint 40: adaptive puzzle history and native regression
 
 - Unit tests for corrupted device storage, numeric bounds, known IDs, error/hint/solve tracking and adaptive ordering **PASS**; browser case deliberately fires two Hint clicks synchronously, verifies 4 errors + 3 hints + 1 solve survive reload, and checks weak fork review with repeat avoidance.

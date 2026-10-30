@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 41 — doubled original tactical curriculum
+
+- Expanded CH-13 from ten to **20 original chess.js-validated positions**, with new Black-to-move mates, forks, captures and promotion exercises. Every entry now declares `goal: "mate" | "move"`; alternate legal checkmates are accepted on actual board state, independent of display text. The puzzle board turns Black-side-up for Black-to-move positions, with previously saved IDs and adaptive practice history preserved.
+- Verification: ESLint and strict TypeScript PASS; **79/79 Vitest in 12 suites PASS**. Native composite `npm run check` reached its build stage but hit Windows `EPERM` while creating `.next/server/app/api/games`; a separate build with native elevated execution **PASS, 17/17 generated pages**. Full Chromium regression **54 local/mock PASS / 1 real staging SKIP**, including new Black perspective, mate and promotion, alternate mate, progress persistence and adaptive ordering. `git diff --check` PASS.
+- CH-13 stays `PARTIAL` pending broad curated curriculum and hosted account syncing. Nine dedicated staging migrations remain the last confirmed installed set; tenth rated settlement remains rollback-tested only. Real Supabase Auth/JWT, two-client Realtime, independent Postgres locks/clocks and rated settlement remain unverified. Rated creation OFF; **20 acceptance gates OPEN, IN_PROGRESS**. Continue S0→S6; no main merge or production deploy.
+
 ## 2026-10-30, checkpoint 40 — adaptive tactics review and complete local QA
 
 - Added a device-local practice history keyed by ten known original puzzle IDs. Wrong or illegal attempts, hints and successful solutions are bounded and sanitized on restore; the optional adaptive selector revisits weak tactics, rewards unseen puzzles, and rotates away from immediate repeats. A synchronous ref prevents rapid successive hint/error events from dropping increments.

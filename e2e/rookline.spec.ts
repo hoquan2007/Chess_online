@@ -137,7 +137,7 @@ test("puzzle solution validates against board rules", async ({ page }) => {
 
 test("puzzle keyboard input validates moves, records new tactics, and restores progress", async ({ page }) => {
   await page.goto("/puzzles");
-  await page.getByRole("button", { name: "Puzzle 4" }).click();
+  await page.getByRole("button", { name: "Puzzle 4", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Seal the back rank" })).toBeVisible();
   const input = page.getByRole("textbox", { name: /Keyboard move/ });
   await input.fill("invalid");
@@ -152,26 +152,50 @@ test("puzzle keyboard input validates moves, records new tactics, and restores p
   await input.fill("e1e8");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Correct! Re8#" })).toBeVisible();
-  await expect(page.getByText("Solved 1 / 10 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 1 / 20 positions on this device.")).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Solved 1 / 10 positions on this device.")).toBeVisible();
-  await page.getByRole("button", { name: "Puzzle 9" }).click();
+  await expect(page.getByText("Solved 1 / 20 positions on this device.")).toBeVisible();
+  await page.getByRole("button", { name: "Puzzle 9", exact: true }).click();
   await input.fill("a7a8n");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "stronger tactic" })).toBeVisible();
   await input.fill("a7a8q");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Correct! a8=Q+" })).toBeVisible();
-  await expect(page.getByText("Solved 2 / 10 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 2 / 20 positions on this device.")).toBeVisible();
 });
 
 test("mate-in-one puzzle credits alternative correct checkmate", async ({ page }) => {
   await page.goto("/puzzles");
-  await page.getByRole("button", { name: "Puzzle 2" }).click();
+  await page.getByRole("button", { name: "Puzzle 2", exact: true }).click();
   const input = page.getByRole("textbox", { name: /Keyboard move/ });
   await input.fill("f5f8");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Correct! Qf8#" })).toBeVisible();
+});
+
+test("new Black-to-move puzzles orient the board and solve a mate and promotion", async ({ page }) => {
+  await page.goto("/puzzles");
+  await page.getByRole("button", { name: "Puzzle 12", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Black strikes the back rank" })).toBeVisible();
+  const topLeft = await page.locator('[data-square="h1"]').boundingBox();
+  const bottomRight = await page.locator('[data-square="a8"]').boundingBox();
+  expect(topLeft).not.toBeNull();
+  expect(bottomRight).not.toBeNull();
+  expect(topLeft!.x).toBeLessThan(bottomRight!.x);
+  expect(topLeft!.y).toBeLessThan(bottomRight!.y);
+  await page.locator('[data-square="e8"]').click();
+  await page.locator('[data-square="e1"]').click();
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Re1#" })).toBeVisible();
+  await page.getByRole("button", { name: "Puzzle 18", exact: true }).click();
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("e2e1n");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "stronger tactic" })).toBeVisible();
+  await input.fill("e2e1q");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! e1=Q+" })).toBeVisible();
+  await expect(page.getByText("Solved 2 / 20 positions on this device.")).toBeVisible();
 });
 
 test("puzzle topic navigation prioritizes unsolved tactics and survives a reload", async ({ page }) => {
@@ -179,19 +203,19 @@ test("puzzle topic navigation prioritizes unsolved tactics and survives a reload
   await page.getByLabel("Practice topic").selectOption("Fork");
   await expect(page.getByRole("heading", { name: "Knight fork" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Puzzle 1", exact: true })).toHaveCount(0);
-  await expect(page.getByText("Fork: 0 / 2 solved.")).toBeVisible();
+  await expect(page.getByText("Fork: 0 / 4 solved.")).toBeVisible();
   const input = page.getByRole("textbox", { name: /Keyboard move/ });
   await input.fill("e4d6");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Correct! Nd6+" })).toBeVisible();
-  await expect(page.getByText("Fork: 1 / 2 solved.")).toBeVisible();
+  await expect(page.getByText("Fork: 1 / 4 solved.")).toBeVisible();
   await page.getByRole("button", { name: "Next puzzle" }).click();
   await expect(page.getByRole("heading", { name: "A second knight fork" })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Solved 1 / 10 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 1 / 20 positions on this device.")).toBeVisible();
   await page.getByLabel("Practice topic").selectOption("Fork");
   await expect(page.getByRole("heading", { name: "A second knight fork" })).toBeVisible();
-  await expect(page.getByText("Fork: 1 / 2 solved.")).toBeVisible();
+  await expect(page.getByText("Fork: 1 / 4 solved.")).toBeVisible();
 });
 
 test("adaptive puzzle review persists mistakes and revisits weak solved tactics", async ({ page }) => {

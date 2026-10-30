@@ -4,15 +4,17 @@ import { evaluatePuzzleMove, isPuzzleSolution, nextAdaptivePuzzleIndex, nextPrac
 
 describe("original puzzle set", () => {
   it("contains legal, solvable positions", () => {
-    expect(puzzles).toHaveLength(10);
+    expect(puzzles).toHaveLength(20);
     expect(new Set(puzzles.map((item) => item.id)).size).toBe(puzzles.length);
     for (const item of puzzles) {
       const game = new Chess(item.fen);
       expect(game.moves()).toContain(item.solution);
       const move = game.move(item.solution);
       expect(move.san).toBe(item.solution);
-      if (item.description.toLowerCase().includes("checkmate in one")) {
+      if (item.goal === "mate") {
         expect(game.isCheckmate()).toBe(true);
+      } else {
+        expect(game.isCheckmate()).toBe(false);
       }
     }
   });
@@ -31,6 +33,22 @@ describe("original puzzle set", () => {
     expect(evaluatePuzzleMove("endgame-009", "a7", "a8", "n").status).toBe("incorrect");
     expect(evaluatePuzzleMove("endgame-009", "a7", "a8", "q")).toMatchObject({ status: "correct", san: "a8=Q+" });
   });
+  it("solves newly authored Black-to-move tactics and both promotions", () => {
+    for (const id of ["mate-012", "fork-013", "capture-017", "promotion-018"]) {
+      const puzzle = puzzles.find((item) => item.id === id)!;
+      const position = new Chess(puzzle.fen);
+      expect(position.turn()).toBe("b");
+      const correctMove = position.moves({ verbose: true }).find((move) => move.san === puzzle.solution)!;
+      const promotion = correctMove.promotion;
+      expect(evaluatePuzzleMove(id, correctMove.from, correctMove.to,
+        promotion === "q" || promotion === "r" || promotion === "b" || promotion === "n" ? promotion : undefined,
+      )).toMatchObject({
+        status: "correct", san: puzzle.solution,
+      });
+    }
+    expect(evaluatePuzzleMove("promotion-018", "e2", "e1", "n").status).toBe("incorrect");
+    expect(evaluatePuzzleMove("promotion-019", "g7", "g8", "q")).toMatchObject({ status: "correct" });
+  });
   it("assigns every puzzle exactly one available practice topic and an explicit level", () => {
     const all = puzzleIndicesForTheme("All");
     expect(all).toEqual(puzzles.map((_, index) => index));
@@ -38,11 +56,13 @@ describe("original puzzle set", () => {
     for (const puzzle of puzzles) expect([1, 2, 3]).toContain(puzzle.level);
   });
   it("prioritizes unsolved positions within a topic and cycles after finishing them", () => {
-    expect(puzzleIndicesForTheme("Fork")).toEqual([4, 9]);
+    expect(puzzleIndicesForTheme("Fork")).toEqual([4, 9, 12, 13]);
     expect(nextPracticePuzzleIndex(-1, "Fork", [])).toBe(4);
     expect(nextPracticePuzzleIndex(4, "Fork", ["fork-005"])).toBe(9);
-    expect(nextPracticePuzzleIndex(9, "Fork", ["fork-005", "fork-010"])).toBe(4);
-    expect(nextPracticePuzzleIndex(9, "All", ["mate-001"])).toBe(1);
+    expect(nextPracticePuzzleIndex(9, "Fork", ["fork-005", "fork-010"])).toBe(12);
+    expect(nextPracticePuzzleIndex(13, "Fork", ["fork-005", "fork-010", "fork-013", "fork-014"])).toBe(4);
+    expect(nextPracticePuzzleIndex(9, "All", ["mate-001"])).toBe(10);
+    expect(nextPracticePuzzleIndex(19, "All", ["mate-001"])).toBe(1);
   });
   it("sanitizes tampered practice history and bounds counters", () => {
     const stored = readPuzzlePractice({
