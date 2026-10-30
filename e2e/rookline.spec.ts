@@ -947,6 +947,7 @@ test("online room does not sound an inconsistent server ledger before a valid mo
   chess.move("e4");
   const valid = { ...initial, pgn: chess.pgn(), fen: chess.fen(), ply: 1, turn: chess.turn() };
   const inconsistent = { ...valid, pgn: "" };
+  const incorrectTurn = { ...valid, turn: "w" as const };
   let snapshot = initial;
   await page.addInitScript(() => {
     const audioWindow = window as unknown as Window & { __audioPlays: number };
@@ -975,6 +976,14 @@ test("online room does not sound an inconsistent server ledger before a valid mo
   await page.getByRole("button", { name: "Sync", exact: true }).click();
   await expect(page.getByText("Server game ledger could not be verified. Stop play and contact support.")).toBeVisible();
   expect(await played()).toBe(0);
+  snapshot = valid;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  expect(await played()).toBe(1);
+  snapshot = incorrectTurn;
+  await page.getByRole("button", { name: "Sync", exact: true }).click();
+  await expect(page.getByText("Server game ledger could not be verified. Stop play and contact support.")).toBeVisible();
+  expect(await played()).toBe(1);
   snapshot = valid;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();

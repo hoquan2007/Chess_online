@@ -43,10 +43,12 @@ export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
 }
 
 /** Rebuild from the server's canonical, durable PGN to preserve repetition history. */
-export function replayGame(snapshot: Pick<OnlineGame, "pgn" | "fen" | "ply">) {
+export function replayGame(snapshot: Pick<OnlineGame, "pgn" | "fen" | "ply" | "turn">) {
   const chess = new Chess();
   if (snapshot.pgn) chess.loadPgn(snapshot.pgn);
-  if (chess.fen() !== snapshot.fen || chess.history().length !== snapshot.ply) throw new Error("Game ledger is inconsistent");
+  if (chess.fen() !== snapshot.fen || chess.history().length !== snapshot.ply || chess.turn() !== snapshot.turn) {
+    throw new Error("Game ledger is inconsistent");
+  }
   return chess;
 }
 

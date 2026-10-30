@@ -17,7 +17,7 @@ describe("server snapshot replay", () => {
   it("replays the canonical PGN and retains move history", () => {
     const game = new Chess();
     game.move("e4"); game.move("e5"); game.move("Nf3");
-    const restored = replayGame(snapshot({ pgn: game.pgn(), fen: game.fen(), ply: 3 }));
+    const restored = replayGame(snapshot({ pgn: game.pgn(), fen: game.fen(), ply: 3, turn: game.turn() }));
     expect(restored.fen()).toBe(game.fen());
     expect(restored.history()).toEqual(["e4", "e5", "Nf3"]);
   });
@@ -25,6 +25,12 @@ describe("server snapshot replay", () => {
     const game = new Chess(); game.move("e4");
     expect(() => replayGame(snapshot({ pgn: game.pgn(), ply: 1 }))).toThrow("inconsistent");
     expect(() => replayGame(snapshot({ pgn: game.pgn(), fen: game.fen(), ply: 0 }))).toThrow("inconsistent");
+  });
+  it("rejects an out-of-turn snapshot even when PGN, FEN and ply agree", () => {
+    const game = new Chess(); game.move("e4");
+    const consistent = snapshot({ pgn: game.pgn(), fen: game.fen(), ply: 1, turn: "b" });
+    expect(replayGame(consistent).turn()).toBe("b");
+    expect(() => replayGame({ ...consistent, turn: "w" })).toThrow("inconsistent");
   });
   it("rejects malformed SAN and input coordinates", () => {
     expect(() => replayGame(snapshot({ pgn: "this is not PGN" }))).toThrow();
