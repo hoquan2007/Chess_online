@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 58 — collision-safe local game archive IDs
+
+- Reproduced data loss: two rapid games with `Date.now()` returning the same millisecond were assigned the same `local-` ID and the second replaced the first in device history. The new real-browser regression failed on the original code (one archive entry rather than two), then passed after switching initial, fallback and New game IDs to `crypto.randomUUID()`. Both distinct legal PGNs survived browser reload; existing timestamp IDs remain readable.
+- Browser test runner now accepts validated `ROOKLINE_E2E_PORT` so local Rookline can run while another application occupies 3100. Same-origin API test headers derive the current Playwright base URL. **158/158 Vitest (22 files)**, ESLint and strict TypeScript PASS; native Chromium **66 local/mock PASS / 1 guarded real hosted SKIP (67 discovered)**; separate native Next.js Webpack **17/17 generated pages PASS**. Default restricted `npm run build` stopped at Windows `.next/types/app/api` `EPERM`; native-permission build succeeded. Do not describe the restricted build as PASS.
+- S0 actual three-user HTTPS Auth/JWT/RLS remains **BLOCKED_EXTERNAL** per latest credential-presence evidence; S1 real Realtime, S2 independent PostgreSQL row locks and clocks, S3 rated/matching, S4 hosted learning, S5 community and S6 all-gate audit remain. **20 acceptance gates OPEN, rated OFF, IN_PROGRESS.** No database push, production deployment or main merge.
+
 ## 2026-10-30, checkpoint 57 — concurrent study tabs and browser storage failure
 
 - CH-14: Shared opening and lesson mastery helpers sanitize known side-specific IDs and merge stored/current in-memory completions before each save. Active tabs react to storage updates so catalogue badges change without refresh; `QuotaExceededError` preserves completed practice in memory. Two new real-browser regressions verify both Italian/French completions and lesson mastery when storage refuses writes.

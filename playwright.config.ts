@@ -4,7 +4,9 @@ import { resolveStagingAppOrigin } from "./e2e/staging-target";
 
 const stagingEnabled = process.env.ROOKLINE_STAGING_E2E === "1";
 if (stagingEnabled) loadEnvConfig(process.cwd(), true);
-const appOrigin = stagingEnabled ? resolveStagingAppOrigin(process.env.ROOKLINE_STAGING_APP_ORIGIN) : "http://127.0.0.1:3100";
+const localPort = Number(process.env.ROOKLINE_E2E_PORT ?? "3100");
+if (!Number.isInteger(localPort) || localPort < 1 || localPort > 65535) throw new Error("Invalid ROOKLINE_E2E_PORT");
+const appOrigin = stagingEnabled ? resolveStagingAppOrigin(process.env.ROOKLINE_STAGING_APP_ORIGIN) : `http://127.0.0.1:${localPort}`;
 const externalStaging = stagingEnabled && process.env.ROOKLINE_STAGING_APP_ORIGIN !== undefined;
 
 export default defineConfig({
@@ -15,7 +17,7 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: { ...devices["Desktop Chrome"], channel: process.env.CI ? undefined : "chrome", baseURL: appOrigin, trace: "retain-on-failure" },
   webServer: externalStaging ? undefined : {
-    command: "npm run dev -- --webpack --port 3100",
+    command: `npm run dev -- --webpack --port ${localPort}`,
     url: appOrigin,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

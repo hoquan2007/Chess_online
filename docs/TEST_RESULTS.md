@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 58: same-millisecond archive retention
+
+- **RED/GREEN:** A real Chromium test overrode `Date.now` to one millisecond, finished `e4` and `d4` games with resignations and verified that local history contains both distinct IDs and parseable result-bearing PGNs after reload. Before the fix the archive had **1** entry; with `crypto.randomUUID()` IDs it had **2**. Added **1** unit test generating 256 unique UUIDv4 IDs within the legacy 80-character bound.
+- **Observed post-change checks:** ESLint **PASS**, strict TypeScript **PASS**, **158/158 Vitest in 22 files PASS**. Full native Chromium at `ROOKLINE_E2E_PORT=3157`: **66 local/mock PASS / 1 true hosted staging SKIP (67 discovered), exit 0**. The selected port avoided unrelated traffic on 3100; API-Origin assertions now use the actual base URL. Restricted `npm run build` **FAIL** at `.next/types/app/api` with Windows `EPERM`; separately authorized native Webpack **PASS, 17/17 generated pages**, exit 0. This establishes local/browser compatibility, not live Supabase acceptance.
+- Genuine hosted three-identity Auth/JWT/RLS/HTTPS Origin, Realtime/reconnect with two clients, independent PostgreSQL clock/row-lock races and rated settlement **remain unverified**. Four needed staging runtime settings were absent at last presence-only probe; no key values inspected. **All 20 acceptance gates OPEN, rated OFF, IN_PROGRESS.** No migration push, production deployment or main merge.
+
 ## 2026-10-30 — checkpoint 57: study mastery survives simultaneous tabs and blocked storage
 
 - CH-14: Extracted shared allowlisted, deduplicated mastery helpers across openings and lessons. Each completion merges current device storage with in-memory state to prevent stale-tab overwrites in the tested sequential flow. Storage events refresh catalogue badges, and quota-rejected saves keep mastery visible in active memory. New Chromium cases exercise Italian/French completed from two simultaneous tabs and a lesson completed despite `QuotaExceededError`.

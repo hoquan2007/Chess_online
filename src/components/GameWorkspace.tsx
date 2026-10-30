@@ -7,6 +7,7 @@ import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, RotateCcw, Undo2, Volume2, VolumeX, Flag } from "lucide-react";
 import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, parseCoordinateMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
 import { advanceLocalClock } from "@/lib/chess/clocks";
+import { createLocalGameId } from "@/lib/chess/local-game-id";
 import type { Difficulty } from "@/lib/chess/bot";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
@@ -142,7 +143,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
           setRunning(resume && restoredSeconds[restored.turn()] > 0);
           sync();
         } else {
-          setGameId(`local-${Date.now()}`);
+          setGameId(createLocalGameId());
         }
         setSound(moveSoundsEnabled());
       } catch {
@@ -150,7 +151,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
         clockRef.current = { w: 300, b: 300 };
         setSeconds(clockRef.current);
         setUndoClocks([]);
-        setGameId(`local-${Date.now()}`);
+        setGameId(createLocalGameId());
         sync();
       }
     });
@@ -277,7 +278,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     setSeconds(clockRef.current);
     setUndoClocks([]);
     setRunning(false);
-    setGameId(`local-${Date.now()}`);
+    setGameId(createLocalGameId());
     sync();
   };
 

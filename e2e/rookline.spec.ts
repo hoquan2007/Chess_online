@@ -87,6 +87,36 @@ test("undoing a completed local game withdraws its obsolete archive result", asy
   await expect(page.getByRole("region", { name: "Local game archive" }).getByText("No completed games saved on this device yet.")).toBeVisible();
 });
 
+test("rapid new local games retain distinct archive entries within one millisecond", async ({ page }) => {
+  await page.addInitScript(() => { Date.now = () => 1_800_000_000_000; });
+  await page.goto("/play/local");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+
+  for (const [index, coordinate] of ["e2e4", "d2d4"].entries()) {
+    await input.fill(coordinate);
+    await input.press("Enter");
+    await page.getByRole("button", { name: "Resign" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Black resigned" })).toBeVisible();
+    await expect.poll(() => page.evaluate(() =>
+      (JSON.parse(localStorage.getItem("rookline-history") ?? "[]") as unknown[]).length,
+    )).toBe(index + 1);
+    if (index === 0) await page.getByRole("button", { name: "New game" }).click();
+  }
+
+  const records = await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-history") ?? "[]") as { id: string; pgn: string }[]);
+  expect(new Set(records.map((record) => record.id)).size).toBe(2);
+  expect(records.every((record) => /^local-[0-9a-f-]{36}$/.test(record.id))).toBe(true);
+  expect(records.map((record) => {
+    const game = new Chess();
+    game.loadPgn(record.pgn);
+    return game.history()[0];
+  })).toEqual(["d4", "e4"]);
+
+  await page.reload();
+  await page.goto("/games");
+  await expect(page.getByRole("region", { name: "Local game archive" }).getByRole("link", { name: "Review game" })).toHaveCount(2);
+});
+
 test("resignation awards a draw when the opponent has only a king", async ({ page }) => {
   const setup = new Chess("4k3/8/8/8/8/8/8/4K2Q b - - 0 1");
   setup.move("Kd7");
@@ -513,6 +543,7 @@ test("game archive, leaderboard and profile expose truthful unconfigured states"
 });
 
 test("profile update requires same-origin intent and an authenticated service", async ({ request }) => {
+  const appOrigin = new URL(test.info().project.use.baseURL!).origin;
   const thirdParty = await request.patch("/api/profile", {
     headers: { Origin: "https://third-party.example", "Content-Type": "application/json" },
     data: { username: "rook_player", display_name: "Player" },
@@ -520,7 +551,7 @@ test("profile update requires same-origin intent and an authenticated service", 
   expect(thirdParty.status()).toBe(403);
   expect(await thirdParty.json()).toMatchObject({ error: "Cross-origin action denied" });
   const unconfigured = await request.patch("/api/profile", {
-    headers: { Origin: "http://127.0.0.1:3100", "Content-Type": "application/json" },
+    headers: { Origin: appOrigin, "Content-Type": "application/json" },
     data: { username: "rook_player", display_name: "Player" },
   });
   expect(unconfigured.status()).toBe(503);
@@ -554,18 +585,19 @@ test("server denies cross-origin game mutations before using credentials", async
 });
 
 test("draw claims fail closed without hosted chess credentials", async ({ request }) => {
+  const appOrigin = new URL(test.info().project.use.baseURL!).origin;
   test.skip(!!(process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY &&
     (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)),
   "This fail-closed assertion applies only to an unconfigured local environment.");
   const claim = await request.post("/api/games/00000000-0000-4000-8000-000000000001/claim", {
-    headers: { Origin: "http://127.0.0.1:3100" },
+    headers: { Origin: appOrigin },
     data: { rule: "repetition", expectedPly: 8 },
   });
   expect(claim.status(), await claim.text()).toBe(503);
   expect(await claim.json()).toMatchObject({ error: "Chess service is not configured." });
   const cancel = await request.post("/api/games/00000000-0000-4000-8000-000000000001/cancel", {
-    headers: { Origin: "http://127.0.0.1:3100" },
+    headers: { Origin: appOrigin },
   });
   expect(cancel.status()).toBe(503);
   expect(await cancel.json()).toMatchObject({ error: "Chess service is not configured." });
