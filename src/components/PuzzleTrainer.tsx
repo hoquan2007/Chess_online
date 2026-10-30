@@ -4,8 +4,24 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowRight, Lightbulb, RotateCcw } from "lucide-react";
-import { evaluatePuzzleMove, nextAdaptivePuzzleIndex, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, readPuzzlePractice, recordPuzzlePractice, type PuzzlePractice, type PuzzlePracticeEvent, type PuzzleTheme } from "@/lib/chess/puzzles";
+import { evaluatePuzzleMove, nextAdaptivePuzzleIndex, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, readPuzzleCompletions, readPuzzlePractice, recordPuzzlePractice, type PuzzlePractice, type PuzzlePracticeEvent, type PuzzleTheme } from "@/lib/chess/puzzles";
 import { parseCoordinateMove } from "@/lib/chess/rules";
+
+const completedKey = "rookline-puzzles";
+const practiceKey = "rookline-puzzle-practice";
+
+function storedCompletions(): string[] | null {
+  try { return readPuzzleCompletions(JSON.parse(localStorage.getItem(completedKey) || "[]")); }
+  catch { return null; }
+}
+
+function storedPractice(): PuzzlePractice | null {
+  try {
+    const raw = localStorage.getItem(practiceKey);
+    return raw === null ? null : readPuzzlePractice(JSON.parse(raw));
+  }
+  catch { return null; }
+}
 
 export function PuzzleTrainer() {
   const [active, setActive] = useState(0);
@@ -23,25 +39,32 @@ export function PuzzleTrainer() {
   const visible = puzzleIndicesForTheme(theme);
 
   useEffect(() => {
-    try {
-      const saved: unknown = JSON.parse(localStorage.getItem("rookline-puzzles") || "[]");
-      const allowed = new Set<string>(puzzles.map((item) => item.id));
-      queueMicrotask(() => setComplete(Array.isArray(saved)
-        ? Array.from(new Set(saved.filter((item): item is string => typeof item === "string" && allowed.has(item))))
-        : []));
-    } catch { queueMicrotask(() => setComplete([])); }
-    try {
-      const saved: unknown = JSON.parse(localStorage.getItem("rookline-puzzle-practice") || "{}");
-      const restored = readPuzzlePractice(saved);
-      queueMicrotask(() => { practiceRef.current = restored; setPractice(restored); });
-    } catch { queueMicrotask(() => { practiceRef.current = {}; setPractice({}); }); }
+    const syncFromStorage = (key?: string | null) => {
+      // Re-read the current value rather than trusting a queued storage event:
+      // another tab may have completed a newer puzzle since it was dispatched.
+      if (key === undefined || key === null || key === completedKey) {
+        setComplete(storedCompletions() ?? []);
+      }
+      if (key === undefined || key === null || key === practiceKey) {
+        const latest = storedPractice() ?? {};
+        practiceRef.current = latest;
+        setPractice(latest);
+      }
+    };
+    queueMicrotask(() => syncFromStorage());
+    const onStorage = (event: StorageEvent) => {
+      if (event.storageArea === localStorage) syncFromStorage(event.key);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const record = (event: PuzzlePracticeEvent) => {
-    const next = recordPuzzlePractice(practiceRef.current, current.id, event);
+    // Merge with the most recent cross-tab write before increasing a counter.
+    const next = recordPuzzlePractice(storedPractice() ?? practiceRef.current, current.id, event);
     practiceRef.current = next;
     setPractice(next);
-    try { localStorage.setItem("rookline-puzzle-practice", JSON.stringify(next)); }
+    try { localStorage.setItem(practiceKey, JSON.stringify(next)); }
     catch { /* Practice works when storage is disabled. */ }
   };
 
@@ -71,9 +94,10 @@ export function PuzzleTrainer() {
     setSelected(null);
     setKeyboardMove("");
     setFeedback(`Correct! ${result.san} is the answer.`);
-    const next = Array.from(new Set([...complete, current.id]));
+    // A second tab can solve a different puzzle while this tab remains open.
+    const next = Array.from(new Set([...complete, ...(storedCompletions() ?? []), current.id]));
     setComplete(next);
-    try { localStorage.setItem("rookline-puzzles", JSON.stringify(next)); }
+    try { localStorage.setItem(completedKey, JSON.stringify(next)); }
     catch { /* Private browsing or quota restrictions must not block practice. */ }
     return true;
   };

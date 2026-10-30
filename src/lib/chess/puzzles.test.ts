@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { evaluatePuzzleMove, isPuzzleSolution, nextAdaptivePuzzleIndex, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, readPuzzlePractice, recordPuzzlePractice } from "./puzzles";
+import { evaluatePuzzleMove, isPuzzleSolution, nextAdaptivePuzzleIndex, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, readPuzzleCompletions, readPuzzlePractice, recordPuzzlePractice } from "./puzzles";
 
 describe("original puzzle set", () => {
   it("contains legal, solvable positions", () => {
@@ -77,6 +77,11 @@ describe("original puzzle set", () => {
     expect(readPuzzlePractice(["invalid"])).toEqual({});
     expect(recordPuzzlePractice(stored, "missing", "solve")).toBe(stored);
     expect(recordPuzzlePractice({ "fork-005": { errors: 9999, hints: 0, solves: 0 } }, "fork-005", "error")["fork-005"].errors).toBe(9999);
+  });
+  it("deduplicates known puzzle completion IDs from device storage", () => {
+    expect(readPuzzleCompletions(["mate-001", "unknown", "fork-005", "mate-001", 17, null]))
+      .toEqual(["mate-001", "fork-005"]);
+    expect(readPuzzleCompletions({ "mate-001": true })).toEqual([]);
   });
   it("adapts review to actual mistakes and hints, rotating after mastery", () => {
     let practice = readPuzzlePractice({});

@@ -29,6 +29,13 @@ export type PuzzleTheme = (typeof puzzleThemes)[number];
 export type PuzzlePractice = Record<string, { errors: number; hints: number; solves: number }>;
 export type PuzzlePracticeEvent = "error" | "hint" | "solve";
 
+/** Ignore unknown and malformed puzzle IDs restored from device storage. */
+export function readPuzzleCompletions(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const known = new Set<string>(puzzles.map((puzzle) => puzzle.id));
+  return Array.from(new Set(raw.filter((id): id is string => typeof id === "string" && known.has(id))));
+}
+
 /** Read only known puzzle IDs and bounded counters from untrusted device storage. */
 export function readPuzzlePractice(raw: unknown): PuzzlePractice {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};

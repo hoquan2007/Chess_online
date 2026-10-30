@@ -165,6 +165,64 @@ test("puzzle keyboard input validates moves, records new tactics, and restores p
   await expect(page.getByText("Solved 2 / 20 positions on this device.")).toBeVisible();
 });
 
+test("two open puzzle tabs preserve each other's completions and adaptive practice", async ({ page, context }) => {
+  await page.goto("/puzzles");
+  const second = await context.newPage();
+  try {
+    await second.goto("/puzzles");
+    await page.getByRole("button", { name: "Puzzle 4", exact: true }).click();
+    const firstMove = page.getByRole("textbox", { name: /Keyboard move/ });
+    await firstMove.fill("e1e2");
+    await firstMove.press("Enter");
+    await firstMove.fill("e1e8");
+    await firstMove.press("Enter");
+    await expect(second.getByText("Solved 1 / 20 positions on this device.")).toBeVisible();
+
+    await second.getByRole("button", { name: "Puzzle 5", exact: true }).click();
+    const secondMove = second.getByRole("textbox", { name: /Keyboard move/ });
+    await secondMove.fill("e4f6");
+    await secondMove.press("Enter");
+    await secondMove.fill("e4d6");
+    await secondMove.press("Enter");
+    await expect(page.getByText("Solved 2 / 20 positions on this device.")).toBeVisible();
+    await expect(second.getByText("Solved 2 / 20 positions on this device.")).toBeVisible();
+    const stored = await page.evaluate(() => ({
+      completed: JSON.parse(localStorage.getItem("rookline-puzzles") ?? "[]") as string[],
+      practice: JSON.parse(localStorage.getItem("rookline-puzzle-practice") ?? "{}") as Record<string, { errors: number; solves: number }>,
+    }));
+    expect(stored.completed).toEqual(["mate-004", "fork-005"]);
+    expect(stored.practice["mate-004"]).toMatchObject({ errors: 1, solves: 1 });
+    expect(stored.practice["fork-005"]).toMatchObject({ errors: 1, solves: 1 });
+    await page.reload();
+    await expect(page.getByText("Solved 2 / 20 positions on this device.")).toBeVisible();
+  } finally {
+    await second.close();
+  }
+});
+
+test("puzzle practice retains in-memory review scores if device storage refuses writes", async ({ page }) => {
+  await page.addInitScript(() => {
+    const originalSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "rookline-puzzle-practice") throw new DOMException("Storage quota reached", "QuotaExceededError");
+      return originalSet.call(this, key, value);
+    };
+  });
+  await page.goto("/puzzles");
+  await page.getByLabel("Practice topic").selectOption("Fork");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  for (let i = 0; i < 4; i++) {
+    await input.fill("e4f6");
+    await input.press("Enter");
+  }
+  await page.getByRole("button", { name: "Hint" }).click();
+  await input.fill("e4d6");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Nd6+" })).toBeVisible();
+  await page.getByRole("button", { name: "Adaptive review off" }).click();
+  await expect(page.getByRole("heading", { name: "Knight fork", exact: true })).toBeVisible();
+});
+
 test("mate-in-one puzzle credits alternative correct checkmate", async ({ page }) => {
   await page.goto("/puzzles");
   await page.getByRole("button", { name: "Puzzle 2", exact: true }).click();

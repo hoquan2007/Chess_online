@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 56: puzzle progress across local browser tabs
+
+- CH-13 fixes lost device-local completed puzzles and review scores when distinct open tabs solve positions. Storage events refresh the other tab and every write reads fresh sanitized storage; blocked device writes retain adaptive counters in memory. Two real-tab Chromium scenarios test cross-tab solved IDs, practice errors/solves after reload, and quota-rejected writes preserving adaptive priority.
+- **Local QA:** `npm run check` default sandbox: ESLint PASS, strict TypeScript PASS, **154/154 Vitest in 20 files PASS**; subsequent Webpack build failed Windows `EPERM` on `.next/server/app/play/online`. Isolated authorized `npm run build`: **PASS, 17 static pages**. Focused Chromium **2/2 PASS**, full native `npx playwright test --workers=1`: **63 local/mock PASS, 1 guarded actual-hosted SKIP**, exit 0. These are local/browser outcomes, not hosted Auth/Realtime evidence.
+- Staging environment remains unavailable per current checkpoint's presence-only check; genuine 3-user Auth/RLS, independent two-browser online Realtime, PostgreSQL lock/clock races, rated settlement and public HTTPS origin acceptance remain **UNVERIFIED**. **20 gates OPEN, rated OFF**, no schema push, deployment or main merge.
+
 ## 2026-10-30 — checkpoint 55: authenticated cross-device account preferences
 
 - Added `GET/PATCH /api/preferences` with verified Supabase user, own-row RLS, strict `theme`/`sounds_enabled` JSON, 256-byte limit, same-origin mutation protection, private/no-store responses, and sanitized storage failures. A queued PATCH must include `X-Rookline-Account` matching the **currently verified** account; mismatched/absent identity receives 409 without a database write. Browser sync serializes updates, aborts former-account PATCH on session changes, guards old GET responses, preserves edits during loading and retries after failed reads. Settings/topbar/audio share change events and display sync state.
