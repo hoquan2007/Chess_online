@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 66: local clock advances through device suspend
+
+- **Implementation:** `src/components/GameWorkspace.tsx` tracks both monotonic and wall tick timestamps. `settleClock` charges the greater nonnegative elapsed interval when a local/computer game resumes from sleep; existing control increments and move timeout guard remain. The new `e2e/rookline.spec.ts` test simulates 181 seconds of sleeping wall time and verifies the expired move is refused with Black `00:00` and Timeout outcome.
+- **Observed results:** Focused `ROOKLINE_E2E_PORT=34885 npx playwright test e2e/rookline.spec.ts --grep 'charges wall time' --workers=1` **1 PASS, exit 0**. Full `ROOKLINE_E2E_PORT=34886 npx playwright test --workers=1` **71 local/mock PASS, 1 real hosted Supabase SKIP, exit 0**; both needed native approved loopback permissions. Fresh `npm run lint`, `npm run typecheck` and `npm test` **PASS, exit 0**, **171/171 unit across 24 files**. Native `npm run build --webpack` via package `npm run build` **PASS, exit 0**, Next compiled and generated **17/17 pages**. The initial restricted browser attempt could not access loopback, so was terminated; it is not evidence of a test assertion failure. `git diff --check` PASS.
+- **Limits and risk:** Browser tests mock online API responses; the 72nd hosted test was deliberately skipped without credentials. Manual system-clock increases can accelerate unrated local clocks; server-authoritative hosted clocks and rated logic are unchanged. All four local Next runtime Supabase values remain absent by value-free check, preventing real HTTPS Auth/RLS/Realtime/independent SQL clock evidence. **20 final release gates OPEN, rated OFF, no production deployment.**
+
 ## 2026-10-31 — checkpoint 65: reject a contradictory online turn
 
 - **RED/GREEN:** A canonical one-move `e4` snapshot with matching PGN, FEN and `ply=1` but `turn='w'` was accepted by `replayGame`; the new unit regression failed first. Replay now checks reconstructed `chess.turn()` against the stored turn. This shared validator is used by server move/claim verification and the GameRoom display, so inconsistent ledgers fail closed. The valid `turn='b'` snapshot still replays.

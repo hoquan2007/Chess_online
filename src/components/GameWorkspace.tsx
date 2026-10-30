@@ -80,6 +80,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   const [gameId, setGameId] = useState("local-0");
   const requestId = useRef(0);
   const tickAt = useRef(0);
+  const wallTickAt = useRef(0);
 
   const game = engine.current;
   const history = game.history({ verbose: true });
@@ -95,6 +96,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     setFen(engine.current.fen());
     setSelected(null);
     tickAt.current = performance.now();
+    wallTickAt.current = Date.now();
   }, []);
 
   useEffect(() => {
@@ -168,8 +170,12 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
 
   const settleClock = useCallback(() => {
     const now = performance.now();
-    const elapsedMs = now - tickAt.current;
+    const wallNow = Date.now();
+    // Some browsers/platforms stop monotonic time while the device sleeps.
+    // Charge whichever elapsed duration is longer for unrated device-local play.
+    const elapsedMs = Math.max(0, now - tickAt.current, wallNow - wallTickAt.current);
     tickAt.current = now;
+    wallTickAt.current = wallNow;
     if (!running || manualResult || !engine.current.history().length || gameResult(engine.current).finished) return true;
     const turn = engine.current.turn();
     const previous = clockRef.current;
@@ -187,6 +193,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   useEffect(() => {
     if (!running || outcome || !history.length) return;
     tickAt.current = performance.now();
+    wallTickAt.current = Date.now();
     const timer = window.setInterval(() => { settleClock(); }, 250);
     return () => window.clearInterval(timer);
   }, [fen, running, outcome, history.length, settleClock]);

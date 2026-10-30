@@ -1361,6 +1361,27 @@ test("a late move is refused even before a throttled clock interval fires", asyn
   await expect(entry).toBeDisabled();
 });
 
+test("a local clock charges wall time when monotonic time stops during device sleep", async ({ page }) => {
+  await page.goto("/play/local");
+  await page.getByRole("button", { name: "3+2" }).click();
+  const entry = page.getByRole("textbox", { name: /Keyboard move/ });
+  await entry.fill("e2e4");
+  await entry.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+
+  // On some systems performance.now() excludes suspended sleep. Simulate
+  // wall-time advancing while monotonic time continues by only a few ms.
+  await page.evaluate(() => {
+    const clock = Date.now.bind(Date);
+    Date.now = () => clock() + 181_000;
+  });
+  await entry.fill("e7e5");
+  await entry.press("Enter");
+  await expect(page.getByLabel("Game controls").locator('[role="status"]')).toHaveText("Timeout");
+  await expect(page.getByLabel("Black clock")).toHaveText("00:00");
+  await expect(page.getByLabel("Move history").getByText("e5")).toHaveCount(0);
+});
+
 test("keyboard-only coordinate entry validates and plays a local chess move", async ({ page }) => {
   await page.goto("/play/local");
   const input = page.getByRole("textbox", { name: /Keyboard move/ });

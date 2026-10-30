@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 66 — clock time after device sleep
+
+- Local/computer game clock previously relied on `performance.now()` even though that monotonic source can stop during system suspend. `GameWorkspace` now records both monotonic and wall-time tick samples and settles the positive greater elapsed duration. In a real Chromium regression `Date.now` advances by 181 seconds while `performance.now` does not; a `3+2` Black move after wake is rejected, clock reads `00:00`, and game reports Timeout.
+- Verification after source changes: focused native Chromium **1/1 PASS**; full native Playwright **71 local/mock PASS / 1 genuine Supabase hosted SKIP (72 discovered), exit 0**; fresh ESLint, strict TypeScript, **171/171 Vitest PASS**, and native Webpack production build **17 prerendered pages, exit 0**. Restricted Playwright server startup could not bind loopback (`EACCES`); approved native run succeeded. `git diff --check` passed (only line-ending conversion notices).
+- Review: wall-time can be affected by manual clock changes, appropriate here only for unrated on-device games. Server-authoritative online clocks were not modified. Rollback: revert `GameWorkspace` wall-time sample and new regression if it causes compatibility issues. S0 real HTTPS Auth/RLS/three-identity integration remains BLOCKED_EXTERNAL; other S1–S6 gates remain pending. **20 OPEN, rated OFF, IN_PROGRESS; production remains gated.**
+
 ## 2026-10-31, checkpoint 64 — owned time-control validation
 
 - Discovered and reproduced prototype-inherited names bypassing both the hosted game-create control allowlist and saved local-session control validation. Added four RED/GREEN POST regression cases, a valid `3+2` POST assertion, and a real Chromium corrupt-storage regression. Both entry points now require own properties; server validates before privileged insert or rate limit.
