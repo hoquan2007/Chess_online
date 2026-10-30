@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { evaluatePuzzleMove, isPuzzleSolution, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes } from "./puzzles";
+import { evaluatePuzzleMove, isPuzzleSolution, nextAdaptivePuzzleIndex, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, readPuzzlePractice, recordPuzzlePractice } from "./puzzles";
 
 describe("original puzzle set", () => {
   it("contains legal, solvable positions", () => {
@@ -43,5 +43,31 @@ describe("original puzzle set", () => {
     expect(nextPracticePuzzleIndex(4, "Fork", ["fork-005"])).toBe(9);
     expect(nextPracticePuzzleIndex(9, "Fork", ["fork-005", "fork-010"])).toBe(4);
     expect(nextPracticePuzzleIndex(9, "All", ["mate-001"])).toBe(1);
+  });
+  it("sanitizes tampered practice history and bounds counters", () => {
+    const stored = readPuzzlePractice({
+      "fork-005": { errors: 4, hints: -10, solves: "2" },
+      "fork-010": { errors: 10000000, hints: 1, solves: 0 },
+      unknown: { errors: 30, hints: 20, solves: 10 },
+    });
+    expect(stored).toEqual({
+      "fork-005": { errors: 4, hints: 0, solves: 0 },
+      "fork-010": { errors: 0, hints: 1, solves: 0 },
+    });
+    expect(readPuzzlePractice(["invalid"])).toEqual({});
+    expect(recordPuzzlePractice(stored, "missing", "solve")).toBe(stored);
+    expect(recordPuzzlePractice({ "fork-005": { errors: 9999, hints: 0, solves: 0 } }, "fork-005", "error")["fork-005"].errors).toBe(9999);
+  });
+  it("adapts review to actual mistakes and hints, rotating after mastery", () => {
+    let practice = readPuzzlePractice({});
+    for (let i = 0; i < 4; i++) practice = recordPuzzlePractice(practice, "fork-005", "error");
+    practice = recordPuzzlePractice(practice, "fork-005", "hint");
+    practice = recordPuzzlePractice(practice, "fork-005", "solve");
+    expect(nextPracticePuzzleIndex(-1, "Fork", ["fork-005"])).toBe(9);
+    expect(nextAdaptivePuzzleIndex(-1, "Fork", ["fork-005"], practice)).toBe(4);
+    expect(nextAdaptivePuzzleIndex(4, "Fork", ["fork-005"], practice)).toBe(9);
+    for (let i = 0; i < 3; i++) practice = recordPuzzlePractice(practice, "fork-005", "solve");
+    expect(nextAdaptivePuzzleIndex(-1, "Fork", ["fork-005"], practice)).toBe(9);
+    expect(nextAdaptivePuzzleIndex(-1, "Pin", [], {})).toBe(5);
   });
 });

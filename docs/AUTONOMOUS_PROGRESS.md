@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 40 — adaptive tactics review and complete local QA
+
+- Added a device-local practice history keyed by ten known original puzzle IDs. Wrong or illegal attempts, hints and successful solutions are bounded and sanitized on restore; the optional adaptive selector revisits weak tactics, rewards unseen puzzles, and rotates away from immediate repeats. A synchronous ref prevents rapid successive hint/error events from dropping increments.
+- Verified `npm run check` **PASS** (ESLint, strict TypeScript, **78/78 Vitest across 12 suites**, optimized Webpack build **17/17 pages**); full native Chromium **53 local/mock PASS, 1 guarded live staging SKIP**, exit 0, including multiple rapid hints and restored history after reload. `next-env.d.ts` was returned to its committed generated-reference form after Next dev rewrote it.
+- CH-13 remains `PARTIAL`: only ten original puzzles and local adaptation, no broad hosted curriculum or user-account sync. Four staging runtime keys absent at the last presence-only probe; genuine Auth/JWT/RLS, two-client play/Realtime, two-connection clock/rating contention remain unverified. Rated creation OFF, **20 acceptance gates OPEN, IN_PROGRESS**. Continue S0→S6, with reviewable local slices while external checks are blocked; no production deploy or main merge.
+
 ## 2026-10-30, checkpoint 37 — staging SQL and role-simulated RLS verified
 
 - Executed the new tenth rated completion migration and its negative/positive exactly-once fixture inside a transaction on the dedicated live staging Postgres; **PASS followed by ROLLBACK**, leaving only the original nine remote migrations. Added result/winner consistency guard and invalid-result tests. Independently executed a new three-identity `authenticated`-role RLS fixture with transaction-local JWT claims: **PASS followed by ROLLBACK**. Neither check proves real Auth/Realtime, cross-session locking or durable rated migration deployment.

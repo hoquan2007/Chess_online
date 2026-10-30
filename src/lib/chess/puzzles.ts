@@ -16,6 +16,32 @@ export const puzzles = [
 export const puzzleThemes = ["All", "Checkmate", "Fork", "Pin", "Capture", "Promotion"] as const;
 export type PuzzleTheme = (typeof puzzleThemes)[number];
 
+export type PuzzlePractice = Record<string, { errors: number; hints: number; solves: number }>;
+export type PuzzlePracticeEvent = "error" | "hint" | "solve";
+
+/** Read only known puzzle IDs and bounded counters from untrusted device storage. */
+export function readPuzzlePractice(raw: unknown): PuzzlePractice {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const stored = raw as Record<string, unknown>;
+  const practice: PuzzlePractice = {};
+  const counter = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 9999
+    ? value as number : 0;
+  for (const puzzle of puzzles) {
+    const entry = stored[puzzle.id];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const data = entry as Record<string, unknown>;
+    practice[puzzle.id] = { errors: counter(data.errors), hints: counter(data.hints), solves: counter(data.solves) };
+  }
+  return practice;
+}
+
+export function recordPuzzlePractice(practice: PuzzlePractice, id: string, event: PuzzlePracticeEvent): PuzzlePractice {
+  if (!puzzles.some((puzzle) => puzzle.id === id)) return practice;
+  const entry = practice[id] ?? { errors: 0, hints: 0, solves: 0 };
+  const field = event === "error" ? "errors" : event === "hint" ? "hints" : "solves";
+  return { ...practice, [id]: { ...entry, [field]: Math.min(9999, entry[field] + 1) } };
+}
+
 export function puzzleIndicesForTheme(theme: PuzzleTheme): number[] {
   return puzzles.flatMap((puzzle, index) => theme === "All" || puzzle.theme === theme ? [index] : []);
 }
@@ -28,6 +54,26 @@ export function nextPracticePuzzleIndex(currentIndex: number, theme: PuzzleTheme
   const position = indices.indexOf(currentIndex);
   const next = [...indices.slice(position + 1), ...indices.slice(0, position + 1)];
   return next.find((index) => !completed.includes(puzzles[index].id)) ?? next[0];
+}
+
+/** Choose weak positions from actual practice history. A new position has a
+ * modest advantage; repeated errors and hints can outweigh that advantage.
+ * Solving a position repeatedly lowers its review priority. Ties rotate in
+ * catalogue order, avoiding immediate repetition when alternatives exist. */
+export function nextAdaptivePuzzleIndex(
+  currentIndex: number, theme: PuzzleTheme, completed: readonly string[], practice: PuzzlePractice,
+): number {
+  const indices = puzzleIndicesForTheme(theme);
+  if (indices.length <= 1) return indices[0] ?? 0;
+  const position = indices.indexOf(currentIndex);
+  const candidates = [...indices.slice(position + 1), ...indices.slice(0, position + 1)]
+    .filter((index) => index !== currentIndex);
+  const score = (index: number) => {
+    const stats = practice[puzzles[index].id] ?? { errors: 0, hints: 0, solves: 0 };
+    return (completed.includes(puzzles[index].id) ? 0 : 8) +
+      Math.min(stats.errors, 6) * 4 + Math.min(stats.hints, 3) * 2 - Math.min(stats.solves, 5) * 5;
+  };
+  return candidates.reduce((best, index) => score(index) > score(best) ? index : best, candidates[0]);
 }
 
 export function evaluatePuzzleMove(id: string, from: string, to: string, promotion: "q" | "r" | "b" | "n" = "q") {

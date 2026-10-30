@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 40: adaptive puzzle history and native regression
+
+- Unit tests for corrupted device storage, numeric bounds, known IDs, error/hint/solve tracking and adaptive ordering **PASS**; browser case deliberately fires two Hint clicks synchronously, verifies 4 errors + 3 hints + 1 solve survive reload, and checks weak fork review with repeat avoidance.
+- `npm run check` **PASS, exit 0:** lint, strict TypeScript, **78/78 Vitest (12 suites)**, Next.js optimized Webpack **17/17 generated pages**. `npm run test:e2e -- --workers=1` **PASS, exit 0:** **53 Chromium local/mock PASS, 1 guarded genuine staging test SKIP** (2.9m). The full browser run followed the rapid-event ref correction; no hosted test executed.
+- Device-local curriculum is still partial. Latest safe process-env probe found all four Supabase staging runtime variables absent; real Auth, RLS with genuine sessions, Realtime, independent DB clocks and rated transactions are unverified. 20 product acceptance gates remain OPEN; `IN_PROGRESS`. Rollback: revert checkpoint-40 puzzle/UI/test change. No staging migration, production deploy or main merge in this slice.
+
 ## 2026-10-30 — checkpoint 37: transactional staging validation without installing DDL
 
 - On dedicated connected Supabase staging `chessonline` (`tyvczicinpjixmxgjhjn`), executed the **entire tenth rated-settlement migration plus `supabase/tests/rated-settlement-acceptance.sql`** in a single rolled-back SQL transaction, twice (the second run included result/winner consistency protection and three new negative cases): **PASS, no SQL error**. Verified afterward that no new rating trigger/helper/constraint remained and the remote migration history still contains **nine** versions. This establishes successful SQL execution of the transaction and rollback fixture against actual PostgreSQL, **not** a durable installation, true two-connection contention or API-driven rated game.

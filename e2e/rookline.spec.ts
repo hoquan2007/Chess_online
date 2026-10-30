@@ -194,6 +194,38 @@ test("puzzle topic navigation prioritizes unsolved tactics and survives a reload
   await expect(page.getByText("Fork: 1 / 2 solved.")).toBeVisible();
 });
 
+test("adaptive puzzle review persists mistakes and revisits weak solved tactics", async ({ page }) => {
+  await page.goto("/puzzles");
+  await page.getByLabel("Practice topic").selectOption("Fork");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  for (let i = 0; i < 4; i++) {
+    await input.fill("e4f6");
+    await input.press("Enter");
+    await expect(page.getByRole("status").filter({ hasText: "stronger tactic" })).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Hint" }).click();
+  await page.evaluate(() => {
+    const hint = Array.from(document.querySelectorAll("button")).find((item) => item.textContent?.trim() === "Hint");
+    if (!hint) throw new Error("Hint button missing");
+    hint.click();
+    hint.click();
+  });
+  await input.fill("e4d6");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Nd6+" })).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-puzzle-practice") ?? "{}") ["fork-005"])).toEqual({ errors: 4, hints: 3, solves: 1 });
+  await page.reload();
+  await page.getByLabel("Practice topic").selectOption("Fork");
+  await expect(page.getByRole("heading", { name: "A second knight fork" })).toBeVisible();
+  await page.getByRole("button", { name: "Adaptive review off" }).click();
+  await expect(page.getByRole("button", { name: "Adaptive review on" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "Knight fork", exact: true })).toBeVisible();
+  await input.fill("e4d6");
+  await input.press("Enter");
+  await page.getByRole("button", { name: "Next puzzle" }).click();
+  await expect(page.getByRole("heading", { name: "A second knight fork" })).toBeVisible();
+});
+
 test("analysis imports PGN and navigates positions", async ({ page }) => {
   await page.goto("/analysis");
   await page.getByRole("textbox", { name: "PGN game" }).fill("1. e4 e5 2. Nf3 Nc6");
