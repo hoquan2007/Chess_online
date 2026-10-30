@@ -1478,6 +1478,34 @@ test("game room ignores an old HTTP snapshot arriving after a newer ply", async 
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 
+test("game room never resumes a completed game from a contradictory higher-ply snapshot", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000081";
+  const chess = new Chess();
+  const initialFen = chess.fen();
+  chess.move("e4");
+  const now = new Date().toISOString();
+  const completed = { id, white_id: "white-id", black_id: "black-id", status: "completed",
+    pgn: "", fen: initialFen, turn: "w", ply: 0, base_ms: 300000, increment_ms: 0,
+    white_ms: 300000, black_ms: 300000, clock_anchor_at: null,
+    result: "Resignation", winner_id: "black-id", rated: false, created_at: now };
+  const contradictory = { ...completed, status: "active", pgn: chess.pgn(), fen: chess.fen(),
+    turn: "b", ply: 1, result: null, winner_id: null, clock_anchor_at: now };
+  let requests = 0;
+  await page.route(`**/api/games/${id}`, (route) => {
+    const game = ++requests === 1 ? completed : contradictory;
+    return route.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify({ game, viewerColor: "w" }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByText("Game finished · Resignation")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Resign" })).toBeDisabled();
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
+  await expect(page.getByText("Game finished · Resignation")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Resign" })).toBeDisabled();
+  await expect(page.getByLabel("Move history").getByText("e4")).toHaveCount(0);
+});
+
 test("online clock uses server time even when the device clock is an hour fast", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000011";
   const anchor = new Date().toISOString();

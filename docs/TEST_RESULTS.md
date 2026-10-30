@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 75: terminal snapshot monotonicity
+
+- **Previously pushed commit:** GitHub Actions Linux run `41139635719` for `bd7b4cf` ended **SUCCESS**, including Playwright. Protected Vercel Preview `dpl_59SVisnhrskhKTgW2CFgXaPJBpDj` is READY from that commit; neither status verifies the changes in this checkpoint.
+- **Regression proof:** a completed/cancelled game can never accept a later contradictory `active`, different terminal kind or larger ply. Focused Vitest was RED before the fix (1 failed / 20 passed), GREEN afterward (21/21). A new browser test confirms a completed resignation remains ended after a `Sync` HTTP reply claims one extra move and an active game.
+- **Post-fix Windows validation:** migration fingerprints 9/9 PASS (local pinned snapshot only), lint PASS, strict TypeScript PASS, **176/176 Vitest PASS** (25 files). Combined `npm run check` build failed only on Windows `EPERM` creating `.next/server/app/analysis`; separate elevated `npm run build` **exit 0**, Webpack 17 static pages. Focused Chromium **1/1 PASS**; complete `npm run test:e2e` **74 PASS / 1 hosted Supabase SKIP** (75 discovered, exit 0). No staging credentials were used for this browser run.
+- **Unproven by this evidence:** real three-user Supabase Auth/RLS/Origin, private Realtime, independent PostgreSQL transaction/clock races, rated/financially durable settlement or full release. Nine staging SQL source bodies matched previously, but remote migration version IDs still differ. Do not run blind `db push`. All 20 product release gates remain OPEN and rated remains disabled.
+
 ## 2026-10-31 — checkpoint 74: adaptive puzzle reload regression
 
 - **GitHub Linux evidence:** Actions `41137690679` and `41138490018` failed exactly at `e2e/rookline.spec.ts:350` after selecting Fork immediately after a reload. Each had 72 browser PASS, 1 FAIL and 1 genuine hosted SKIP. An intervening run `41138300540` was GREEN; this was an intermittent client hydration race.

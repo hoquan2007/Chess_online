@@ -35,11 +35,16 @@ export const validSquare = (value: unknown): value is string => typeof value ===
  */
 export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
   if (current.id !== incoming.id) return false;
-  if (incoming.ply !== current.ply) return incoming.ply < current.ply;
+  // A committed terminal game cannot resume, change terminal kind or gain
+  // moves. Reject contradictory responses even if their ply is higher.
+  if (current.status === "completed" || current.status === "cancelled") {
+    return incoming.status !== current.status || incoming.ply !== current.ply;
+  }
   const phase: Record<OnlineGame["status"], number> = {
     waiting: 0, active: 1, completed: 2, cancelled: 2,
   };
-  return phase[incoming.status] < phase[current.status];
+  if (phase[incoming.status] < phase[current.status]) return true;
+  return incoming.ply < current.ply;
 }
 
 /** Rebuild from the server's canonical, durable PGN to preserve repetition history. */

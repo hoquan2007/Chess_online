@@ -146,6 +146,20 @@ describe("out-of-order authoritative snapshots", () => {
     expect(isOlderGameSnapshot(snapshot({ status: "active" }), snapshot({ status: "waiting" }))).toBe(true);
     expect(isOlderGameSnapshot(completed, completed)).toBe(false);
   });
+  it("never resurrects a completed or cancelled game despite a higher incoming ply", () => {
+    const completed = snapshot({ ply: 4, status: "completed", result: "resignation", winner_id: "black-id" });
+    expect(isOlderGameSnapshot(completed, snapshot({ ply: 5, status: "active" }))).toBe(true);
+    expect(isOlderGameSnapshot(completed, snapshot({ ply: 5, status: "completed" }))).toBe(true);
+    expect(isOlderGameSnapshot(completed, snapshot({ ply: 4, status: "cancelled" }))).toBe(true);
+
+    const cancelled = snapshot({ ply: 0, status: "cancelled" });
+    expect(isOlderGameSnapshot(cancelled, snapshot({ ply: 1, status: "active" }))).toBe(true);
+    expect(isOlderGameSnapshot(cancelled, snapshot({ ply: 0, status: "completed" }))).toBe(true);
+    expect(isOlderGameSnapshot(cancelled, cancelled)).toBe(false);
+
+    expect(isOlderGameSnapshot(snapshot({ ply: 2, status: "active" }), snapshot({ ply: 3, status: "waiting" }))).toBe(true);
+    expect(isOlderGameSnapshot(snapshot({ ply: 2, status: "active" }), snapshot({ ply: 3, status: "completed" }))).toBe(false);
+  });
 });
 
 describe("auth redirects", () => {

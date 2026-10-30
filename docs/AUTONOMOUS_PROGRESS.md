@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 75 — terminal online state cannot be resurrected
+
+- Confirmed the previously pushed `bd7b4cf` finished Linux Actions run `41139635719` with all quality steps GREEN, including browser checks. Its protected Vercel Preview `dpl_59SVisnhrskhKTgW2CFgXaPJBpDj` was READY; Preview has two public Supabase settings and no server-only key.
+- Reproduced a browser state regression in `isOlderGameSnapshot`: a contradictory later HTTP response with a higher ply could turn a completed/cancelled game back into active play. Added RED/GREEN unit checks and browser coverage; a terminal snapshot now rejects changes in terminal kind or ply, and phase regression is considered before ply advancement.
+- Local verification: pinned migration SQL hashes 9/9, ESLint and strict TypeScript PASS; **176 Vitest PASS**. Composite `npm run check` exited 1 only on a Windows sandbox `EPERM` creating `.next/server/app/analysis`; a separately authorized production build exited 0 with **17/17 static pages**. Targeted Chromium 1/1 PASS; full Chromium **74 local/mock PASS, 1 real Supabase hosted SKIP**. These checks do not prove live Auth/RLS, Realtime, independent PG clocks/races or rated settlement.
+- The next critical path is isolated Preview server-only Supabase credentials plus genuine three-user HTTPS Auth/RLS/Origin checks; before DB CLI sync, back up and reconcile nine migration history version IDs. Then S1 live Realtime, S2 two independent PG connections, S3 durable rated settlement, S4 learning/engine, S5 community, S6 complete independent acceptance. **All 20 gates OPEN; rated OFF.** Production and `main` remain withheld.
+
 ## 2026-10-31, checkpoint 74 — puzzle hydration and CI browser race
 
 - Inspected GitHub Actions runs `41137690679` and `41138490018`: both passed pre-browser checks but failed the same adaptive puzzle reload assertion at `e2e/rookline.spec.ts:350` (72 browser PASS / 1 FAIL / 1 real hosted SKIP). Run `41138300540` passed, confirming intermittent behavior.
