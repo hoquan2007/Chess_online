@@ -16,13 +16,13 @@ Statuses: `LOCALLY_TESTED` means a named local unit/browser flow passed, **not**
 | CH-10 | P0 | Exactly once rated settlement | CH-07, ledger | PLANNED | Concurrent settlement integration tests | Security pending |
 | CH-11 | P1 | Profiles, history, leaderboard | CH-05, CH-10 | PARTIAL | `/games` browser archive of completed local/computer games with replay/download and retracted result cleanup after local Undo browser-tested; hosted-read page code exists, live Auth/DB verification and rating absent | Pending |
 | CH-12 | P1 | PGN/FEN analysis/review | CH-02 | PARTIAL | Local PGN Result/FEN/export, archive replay and Result-preserving re-export browser-tested; malformed archive/PGN recovery, analysis keyboard promotion/underpromotion and Escape/focus trap tested; online room PGN uses mocked API; engine evaluations outstanding | Partial QA |
-| CH-13 | P1 | Original puzzles and local progress | CH-02 | PARTIAL | 3 original puzzles, unit/browser tests pass; rating scale outstanding | Partial QA |
+| CH-13 | P1 | Original puzzles and local progress | CH-02 | PARTIAL | 10 original legal puzzles; alternative mating moves, keyboard coordinate entry, promotion selection and reload-persistent progress verified (checkpoint 27: 55 unit / 43 Chromium local/mock PASS); adaptive curriculum and broad difficulty scale outstanding | Partial QA |
 | CH-14 | P1 | Opening explorer and lessons | Licenses, CH-02 | LOCALLY_TESTED | Original interactive content and browser navigation pass; breadth pending | Partial QA |
 | CH-15 | P2 | Chat/friends/search | CH-05, CH-08 | PLANNED | Authentication/moderation tests | Pending |
 | CH-16 | P2 | Notifications, spectators | CH-08 | PLANNED | Channel authorization/reconnect | Pending |
 | CH-17 | P2 | Tournaments and standings | CH-10 | PLANNED | Tournament E2E | Pending |
 | CH-18 | P0 | Security, abuse and rate limits | All hosted features | PARTIAL | Origin/body checks and security headers browser-tested, DB rate limiter draft; RLS/IDOR/abuse integration pending | Partial QA |
-| CH-19 | P0 | CI/CD, full regression, accessibility | All features | PARTIAL | Checkpoint 24 lint/typecheck, 52/52 unit and native Webpack build 17/17 pages PASS; Chromium 41 PASS / 1 guarded staging SKIP; hosted CI, broader accessibility, cross-browser and public preview pending | Partial QA |
+| CH-19 | P0 | CI/CD, full regression, accessibility | All features | PARTIAL | Checkpoint 27 lint/typecheck, 55/55 unit and native Webpack build 17/17 pages PASS; Chromium 43 PASS / 1 guarded staging SKIP; hosted CI, broader accessibility, cross-browser and public preview pending | Partial QA |
 | CH-20 | P0 | Evidence-based release audit | CH-01..19 | PLANNED | 20 acceptance gates with citations | Pending |
 
 See `docs/TEST_RESULTS.md` for exact observed results. No feature has yet passed all its required evidence gates.

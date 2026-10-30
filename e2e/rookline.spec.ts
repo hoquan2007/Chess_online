@@ -135,6 +135,45 @@ test("puzzle solution validates against board rules", async ({ page }) => {
   await expect(page.getByText("Correct! Qxg7# is the answer.")).toBeVisible();
 });
 
+test("puzzle keyboard input validates moves, records new tactics, and restores progress", async ({ page }) => {
+  await page.goto("/puzzles");
+  await page.getByRole("button", { name: "Puzzle 4" }).click();
+  await expect(page.getByRole("heading", { name: "Seal the back rank" })).toBeVisible();
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("invalid");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Use coordinates" })).toBeVisible();
+  await input.fill("e1f2");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "not legal" })).toBeVisible();
+  await input.fill("e1e2");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "legal move" })).toBeVisible();
+  await input.fill("e1e8");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Re8#" })).toBeVisible();
+  await expect(page.getByText("Solved 1 / 10 positions on this device.")).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Solved 1 / 10 positions on this device.")).toBeVisible();
+  await page.getByRole("button", { name: "Puzzle 9" }).click();
+  await input.fill("a7a8n");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "stronger tactic" })).toBeVisible();
+  await input.fill("a7a8q");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! a8=Q+" })).toBeVisible();
+  await expect(page.getByText("Solved 2 / 10 positions on this device.")).toBeVisible();
+});
+
+test("mate-in-one puzzle credits alternative correct checkmate", async ({ page }) => {
+  await page.goto("/puzzles");
+  await page.getByRole("button", { name: "Puzzle 2" }).click();
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("f5f8");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Qf8#" })).toBeVisible();
+});
+
 test("analysis imports PGN and navigates positions", async ({ page }) => {
   await page.goto("/analysis");
   await page.getByRole("textbox", { name: "PGN game" }).fill("1. e4 e5 2. Nf3 Nc6");

@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 27 — puzzle curriculum and keyboard practice
+
+- Expanded the original chess puzzle collection from 3 to 10 validated positions; evaluator now accepts all genuine mate-in-one alternatives, differentiates illegal versus wrong legal attempts and validates chosen promotion. Added coordinate keyboard practice and resilient device-local completion persistence, with focused unit and browser regressions.
+- Full native `npm run check` **PASS** (lint, strict types, **55/55 Vitest**, Webpack **17/17** pages). Native Chromium full suite **43 PASS / 1 real-staging SKIP**; focused browser 3/3 PASS. The real three-identity Auth/RLS/Realtime, join/cancel race and two-session clock checks remain unexecuted; mocked browser cases cannot close these gates.
+- Next: arrange secure dedicated staging environment and execute S0→S1→S2 live evidence, then S3 rated guarantees, S4 learning/analysis, S5 community and S6 independent audit. CH-13 `PARTIAL`, all **20 product gates OPEN**, `IN_PROGRESS`. No production deployment or main merge.
+
 ## 2026-10-30, checkpoint 26 — clean dependency audit and cancellation regression
 
 - Removed unused `shadcn@4.1.0` CLI runtime dependency and its unused Tailwind CSS import; removed 251 transitive packages. Patched three npm transitive dependencies without a breaking `--force` update. Full **online production + development npm audit 0 vulnerabilities**, where the pre-fix production audit contained a critical and five high findings. Added CI `npm audit --audit-level=high` after installation; actual GitHub CI still awaits a remote run.

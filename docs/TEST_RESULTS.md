@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 27: expanded original tactics and accessible input
+
+- Implemented **10 original hand-authored, legal puzzles** (previously 3), with checkmate, fork, pin, capture and underpromotion-choice practice. `evaluatePuzzleMove` uses `chess.js` to distinguish illegal from legal-but-wrong moves; mate-in-one accepts every actual checkmate (including the alternative `Qf8#` in puzzle 2). Existing `isPuzzleSolution` callers remain compatible.
+- Added a labeled, Enter-submittable coordinate keyboard form and promotion suffix support; solved progress survives browser reload and malformed/unavailable localStorage is handled safely. Unit tests cover legal solutions, alternative mates, incorrect and illegal attempts, and exact promotion selection. Browser tests cover keyboard, reload persistence, promotion and a second valid mate.
+- **Observed checkpoint 27 native verification:** `npm run check` **PASS**, exit 0: ESLint, strict TypeScript, **55/55 Vitest in 8 suites**, Webpack build **17/17 generated pages**. `npm run test:e2e -- --workers=1` **PASS**, exit 0: **43 Chromium local/mock scenarios passed**, **1 guarded real Supabase staging scenario SKIPPED**. `git diff --check` PASS (informational CRLF warnings). An earlier default-permission focused Playwright attempt did not start the server; native rerun passed 3/3 focused cases and the complete suite. All checked browser online responses are mocked; **hosted multiplayer is not validated**.
+- No migration or hosted deployment was changed. Staging env secrets remain absent as of the last presence-only probe; S0–S2 `BLOCKED_EXTERNAL`. CH-13 stays `PARTIAL` pending larger adaptive curriculum; all **20 acceptance gates OPEN**, project `IN_PROGRESS`. Rollback: revert the focused puzzle source, UI, unit and browser test commit. No `main` merge/production deployment.
+
 ## 2026-10-30 — checkpoint 26: npm dependency security and full regression
 
 - Before remediation, **online** `npm audit --omit=dev --audit-level=high --json` reported **12 findings** (1 critical, 5 high, 5 moderate, 1 low), primarily from the unused production `shadcn@4.1.0` scaffolding CLI (`@modelcontextprotocol/sdk`, Express, `proxy-addr`). Source search confirmed no application imports of its JS or its CSS utilities; the sole CSS import was removed, and `npm uninstall shadcn --ignore-scripts --offline` removed 251 packages.
