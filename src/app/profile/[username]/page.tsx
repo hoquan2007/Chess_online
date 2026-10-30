@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { UserRound } from "lucide-react";
 import { serverSupabase } from "@/lib/supabase/server";
+import { ProfileEditor } from "@/components/ProfileEditor";
 
 export const metadata = { title: "Player profile" };
 export const dynamic = "force-dynamic";
@@ -34,5 +35,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ userna
     </div>
     {ownProfile ? <div className="game-actions"><Link className="btn primary" href="/games">Your match history</Link><Link className="btn ghost" href="/play/online">Play online</Link></div>
       : <p className="muted">Match history is visible to the participating players.</p>}
+    {ownProfile && <ProfileEditor initialUsername={profile.username} initialDisplayName={profile.display_name} />}
   </section>;
 }

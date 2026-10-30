@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 52 — authenticated profile editor and security regression
+
+- Implemented own-profile `username`/`display_name` editing through CSRF-guarded `PATCH /api/profile`, user-scoped Supabase UPDATE and an accessible owner-only form. Input validation rejects extra/privileged fields, bidi controls, invalid names and oversized JSON; collisions and absent service produce explicit responses. The existing SQL `profiles_update` policy and column grants are relied upon. Authenticated three-user browser/RLS assertions have been added to the opt-in staging suite but have **not run**.
+- Verified locally: **128 Vitest / 17 files**, ESLint, strict TypeScript PASS; focused Chromium **2 PASS**; full Chromium **60 local/mock PASS / 1 guarded hosted SKIP**; elevated native Next Webpack build **17/17 pages PASS**. Restricted build produced `.next` Windows `EPERM`, recovered through authorized native run.
+- Four Supabase staging runtime variables remain absent by value-free probe. Next S0 genuine HTTPS/three-user Auth/RLS including profile changes → S1 two-browser Realtime → S2 parallel Postgres clocks/locks → S3 reconcile migration mapping, install reviewed rated SQL and prove exactly-once settlement/matching → S4 full engine/hosted learning → S5 social/tournaments → S6 independent 20-gate audit. **IN_PROGRESS, 20 OPEN**, rated OFF; no `main` merge or production deploy.
+
 ## 2026-10-30, checkpoint 50 — authenticated online archive pagination
 
 - Added a participant-restricted online archive with stable 50-game pages, a PostgreSQL microsecond-preserving cursor and a UUID tie-breaker. The server validates cursor input before a privileged query, enforces membership in both seat branches, returns private/no-store results and handles database failures without exposing internal details. `/games` now loads older records on demand, deduplicates entries and provides clear session/error feedback; the online lobby links to the complete archive.

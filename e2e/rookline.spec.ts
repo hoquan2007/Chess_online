@@ -451,6 +451,22 @@ test("game archive, leaderboard and profile expose truthful unconfigured states"
   await expect(page.getByRole("heading", { name: "Rankings need a connected service" })).toBeVisible();
   await page.goto("/profile/rook_test");
   await expect(page.getByRole("heading", { name: "Profiles need a connected service." })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save profile" })).toHaveCount(0);
+});
+
+test("profile update requires same-origin intent and an authenticated service", async ({ request }) => {
+  const thirdParty = await request.patch("/api/profile", {
+    headers: { Origin: "https://third-party.example", "Content-Type": "application/json" },
+    data: { username: "rook_player", display_name: "Player" },
+  });
+  expect(thirdParty.status()).toBe(403);
+  expect(await thirdParty.json()).toMatchObject({ error: "Cross-origin action denied" });
+  const unconfigured = await request.patch("/api/profile", {
+    headers: { Origin: "http://127.0.0.1:3100", "Content-Type": "application/json" },
+    data: { username: "rook_player", display_name: "Player" },
+  });
+  expect(unconfigured.status()).toBe(503);
+  expect(await unconfigured.json()).toMatchObject({ error: "Profiles are unavailable" });
 });
 
 test("server denies cross-origin game mutations before using credentials", async ({ request }) => {

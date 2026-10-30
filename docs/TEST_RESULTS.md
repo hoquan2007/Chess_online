@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 52: authenticated owner-only profile editing
+
+- Added strict profile update parsing, a private/no-store `PATCH /api/profile` guarded by same-origin intent and verified Supabase Auth, and an owner-only profile form. The write targets `profiles.id = verified user.id` using the user-scoped client and existing RLS/column grants. Handles malformed/oversized payloads, username conflicts, missing rows and absent service without exposing database internals. Username changes navigate to the new URL.
+- Extended the **opt-in, unexecuted** three-real-user staging scenario to require an actual browser profile update, a public view without edit controls, and outsider direct-table-update isolation. This is test code only; it does not prove deployed Auth or RLS behavior.
+- **Observed local verification:** ESLint PASS; strict TypeScript PASS; **128/128 Vitest across 17 files PASS**; focused Chromium profile cases **2/2 PASS**; full native Chromium **60 local/mock PASS / 1 guarded genuine hosted SKIP**, exit 0; elevated native Webpack production **17/17 pages PASS**, exit 0. Default-sandbox Webpack build reported Windows `EPERM` on `.next/types/app/games`, then the authorized elevated build passed. The first non-escalated browser run hung during local dev server startup and was interrupted; the authorized focused and full runs passed.
+- Fresh presence-only check: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` all absent from process and `.env.local`. **No real three-user Auth/RLS, public HTTPS Origin/Host, two-browser Realtime or independent PostgreSQL clock/lock/rating contention verified.** Nine installed staging migration IDs still require reconciliation; tenth rated migration unapplied, rated creation OFF. **20 acceptance gates OPEN / IN_PROGRESS**. No deployment, production database mutation or `main` merge.
+
 ## 2026-10-30 — checkpoint 50: authenticated history read and pagination
 
 - Implemented GET `/api/games` with 50-result cursor pages, precise microsecond timestamp preservation and UUID tie-breaker, verified member-only predicates for both seats, input rejection, no-store response and generic database failure. Server-rendered `/games` and client pagination reuse the query; opt-in hosted E2E now includes white/black/outsider archive checks, **not executed on Supabase**.

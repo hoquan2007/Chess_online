@@ -112,6 +112,33 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     const { error: outsiderLoginError } = await outsider.auth.signInWithPassword({ email: emails[2], password });
     expect(outsiderLoginError).toBeNull();
 
+    // Genuine cookie-backed profile edit and RLS: the owner can rename their
+    // profile, but another authenticated account cannot change that row.
+    const { data: originalProfile, error: profileReadError } = await admin.from("profiles")
+      .select("username").eq("id", whiteId).single();
+    expect(profileReadError).toBeNull();
+    expect(originalProfile?.username).toBeTruthy();
+    const editedUsername = `rook_${nonce}`;
+    await whitePage.goto(`/profile/${originalProfile!.username}`);
+    await expect(whitePage.getByRole("heading", { name: "Edit your profile" })).toBeVisible();
+    await whitePage.getByRole("textbox", { name: "Username" }).fill(editedUsername);
+    await whitePage.getByRole("textbox", { name: "Display name" }).fill("Verified profile");
+    await whitePage.getByRole("button", { name: "Save profile" }).click();
+    await expect(whitePage).toHaveURL(new RegExp(`/profile/${editedUsername}$`));
+    await expect(whitePage.getByRole("heading", { name: "Verified profile" })).toBeVisible();
+    await blackPage.goto(`/profile/${editedUsername}`);
+    await expect(blackPage.getByRole("heading", { name: "Verified profile" })).toBeVisible();
+    await expect(blackPage.getByRole("button", { name: "Save profile" })).toHaveCount(0);
+    const { error: unauthorizedEditError } = await outsider.from("profiles")
+      .update({ display_name: "Impersonated" }).eq("id", whiteId);
+    // RLS may silently filter the row or return a policy error; either must
+    // leave the canonical profile untouched.
+    const { data: canonicalProfile, error: canonicalError } = await admin.from("profiles")
+      .select("username,display_name").eq("id", whiteId).single();
+    expect(canonicalError).toBeNull();
+    expect(canonicalProfile).toMatchObject({ username: editedUsername, display_name: "Verified profile" });
+    if (unauthorizedEditError) expect(unauthorizedEditError.code).toBeTruthy();
+
     // Only the creator may cancel a waiting challenge, including after a
     // reload. Direct authenticated RPC execution must remain prohibited.
     const pendingCreate = await postGame(whiteContext, "/api/games", { control: "5+0" });
