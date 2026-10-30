@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { displayedClock, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
+import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
 import { safeNext } from "./redirect";
 
 function snapshot(override: Partial<OnlineGame> = {}): OnlineGame {
@@ -71,6 +71,14 @@ describe("clock rendering only", () => {
     expect(displayedClock(game, Date.parse(game.clock_anchor_at!) + 5000).w).toBe(0);
     expect(displayedClock(game, Date.parse(game.clock_anchor_at!) - 1000).w).toBe(1200);
     expect(displayedClock({ ...game, status: "completed" }, Date.parse(game.clock_anchor_at!) + 5000).w).toBe(1200);
+  });
+  it("renders from a server timestamp despite a skewed or adjusted device wall clock", () => {
+    const game = snapshot({ clock_anchor_at: "2026-10-29T00:00:00.000Z" });
+    const serverNow = Date.parse(game.clock_anchor_at!) + 1000;
+    const receivedAt = 3000;
+    expect(displayedClock(game, estimatedServerTime(serverNow, receivedAt, 7000)).w).toBe(295000);
+    expect(displayedClock(game, estimatedServerTime(serverNow, receivedAt, 2000)).w).toBe(299000);
+    // This clock path never reads a possibly incorrect Date.now() from the browser.
   });
 });
 

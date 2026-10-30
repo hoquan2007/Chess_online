@@ -1,5 +1,8 @@
 # Rookline feature matrix
 
+**Checkpoint 44:** Server-sampled online clock rendering interpolates with monotonic client time; a full-browser skew/jump regression passes. Native `npm run check` **PASS (89 Vitest, 17 pages)** and full Chromium **56 local/mock PASS / 1 hosted SKIP**. CH-07/08 remain IMPLEMENTED_UNVERIFIED for real server-clock locks/Realtimes; **all 20 gates OPEN**.
+
+
 **Checkpoint 43:** CSRF Origin/Host validation hardening verified locally; lint/types/**88 Vitest PASS**, native 17-page build PASS separately after composite sandbox `EPERM`; full **55 local/mock Chromium PASS / 1 staging SKIP**. CH-18/19 remain PARTIAL; genuine HTTPS proxy/Auth and hosted concurrency unverified, **20 gates OPEN**.
 
 Statuses: `LOCALLY_TESTED` means a named local unit/browser flow passed, **not** complete acceptance; `IMPLEMENTED_UNVERIFIED` means code exists without a needed real integration test; `PARTIAL` means only a subset exists; `PLANNED` means no complete functional implementation; `BLOCKED_EXTERNAL` requires live services. A unit test or local E2E passing is not hosted multiplayer proof.

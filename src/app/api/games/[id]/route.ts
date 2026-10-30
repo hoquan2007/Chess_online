@@ -29,5 +29,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "You are not a player" }, { status: 403 });
     }
   }
-  return NextResponse.json({ game, viewerColor: game.white_id === context.user.id ? "w" : "b" }, { headers: { "Cache-Control": "private, no-store" } });
+  // Sample after the database call, as close to response delivery as possible.
+  // This is a display-only synchronization hint; database time remains authoritative.
+  return NextResponse.json({ game, viewerColor: game.white_id === context.user.id ? "w" : "b", serverNow: Date.now() }, { headers: { "Cache-Control": "private, no-store" } });
 }

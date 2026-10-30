@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 44: browser online clock follows server time
+
+- Added `serverNow` response hint after authenticated GET's database roundtrip. Online room now advances that server sample using `performance.now()` rather than the browser wall clock. This is **display-only**; PostgreSQL retains authoritative game timing, flags and move adjudication. Old/mock responses lacking `serverNow` retain a device-time fallback. React render purity fix moved initial wall-time sampling into a lazy state initializer.
+- **Native `npm run check` PASS, exit 0:** ESLint, strict TypeScript, **89/89 Vitest across 12 suites**, optimized Next.js Webpack **17/17 pages**. Focused real Chromium drift test **1 PASS**, and complete native `npx playwright test --workers=1` **56 local/mock Chromium PASS / 1 opted-in real hosted staging SKIP, exit 0 (3.2m)**. Test simulates a browser clock one hour ahead and subsequently jumping to zero without corrupting active visual clocks. An initial non-escalated browser attempt could not start localhost:3100 and was cancelled; native-permission rerun passed. Initial Playwright command with an unsupported project name failed before test execution; corrected to configured default project.
+- Fresh value-free environment check found the four required Supabase runtime settings absent. **No hosted Auth/RLS, two-browser private Realtime, independently concurrent database clocks, public HTTPS proxy origin behavior or durable rated settlement has been verified**. Migration 10 remains rollback-only; rated creation OFF; **all 20 release gates OPEN / IN_PROGRESS**. Rollback: revert the game GET clock hint, monotonic display helper, room sync and their tests. No migration or deployment occurred.
+
 ## 2026-10-30 — checkpoint 43: fail-closed CSRF on hosted game mutations
 
 - Six online game POST routes share a hardened `rejectCrossOrigin`: missing `Origin` without affirmative `Sec-Fetch-Site: same-origin`, same-site siblings, cross-site metadata, Host/scheme mismatches, malformed/opaque origins all reject 403. Development URL normalization is covered with received `Host`. Playwright staging's APIRequestContext now supplies the matching browser-like Origin. The HTTPS reverse-proxy Host/scheme assumption and untested public staging path are documented in `SECURITY_MODEL.md`.

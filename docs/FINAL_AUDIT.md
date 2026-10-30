@@ -1,5 +1,8 @@
 # Final acceptance audit (OPEN)
 
+**Checkpoint 44 (2026-10-30):** Browser clock skew/jump regression now passes using post-query server time and `performance.now()` as a display-only estimate. Native lint/types/**89 Vitest/17-page build PASS**; full Chromium **56 local/mock PASS / 1 real hosted SKIP**. Server POST/DB clocks remain authoritative but actual two-connection clock, real identity/RLS, Realtime and HTTPS proxy security have no end-to-end evidence; rated SQL still unapplied and rating disabled. **All 20 acceptance gates OPEN, IN_PROGRESS**.
+
+
 **Checkpoint 43 evidence (2026-10-30):** Game POST CSRF origin guard fails closed on absent/hostile evidence, and normalizes received Host vs development request URL; 88 unit tests and 55 local/mock Chromium tests PASS, 1 true hosted test SKIP. Sandbox composite build hit `EPERM`, separate native 17-page Next production build PASS. Public HTTPS proxy, real Auth/Realtime/DB clock/rating and four absent staging runtime values prevent closing CH-18/19; rated creation OFF, **all 20 gates OPEN / IN_PROGRESS**.
 
 **Current decision: IN_PROGRESS.** None of the 20 project completion gates has full end-to-end evidence yet. A local board, 20 original puzzles, successful unit tests, static routes or a compiled asset bundle cannot count as real multiplayer verification.

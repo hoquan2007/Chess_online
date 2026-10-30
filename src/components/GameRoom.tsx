@@ -6,7 +6,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
-import { displayedClock, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame } from "@/lib/online/games";
+import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame } from "@/lib/online/games";
 import { availableDrawClaims, parseCoordinateMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
@@ -34,7 +34,8 @@ export function GameRoom({ id }: { id: string }) {
   const [keyboardMove, setKeyboardMove] = useState("");
   const [keyboardError, setKeyboardError] = useState("");
   const [flipped, setFlipped] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(() => performance.now());
+  const [clockSync, setClockSync] = useState(() => ({ serverNow: Date.now(), receivedAt: performance.now() }));
   const nextLoadId = useRef(0);
   const lastAppliedLoadId = useRef(0);
   const lastAudiblePly = useRef<number | null>(null);
@@ -52,6 +53,7 @@ export function GameRoom({ id }: { id: string }) {
     try {
       const response = await fetch(`/api/games/${id}`, { cache: "no-store" });
       const data = await response.json();
+      const receivedAt = performance.now();
       // Polling and realtime hints may complete out of order. An obsolete 403
       // must not replace a room already joined in a more recent response.
       if (loadId < lastAppliedLoadId.current) return;
@@ -64,6 +66,10 @@ export function GameRoom({ id }: { id: string }) {
         setError(data.error ?? "Could not load the game.");
       } else {
         setGame((previous) => previous && isOlderGameSnapshot(previous, data.game) ? previous : data.game);
+        if (typeof data.serverNow === "number" && Number.isSafeInteger(data.serverNow)) {
+          setClockSync({ serverNow: data.serverNow, receivedAt });
+          setNow(receivedAt);
+        }
         setViewer(data.viewerColor);
         setJoinable(false); setUnauthenticated(false); setError("");
       }
@@ -76,7 +82,7 @@ export function GameRoom({ id }: { id: string }) {
   useEffect(() => {
     queueMicrotask(() => void load());
     const interval = window.setInterval(() => void load(), 3000);
-    const tick = window.setInterval(() => setNow(Date.now()), 250);
+    const tick = window.setInterval(() => setNow(performance.now()), 250);
     const client = browserSupabase();
     // Realtime is a wakeup signal only. All visual state is refetched from the authoritative API.
     const channel = client?.channel(`rookline-room-${id}`).on("postgres_changes", {
@@ -108,7 +114,8 @@ export function GameRoom({ id }: { id: string }) {
   const chess = position.chess;
   const history = chess.history({ verbose: true });
   const last = history.at(-1);
-  const clocks = game ? displayedClock(game, now) : { w: 0, b: 0 };
+  const serverNow = estimatedServerTime(clockSync.serverNow, clockSync.receivedAt, now);
+  const clocks = game ? displayedClock(game, serverNow) : { w: 0, b: 0 };
   const myTurn = !!game && game.status === "active" && game.turn === viewer && position.valid;
   const drawClaims = availableDrawClaims(chess);
   const orientation = (flipped ? viewer === "w" ? "black" : "white" : viewer === "b" ? "black" : "white") as "white" | "black";

@@ -73,3 +73,8 @@ export function displayedClock(game: OnlineGame, nowMs: number) {
   }
   return { w: white, b: black };
 }
+
+/** Advance a server-clock sample with monotonic browser time, independent of Date.now skew or wall-clock jumps. */
+export function estimatedServerTime(serverNowMs: number, receivedAtMonotonicMs: number, currentMonotonicMs: number) {
+  return serverNowMs + Math.max(0, currentMonotonicMs - receivedAtMonotonicMs);
+}

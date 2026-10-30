@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 44 — server-sampled monotonic game room clock
+
+- Implemented a post-query `serverNow` display hint and browser monotonic interpolation. A new Chromium test demonstrates that a one-hour skew and later `Date.now()` jump no longer change online clock rendering; server decisions remain DB-owned. Added unit/route regressions; fixed React render purity error discovered during verification.
+- Native `npm run check` **PASS**: lint/types, **89 Vitest**, **17/17 production pages**; full native Chromium **56 local/mock PASS / 1 real staging SKIP**, exit 0. Focused Chromium **PASS**. Supabase URL and three key settings remain absent in a safe presence check. Browser mock testing does not prove hosted clock correctness.
+- Continue **S0** genuine staging three-user Auth/RLS and public HTTPS proxy checks → **S1** two-client game/Realtime → **S2** concurrent database time/row locks → **S3** migration/rating/matching → **S4–S6** hosted learning, community and independent audit. **20 gates OPEN / IN_PROGRESS**; rated creation OFF, no `main` merge or production deploy.
+
 ## 2026-10-30, checkpoint 43 — fail-closed game mutation origin checks
 
 - Tightened shared six-route POST CSRF guard against missing/sibling/malformed Origin evidence. Added Host, scheme and cross-site metadata regression tests and matching Origin to nonbrowser staging API requests; documented trusted reverse-proxy assumptions.

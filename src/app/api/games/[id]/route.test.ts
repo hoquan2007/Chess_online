@@ -40,7 +40,10 @@ describe("GET online game canonical state", () => {
 
     const response = await GET(request, params);
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ game: completed, viewerColor: "w" });
+    const payload = await response.json();
+    expect(payload).toMatchObject({ game: completed, viewerColor: "w" });
+    expect(payload.serverNow).toEqual(expect.any(Number));
+    expect(Math.abs(Date.now() - payload.serverNow)).toBeLessThan(2000);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(rpc).toHaveBeenCalledWith("rookline_expire_game", { p_game: id });
     expect(maybeSingle).toHaveBeenCalledTimes(2);

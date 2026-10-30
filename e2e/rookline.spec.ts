@@ -1204,6 +1204,32 @@ test("game room ignores an old HTTP snapshot arriving after a newer ply", async 
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 
+test("online clock uses server time even when the device clock is an hour fast", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000011";
+  const anchor = new Date().toISOString();
+  const game = { id, white_id: "white-id", black_id: "black-id", status: "active",
+    pgn: "", fen: new Chess().fen(), turn: "w", ply: 0,
+    base_ms: 300000, increment_ms: 0, white_ms: 300000, black_ms: 300000,
+    clock_anchor_at: anchor, result: null, winner_id: null, rated: false, created_at: anchor };
+
+  await page.addInitScript(() => {
+    const actualNow = Date.now.bind(Date);
+    Date.now = () => actualNow() + 60 * 60 * 1000;
+  });
+  await page.route(`**/api/games/${id}`, (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ game, viewerColor: "w", serverNow: Date.now() }),
+  }));
+
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await expect(page.getByLabel("White clock")).toHaveText(/^0[45]:[0-5]\d$/);
+  await expect(page.getByLabel("Black clock")).toHaveText("05:00");
+  // A second wall-clock adjustment must not affect a clock driven by performance.now().
+  await page.evaluate(() => { Date.now = () => 0; });
+  await expect(page.getByLabel("White clock")).toHaveText(/^0[45]:[0-5]\d$/);
+});
+
 test("online room exports a parseable PGN with the authoritative result", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000003";
   const chess = new Chess();
