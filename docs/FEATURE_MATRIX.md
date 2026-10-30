@@ -1,5 +1,7 @@
 # Rookline feature matrix
 
+**Checkpoint 60:** CH-19 Vercel preview of tested SHA `890c782` is READY with authenticated 5/5 route HTTP 200 and Rookline markup; anonymous preview requests receive Vercel SSO redirect. Supabase-backed API requests give 503 without production/staging configuration. Preview deployment proof **does not close CH-19 or any full-product gate**. **20 gates OPEN, rated OFF**.
+
 **Checkpoint 59:** CH-01/11 theme read/write has validated memory fallback when browser storage is denied. Browser regression covers Settings, topbar and client navigation with `SecurityError` from localStorage. ESLint/strict TS, **161 Vitest (23 files)**, native **17-page build**, full **67 local/mock Chromium PASS / 1 true hosted SKIP**, high+ audit **0**. CH-01 locally tested, CH-11 PARTIAL until hosted account preference verification. **20 gates OPEN, rated OFF, IN_PROGRESS**.
 
 **Checkpoint 58:** CH-03 local/computer archives now receive unique UUID-backed IDs even when two games start in one millisecond. New real Chromium regression verifies separate complete PGNs and retained entries after reload; old IDs remain restorable. **158 Vitest, lint/strict types, 17-page native build and 66 local/mock Chromium PASS / 1 real staging SKIP**. Browser tests use configurable local port and active-origin headers. CH-03 LOCALLY_TESTED, extended long-session QA pending. **20 gates OPEN, rated OFF, IN_PROGRESS**.

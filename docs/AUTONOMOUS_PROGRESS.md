@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 60 — preview deployment smoke and blockers
+
+- GitHub development branch push succeeded through tested commit `890c782`; `main` untouched. Vercel preview deployment `dpl_8rNpXSfR544VQ8c8M5b2nuF9KimW` of that SHA is READY at `https://chessonline-b5itq6vfa-hnquan.vercel.app`. Authenticated route smoke: five pages HTTP 200 with Rookline homepage markup; build generated 17 pages.
+- Real blockers confirmed: Vercel project has zero environment variables, `/api/games` and `/api/preferences` return 503, and anonymous preview access redirects 302 to Vercel SSO. Hosted Supabase Auth/RLS/Realtime, PostgreSQL concurrency and rated settlement remain untested; preview is protected and production release withheld.
+- Next: secure staging Supabase runtime and true three-user E2E S0, reconcile installed migrations, advance S1–S6. **20 acceptance gates OPEN, rated OFF, IN_PROGRESS**.
+
 ## 2026-10-31, checkpoint 59 — blocked-storage theme reliability
 
 - CH-01/11: Shared theme preference access allows Settings, topbar and navigation to work even if browser storage denies reads/writes. Only valid dark/light values are accepted; fallback is browser-tab memory.

@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 60: GitHub push and protected Vercel preview smoke
+
+- **Source and deployment:** GitHub `origin/codex/chess-platform-foundation` successfully advanced `04eedde..890c782`; `main` untouched. Vercel team `team_dReTYXzGNLEbtzkPCKOnEKHI`, project `prj_ZNZGqIQcB9oqWwcczuOTgpHnwcir`, deployment `dpl_8rNpXSfR544VQ8c8M5b2nuF9KimW`, source SHA `890c782592d5f0a7acf4d93578fcaf89706b8fb0`, target **preview**, state **READY**. URL: `https://chessonline-b5itq6vfa-hnquan.vercel.app`.
+- **Observed smoke (authenticated `vercel curl`):** `GET/HEAD /`, `/play/local`, `/play/computer`, `/settings`, `/login` each **HTTP 200**; retrieved homepage contains `Rookline`. `GET /api/games` and `/api/preferences` each **HTTP 503** (Vercel project environment list empty, no Supabase settings). Unauthenticated raw root request **HTTP 302** to Vercel SSO; authentication protection remains enabled. Vercel build log confirms Next.js 16.4.3 Webpack, successful compile, strict TS and 17/17 generated pages.
+- **Limits:** This verifies build and basic HTTP routes on an owner-authorized preview. `vercel curl` automatically generated an authenticated deployment-protection bypass token for its own smoke request; no token value was displayed or committed, and Vercel SSO protection remained enabled. It does **not** show public access, signed-in online game correctness, two real players, actual RLS/Realtime or ratings. Complete S0 secure staging setup and genuine three-user E2E before advancing. **All 20 final acceptance gates OPEN, rated OFF, IN_PROGRESS**. No production deployment, SSO policy change, `main` merge or schema pushes.
+
 ## 2026-10-31 — checkpoint 59: theme controls survive denied browser storage
 
 - **Behavior:** Shared `src/lib/profile/theme.ts` validates saved `dark`/`light` and caches writes in memory if browser `localStorage` fails. AppShell and Settings use the helper. Three Vitest cases cover storage success, denied read/write (`SecurityError`) and invalid stored values. Chromium patches theme-key access to throw and verifies Settings selection, navigation to Play, and topbar dark toggle.
