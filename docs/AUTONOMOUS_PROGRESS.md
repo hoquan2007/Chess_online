@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 33 — computer position evaluation verified
+
+- The medium/hard/advanced computer and two-ply Analysis Worker now consider original piece position and central development alongside material; tactical search prioritizes faster mates. A reproducing Vitest previously failed because the medium bot chose `a3` from the start. New unit and real Chromium Worker tests cover sensible first moves, opponent reply, legality and board immutability.
+- **Native `npm run check` PASS** (66 unit / 10 suites, 17 build pages). **Native full Playwright Chromium 51 local/mock PASS / 1 hosted staging SKIP**, focused real Worker 1 PASS. Credential presence probe: four variables absent; no real hosted Auth/RLS/clock verification. CH-04 `LOCALLY_TESTED`, CH-12 `PARTIAL`, **all 20 acceptance gates OPEN**, `IN_PROGRESS`.
+- Continue S0 real three-identity hosted Auth/RLS, S1 two-client games and reconnect, S2 independent database clock/race tests, S3 rated settlement, S4–S6 remaining product and security gates. No production deploy or `main` merge.
+
 ## 2026-10-30, checkpoint 32 — precise local clock with reduced full-PGN saves
 
 - Clock precision remains in `clockRef` at every 250 ms timer tick; visible updates and full-session localStorage writes now occur when the shown second changes or a flag falls. Persisted snapshots preserve subsecond timing. New browser case verifies 2–5 writes across 2.8 s, fractional clock, persisted e4 and reload continuation.

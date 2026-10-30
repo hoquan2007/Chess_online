@@ -219,7 +219,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       </section>
       <section aria-label="Candidate move analysis" className="stack" style={{ gap: 8 }}>
         <h3 className="panel-sub">Rookline quick search</h3>
-        <p className="panel-sub">An original two-ply, material-only heuristic. It can miss tactics and does not represent a strong chess engine or a computer rating.</p>
+        <p className="panel-sub">An original two-ply material and piece-position heuristic. It can miss tactics and does not represent a strong chess engine or a computer rating.</p>
         <button type="button" className="btn ghost" disabled={workingKey === positionKey} onClick={findCandidate}>Find candidate move</button>
         <div aria-live="polite" aria-atomic="true">
           {workingKey === positionKey && <p className="status">Analyzing position…</p>}

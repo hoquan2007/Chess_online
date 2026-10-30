@@ -1,6 +1,28 @@
 import { Chess } from "chess.js";
 import { describe, expect, it } from "vitest";
-import { analyzeBotPosition } from "./bot";
+import { analyzeBotPosition, chooseBotMove } from "./bot";
+
+describe("computer move selection", () => {
+  it("develops a central pawn or knight in the opening on each search level", () => {
+    const game = new Chess();
+    const fen = game.fen();
+    for (const level of ["medium", "hard", "advanced"] as const) {
+      const move = chooseBotMove(game, level);
+      expect(["d4", "e4", "Nf3", "Nc3"]).toContain(move?.san);
+      expect(game.fen()).toBe(fen);
+      expect(game.history()).toEqual([]);
+    }
+  });
+
+  it("prefers a forced mate over positional gains without mutating the game", () => {
+    const game = new Chess("7k/5Q2/6K1/8/8/8/8/8 w - - 0 1");
+    const fen = game.fen();
+    for (const level of ["medium", "hard", "advanced"] as const) {
+      expect(chooseBotMove(game, level)?.san).toMatch(/#$/);
+      expect(game.fen()).toBe(fen);
+    }
+  });
+});
 
 describe("original analysis hint", () => {
   it("offers a legal move without mutating the imported position", () => {

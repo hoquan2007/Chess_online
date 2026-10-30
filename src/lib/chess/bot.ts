@@ -5,26 +5,43 @@ export type Difficulty = "easy" | "medium" | "hard" | "advanced";
 
 const material: Record<string, number> = { p: 100, n: 315, b: 330, r: 500, q: 900, k: 0 };
 
-function evaluate(game: Chess, perspective: "w" | "b"): number {
-  if (game.isCheckmate()) return game.turn() === perspective ? -100000 : 100000;
+/** Small, symmetric positional bonus in centipawns; material remains dominant. */
+function positionalValue(type: string, color: "w" | "b", row: number, file: number): number {
+  const centerFile = 3.5 - Math.abs(file - 3.5);
+  const centerRank = 3.5 - Math.abs(row - 3.5);
+  const pawnAdvance = color === "w" ? 6 - row : row - 1;
+  switch (type) {
+    case "p": return centerFile * 9 + pawnAdvance * 11;
+    case "n": return (centerFile + centerRank) * 9;
+    case "b": return (centerFile + centerRank) * 4;
+    case "r": return centerFile * 2;
+    case "q": return (centerFile + centerRank) * 2;
+    default: return 0;
+  }
+}
+
+function evaluate(game: Chess, perspective: "w" | "b", ply: number): number {
+  // Prefer a shorter forced mate, and delay a forced loss when possible.
+  if (game.isCheckmate()) return game.turn() === perspective ? -100000 + ply : 100000 - ply;
   if (gameResult(game).finished) return 0;
   let score = 0;
-  for (const row of game.board()) {
-    for (const piece of row) {
+  for (const [rowIndex, row] of game.board().entries()) {
+    for (const [file, piece] of row.entries()) {
       if (!piece) continue;
-      score += (material[piece.type] ?? 0) * (piece.color === perspective ? 1 : -1);
+      const points = (material[piece.type] ?? 0) + positionalValue(piece.type, piece.color, rowIndex, file);
+      score += points * (piece.color === perspective ? 1 : -1);
     }
   }
   return score;
 }
 
-function search(game: Chess, depth: number, alpha: number, beta: number, perspective: "w" | "b"): number {
-  if (depth === 0 || gameResult(game).finished) return evaluate(game, perspective);
+function search(game: Chess, depth: number, alpha: number, beta: number, perspective: "w" | "b", ply: number): number {
+  if (depth === 0 || gameResult(game).finished) return evaluate(game, perspective, ply);
   const maximizing = game.turn() === perspective;
   let best = maximizing ? -Infinity : Infinity;
   for (const move of game.moves({ verbose: true })) {
     game.move(move);
-    const score = search(game, depth - 1, alpha, beta, perspective);
+    const score = search(game, depth - 1, alpha, beta, perspective, ply + 1);
     game.undo();
     if (maximizing) {
       best = Math.max(best, score);
@@ -49,7 +66,7 @@ export function chooseBotMove(game: Chess, difficulty: Difficulty): Move | null 
   let selected = legal[0];
   for (const move of legal) {
     game.move(move);
-    const score = search(game, depth, -Infinity, Infinity, perspective);
+    const score = search(game, depth, -Infinity, Infinity, perspective, 1);
     game.undo();
     if (score > best) {
       best = score;
@@ -59,7 +76,7 @@ export function chooseBotMove(game: Chess, difficulty: Difficulty): Move | null 
   return selected;
 }
 
-/** A deliberately small, original material-search hint, not a full chess engine. */
+/** A deliberately small, original material/position search hint, not a full chess engine. */
 export function analyzeBotPosition(game: Chess): {
   finished: boolean;
   bestMove: { san: string; from: string; to: string; promotion?: string } | null;
@@ -75,7 +92,7 @@ export function analyzeBotPosition(game: Chess): {
   let bestMove = legal[0];
   for (const move of legal) {
     game.move(move);
-    const score = search(game, depth - 1, -Infinity, Infinity, perspective);
+    const score = search(game, depth - 1, -Infinity, Infinity, perspective, 1);
     game.undo();
     if (score > bestScore) {
       bestScore = score;

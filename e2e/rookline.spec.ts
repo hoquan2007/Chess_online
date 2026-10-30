@@ -710,6 +710,23 @@ test("computer worker plays a legal first move when player chooses Black", async
   await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
 });
 
+test("real medium computer worker chooses a developing opening and accepts the reply", async ({ page }) => {
+  await page.goto("/play/computer");
+  await page.getByRole("button", { name: "Black", exact: true }).click();
+  const firstMove = page.getByLabel("Move history").locator(".move-row strong").first();
+  await expect(firstMove).toHaveText(/^(d4|e4|Nf3|Nc3)$/, { timeout: 20_000 });
+  await expect(page.getByText("Black to move")).toBeVisible();
+  const pgn = await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-session-computer") ?? "{}")?.pgn as string | undefined);
+  expect(pgn).toBeTruthy();
+  const game = new Chess();
+  game.loadPgn(pgn!);
+  const move = game.moves({ verbose: true })[0];
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill(`${move.from}${move.to}${move.promotion ?? ""}`);
+  await input.press("Enter");
+  await expect(page.getByLabel("Move history").locator(".move-row strong")).toHaveCount(2);
+});
+
 test("a stale computer worker error cannot interrupt a new game", async ({ page }) => {
   await page.addInitScript(() => {
     class ControlledWorker {

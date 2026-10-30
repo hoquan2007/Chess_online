@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 33: computer opening development and positional search
+
+- Reproduced the original weakness with a failing unit test: the medium bot opened with `a3` because all quiet moves had equal material scores. Added original symmetric piece-square/development bonuses for pawn, knight, bishop, rook and queen while keeping material dominant; checkmate scores now prefer shorter wins and delay forced losses. The same evaluation feeds medium/hard/advanced computer moves and the explicitly limited two-ply Analysis Worker. Updated the Analysis explanation to say material **and position**.
+- New unit tests verify each of the three search levels plays `d4`, `e4`, `Nf3` or `Nc3` from the initial position, preserves the input board, and finds an immediate mate. New real Chromium Worker test verifies the medium opening and acceptance of a legal opponent reply through the UI. The previous `a3` behavior failed before the implementation.
+- **Native `npm run check` PASS (exit 0):** ESLint, strict TypeScript, **66/66 Vitest in 10 suites**, Next.js Webpack **17/17 pages**. **Focused native Chromium 1 PASS; full native Chromium 51 local/mock PASS, 1 opted-in hosted Supabase SKIP** (exit 0). The guarded staging acceptance was not run. Four runtime credential variables absent on a fresh value-free check. CH-04 remains `LOCALLY_TESTED` pending wider skill/timing/endurance QA; CH-12 `PARTIAL` pending a licensed full engine. No 20-gate completion or live rating claim. Rollback: revert checkpoint-33 commit.
+
 ## 2026-10-30 — checkpoint 32: local clock persistence and long-session regression
 
 - Changed the running local/computer clock to advance its precise subsecond ref every 250 ms while re-rendering/persisting full PGN only when the displayed second changes or the clock flags. Stored clock values retain fractional seconds, and move/Undo paths still settle the current ref before changing a position.
