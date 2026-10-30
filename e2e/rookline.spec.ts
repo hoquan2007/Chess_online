@@ -824,6 +824,29 @@ test("topbar theme toggle and settings stay synchronized on the same page", asyn
   await expect(page.locator("html")).not.toHaveClass(/theme-light/);
 });
 
+test("theme controls remain usable when the browser blocks localStorage", async ({ page }) => {
+  await page.addInitScript(() => {
+    const getItem = Storage.prototype.getItem;
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.getItem = function (key) {
+      if (key === "rookline-theme") throw new DOMException("Storage disabled", "SecurityError");
+      return getItem.call(this, key);
+    };
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "rookline-theme") throw new DOMException("Storage disabled", "SecurityError");
+      return setItem.call(this, key, value);
+    };
+  });
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Light theme", exact: true }).click();
+  await expect(page.locator("html")).toHaveClass(/theme-light/);
+  await expect(page.getByRole("button", { name: "Light theme", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("link", { name: "Play", exact: true }).first().click();
+  await expect(page.locator("html")).toHaveClass(/theme-light/);
+  await page.getByRole("button", { name: "Use dark theme" }).click();
+  await expect(page.locator("html")).not.toHaveClass(/theme-light/);
+});
+
 test("move audio defaults on, plays from keyboard and persists mute across navigation", async ({ page }) => {
   await page.addInitScript(() => {
     const audioWindow = window as unknown as Window & { __rooklineAudioStarts: number };

@@ -8,6 +8,7 @@ import { browserSupabase } from "@/lib/supabase/client";
 import { RooklineMark } from "@/components/RooklineMark";
 import { moveSoundsEnabled, setMoveSoundsEnabled } from "@/lib/chess/sound";
 import { createPreferenceSync } from "@/lib/profile/preference-sync";
+import { readTheme, writeTheme } from "@/lib/profile/theme";
 
 const navigation = [
   { href: "/", title: "Home", icon: Home },
@@ -46,13 +47,13 @@ export function AppShell({ children }: { children: ReactNode }) {
     const sync = createPreferenceSync({
       request: fetch,
       readLocal: () => ({
-        theme: localStorage.getItem("rookline-theme") === "light" ? "light" : "dark",
+        theme: readTheme(),
         sounds_enabled: moveSoundsEnabled(),
       }),
       applyRemote: (preferences) => {
         applyingRemote = true;
         try {
-          localStorage.setItem("rookline-theme", preferences.theme);
+          writeTheme(preferences.theme);
           setMoveSoundsEnabled(preferences.sounds_enabled, false);
           window.dispatchEvent(new Event("rookline:preferences-changed"));
         } finally { applyingRemote = false; }
@@ -81,7 +82,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
   useEffect(() => {
     const syncTheme = () => {
-      const isLight = localStorage.getItem("rookline-theme") === "light";
+      const isLight = readTheme() === "light";
       document.documentElement.classList.toggle("theme-light", isLight);
       queueMicrotask(() => setLight(isLight));
     };
@@ -95,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
   const toggleTheme = () => {
     const next = !light;
-    localStorage.setItem("rookline-theme", next ? "light" : "dark");
+    writeTheme(next ? "light" : "dark");
     document.documentElement.classList.toggle("theme-light", next);
     setLight(next);
     window.dispatchEvent(new Event("rookline:preferences-changed"));

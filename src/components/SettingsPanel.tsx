@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { moveSoundsEnabled, setMoveSoundsEnabled } from "@/lib/chess/sound";
+import { readTheme, writeTheme } from "@/lib/profile/theme";
 
 export function SettingsPanel() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -11,7 +12,7 @@ export function SettingsPanel() {
 
   useEffect(() => {
     const refreshPreferences = () => {
-      setTheme(localStorage.getItem("rookline-theme") === "light" ? "light" : "dark");
+      setTheme(readTheme());
       setSounds(moveSoundsEnabled());
     };
     const refreshStatus = () => setSyncStatus(document.documentElement.dataset.rooklinePreferenceSync ?? "local");
@@ -25,7 +26,7 @@ export function SettingsPanel() {
   }, []);
 
   function updateTheme(next: "dark" | "light") {
-    localStorage.setItem("rookline-theme", next);
+    writeTheme(next);
     document.documentElement.classList.toggle("theme-light", next === "light");
     window.dispatchEvent(new Event("rookline:preferences-changed"));
     setTheme(next);

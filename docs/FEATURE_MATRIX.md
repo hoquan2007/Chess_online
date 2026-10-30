@@ -1,5 +1,7 @@
 # Rookline feature matrix
 
+**Checkpoint 59:** CH-01/11 theme read/write has validated memory fallback when browser storage is denied. Browser regression covers Settings, topbar and client navigation with `SecurityError` from localStorage. ESLint/strict TS, **161 Vitest (23 files)**, native **17-page build**, full **67 local/mock Chromium PASS / 1 true hosted SKIP**, high+ audit **0**. CH-01 locally tested, CH-11 PARTIAL until hosted account preference verification. **20 gates OPEN, rated OFF, IN_PROGRESS**.
+
 **Checkpoint 58:** CH-03 local/computer archives now receive unique UUID-backed IDs even when two games start in one millisecond. New real Chromium regression verifies separate complete PGNs and retained entries after reload; old IDs remain restorable. **158 Vitest, lint/strict types, 17-page native build and 66 local/mock Chromium PASS / 1 real staging SKIP**. Browser tests use configurable local port and active-origin headers. CH-03 LOCALLY_TESTED, extended long-session QA pending. **20 gates OPEN, rated OFF, IN_PROGRESS**.
 
 **Checkpoint 57:** CH-14 simultaneous-tab study mastery verified: allowlisted opening/lesson per-side IDs, fresh storage merge, cross-tab catalogue badge refresh and in-memory fallback when writes fail. **157 Vitest, ESLint/types PASS, isolated 17-page native build PASS, 2 focused Chromium PASS, 65 local/mock Chromium PASS / 1 genuine hosted SKIP**. Default-sandbox composite hit Windows `EPERM`. CH-14 LOCALLY_TESTED, broader curriculum/hosted mastery pending. **20 gates OPEN / rated OFF / IN_PROGRESS**.

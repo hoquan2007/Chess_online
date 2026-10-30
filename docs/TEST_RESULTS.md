@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 59: theme controls survive denied browser storage
+
+- **Behavior:** Shared `src/lib/profile/theme.ts` validates saved `dark`/`light` and caches writes in memory if browser `localStorage` fails. AppShell and Settings use the helper. Three Vitest cases cover storage success, denied read/write (`SecurityError`) and invalid stored values. Chromium patches theme-key access to throw and verifies Settings selection, navigation to Play, and topbar dark toggle.
+- **Final observed checks:** ESLint **PASS**, strict TypeScript **PASS**, **161/161 Vitest in 23 files PASS**, focused Chromium **1/1 PASS**; full native `npx playwright test --workers=1`, `ROOKLINE_E2E_PORT=3206`: **67 local/mock PASS / 1 real hosted staging SKIP (68 discovered), exit 0**. Restricted composite `npm run check` failed at Windows `.next/server/app/analysis.segments` (`EPERM`); separate authorized native `npm run build` completed **17/17 generated pages, exit 0**. Native `npm audit --audit-level=high`: **0 vulnerabilities**. This proves local QA, not live hosted functionality.
+- **Remaining / rollback:** Genuine HTTPS three-user Auth/JWT/RLS/Origin, independent two-client Realtime, PostgreSQL row locks/clocks and rated settlement remain **UNTESTED**; four runtime settings absent at last presence-only probe. Roll back shared theme module, AppShell/Settings usage and corresponding tests if needed. **20 gates OPEN, rated OFF, IN_PROGRESS**. No database migration push or production deploy.
+
 ## 2026-10-30 — checkpoint 58: same-millisecond archive retention
 
 - **RED/GREEN:** A real Chromium test overrode `Date.now` to one millisecond, finished `e4` and `d4` games with resignations and verified that local history contains both distinct IDs and parseable result-bearing PGNs after reload. Before the fix the archive had **1** entry; with `crypto.randomUUID()` IDs it had **2**. Added **1** unit test generating 256 unique UUIDv4 IDs within the legacy 80-character bound.

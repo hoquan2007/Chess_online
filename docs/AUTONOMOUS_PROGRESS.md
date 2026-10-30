@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 59 — blocked-storage theme reliability
+
+- CH-01/11: Shared theme preference access allows Settings, topbar and navigation to work even if browser storage denies reads/writes. Only valid dark/light values are accepted; fallback is browser-tab memory.
+- Observed ESLint, strict TypeScript, **161/161 Vitest (23 files)**, focused Chromium **1/1 PASS**, full native Chromium **67 local/mock PASS / 1 genuine hosted staging SKIP**, native Webpack **17/17 pages PASS (exit 0)**. Restricted composite build hit Windows `.next` `EPERM`; native build passed. High+ npm dependency audit **0 vulnerabilities**.
+- Next S0 real HTTPS Supabase three-identity Auth/RLS/Origin; reconcile nine installed remote migration IDs before any schema push. Continue S1 Realtime, S2 DB locks/clocks, S3 rated/matching, S4 learning, S5 social, S6 independent audit. **20 gates OPEN, rated OFF, IN_PROGRESS**. No production deploy or `main` merge.
+
 ## 2026-10-30, checkpoint 58 — collision-safe local game archive IDs
 
 - Reproduced data loss: two rapid games with `Date.now()` returning the same millisecond were assigned the same `local-` ID and the second replaced the first in device history. The new real-browser regression failed on the original code (one archive entry rather than two), then passed after switching initial, fallback and New game IDs to `crypto.randomUUID()`. Both distinct legal PGNs survived browser reload; existing timestamp IDs remain readable.
