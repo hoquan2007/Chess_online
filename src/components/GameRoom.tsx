@@ -6,7 +6,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
-import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame } from "@/lib/online/games";
+import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, type OnlineGame, type ServerClockSample } from "@/lib/online/games";
 import { availableDrawClaims, parseCoordinateMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
@@ -36,6 +36,10 @@ export function GameRoom({ id }: { id: string }) {
   const [flipped, setFlipped] = useState(false);
   const [now, setNow] = useState(() => performance.now());
   const [clockSync, setClockSync] = useState(() => ({ serverNow: Date.now(), receivedAt: performance.now() }));
+  // Keep the accepted game and clock in refs so concurrent fetch completions
+  // cannot use a stale React state closure to decide which response wins.
+  const acceptedGame = useRef<OnlineGame | null>(null);
+  const acceptedClock = useRef<ServerClockSample | null>(null);
   const nextLoadId = useRef(0);
   const lastAppliedLoadId = useRef(0);
   const lastAudiblePly = useRef<number | null>(null);
@@ -59,16 +63,26 @@ export function GameRoom({ id }: { id: string }) {
       if (loadId < lastAppliedLoadId.current) return;
       lastAppliedLoadId.current = loadId;
       if (response.status === 401) {
+        acceptedGame.current = null; acceptedClock.current = null;
         setUnauthenticated(true); setJoinable(false); setGame(null);
       } else if (response.status === 403 && data.joinable) {
+        acceptedGame.current = null; acceptedClock.current = null;
         setJoinable(true); setGame(null); setUnauthenticated(false);
       } else if (!response.ok) {
         setError(data.error ?? "Could not load the game.");
       } else {
-        setGame((previous) => previous && isOlderGameSnapshot(previous, data.game) ? previous : data.game);
+        // A newer request can still return a stale database snapshot. Reject
+        // its clock hint alongside its board, result and lifecycle state.
+        if (acceptedGame.current && isOlderGameSnapshot(acceptedGame.current, data.game)) return;
+        acceptedGame.current = data.game;
+        setGame(data.game);
         if (typeof data.serverNow === "number" && Number.isSafeInteger(data.serverNow)) {
-          setClockSync({ serverNow: data.serverNow, receivedAt });
-          setNow(receivedAt);
+          const next = reconcileServerClockSample(acceptedClock.current, { serverNow: data.serverNow, receivedAt });
+          if (next !== acceptedClock.current) {
+            acceptedClock.current = next;
+            setClockSync(next);
+            setNow(receivedAt);
+          }
         }
         setViewer(data.viewerColor);
         setJoinable(false); setUnauthenticated(false); setError("");

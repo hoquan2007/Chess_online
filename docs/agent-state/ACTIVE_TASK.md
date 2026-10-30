@@ -1,5 +1,7 @@
 # Active task
 
+**Checkpoint 45 (2026-10-30):** Online room HTTP game/clock acceptance race fixed and verified: older game ply or server timestamp cannot rewind the display. **Native `npm run check` PASS** (lint/types/**90 Vitest/17 build pages**), complete Chromium **57 local/mock PASS / 1 live hosted SKIP**. Four staging runtime settings absent after fresh value-free probe; real Auth/RLS/Realtime/independent PG clocks and public HTTPS proxy remain unverified. Next S0 real staging → S1 two browsers → S2 DB races → S3 rated and S4–S6. **20 gates OPEN / IN_PROGRESS**, rated OFF; no production deploy or `main` merge.
+
 **Checkpoint 44 (2026-10-30):** CH-07/08 local clock rendering now uses authenticated GET `serverNow` + monotonic `performance.now()`, unaffected by client wall-clock jumps. **Native `npm run check` PASS** (lint/types/**89 Vitest**/**17 pages**), focused Chromium PASS, full **56 local/mock Chromium PASS / 1 opted-in real hosted SKIP**. Fresh presence-only check: four Supabase staging settings absent. The display estimate does not prove PostgreSQL clock/lock behavior. S0 real Auth/RLS and HTTPS proxy → S1 real Realtime → S2 independent clock races → S3 rated → S4–S6. **20 gates OPEN / IN_PROGRESS**. Rated creation OFF; no deployment or main merge.
 
 

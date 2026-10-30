@@ -1,5 +1,7 @@
 # Final acceptance audit (OPEN)
 
+**Checkpoint 45 (2026-10-30):** A newer request returning an older game ply or server-time sample no longer rewinds the online UI; dedicated browser regression PASS. Native **90 Vitest/17-page build/lint/strict TypeScript PASS**; full Chromium **57 local/mock PASS / 1 real hosted SKIP**. Four Supabase runtime settings remain absent after fresh value-free probe. True Auth/RLS, Realtime, HTTPS reverse proxy, independent DB lock/clock/rating races and rated migration installation remain unverified. **All 20 gates OPEN / IN_PROGRESS**, rated OFF.
+
 **Checkpoint 44 (2026-10-30):** Browser clock skew/jump regression now passes using post-query server time and `performance.now()` as a display-only estimate. Native lint/types/**89 Vitest/17-page build PASS**; full Chromium **56 local/mock PASS / 1 real hosted SKIP**. Server POST/DB clocks remain authoritative but actual two-connection clock, real identity/RLS, Realtime and HTTPS proxy security have no end-to-end evidence; rated SQL still unapplied and rating disabled. **All 20 acceptance gates OPEN, IN_PROGRESS**.
 
 

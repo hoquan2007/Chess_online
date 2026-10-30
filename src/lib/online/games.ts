@@ -78,3 +78,17 @@ export function displayedClock(game: OnlineGame, nowMs: number) {
 export function estimatedServerTime(serverNowMs: number, receivedAtMonotonicMs: number, currentMonotonicMs: number) {
   return serverNowMs + Math.max(0, currentMonotonicMs - receivedAtMonotonicMs);
 }
+
+export type ServerClockSample = { serverNow: number; receivedAt: number };
+
+/** A delayed or out-of-order HTTP sample must not rewind a running display clock.
+ * The server still decides every move and timeout; this only controls interpolation.
+ */
+export function reconcileServerClockSample(previous: ServerClockSample | null, incoming: ServerClockSample) {
+  if (!previous) return incoming;
+  if (incoming.serverNow <= previous.serverNow) return previous;
+  return {
+    serverNow: Math.max(incoming.serverNow, estimatedServerTime(previous.serverNow, previous.receivedAt, incoming.receivedAt)),
+    receivedAt: incoming.receivedAt,
+  };
+}

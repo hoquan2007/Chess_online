@@ -1230,6 +1230,42 @@ test("online clock uses server time even when the device clock is an hour fast",
   await expect(page.getByLabel("White clock")).toHaveText(/^0[45]:[0-5]\d$/);
 });
 
+test("an outdated game snapshot or server timestamp cannot rewind the online display clock", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000012";
+  const sample = Date.now();
+  const anchor = new Date(sample - 20_000).toISOString();
+  const chess = new Chess();
+  const first = { id, white_id: "white-id", black_id: "black-id", status: "active",
+    pgn: "", fen: chess.fen(), turn: "w", ply: 0,
+    base_ms: 300000, increment_ms: 0, white_ms: 300000, black_ms: 300000,
+    clock_anchor_at: anchor, result: null, winner_id: null, rated: false, created_at: anchor };
+  chess.move("e4");
+  const moved = { ...first, pgn: chess.pgn(), fen: chess.fen(), ply: 1, turn: "b",
+    white_ms: 280000, clock_anchor_at: anchor };
+  let requests = 0;
+  await page.route(`**/api/games/${id}`, (route) => {
+    requests++;
+    const game = requests === 1 || requests === 3 ? first : moved;
+    const serverNow = requests <= 2 ? sample : sample - 60_000;
+    return route.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify({ game, viewerColor: "w", serverNow }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByLabel("White clock")).toHaveText(/^04:4\d$/);
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(page.getByLabel("Black clock")).toHaveText(/^04:4\d$/);
+
+  // A later HTTP request returns an older ply, then an unchanged ply with an
+  // older serverNow. Neither is allowed to reset the advanced game's clock.
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(3);
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(4);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(page.getByLabel("Black clock")).toHaveText(/^04:4\d$/);
+});
+
 test("online room exports a parseable PGN with the authoritative result", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000003";
   const chess = new Chess();

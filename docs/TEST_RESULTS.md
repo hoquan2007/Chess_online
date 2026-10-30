@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 45: stale online snapshots cannot rewind displayed clocks
+
+- Fixed a polling race where a newer HTTP request returned an older game ply: the room previously rejected the stale board but still accepted its stale `serverNow` clock hint. The room now accepts game and clock samples together through refs, rejects older ply/lifecycle states, and clamps newer server-time samples against elapsed monotonic browser time. This affects **display interpolation only**; Postgres remains the authority for moves, timeouts and rated results.
+- **Native `npm run check` PASS, exit 0:** ESLint, strict TypeScript, **90/90 Vitest in 12 suites**, Next.js Webpack production **17/17 pages**. Full native `npx playwright test --workers=1` **PASS, exit 0: 57 local/mock Chromium, 1 opted-in real hosted Supabase staging SKIP (3.4m)**. The new Chromium scenario covers an older ply and a lower server-time sample after legal `e4`; board history and visible clock do not rewind.
+- Fresh presence-only probe: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` and `SUPABASE_SERVICE_ROLE_KEY` all **absent** in process and `.env.local`; no values inspected. **No genuine Auth/JWT/RLS, dual-browser Realtime, independent database row-lock/clock races, public HTTPS proxy CSRF or durable rated settlement tested.** All **20 release gates OPEN / IN_PROGRESS**, rated mode OFF. Nine previously installed staging migrations unchanged; tenth rated migration rollback-tested only. No DB change or deployment.
+
 ## 2026-10-30 — checkpoint 44: browser online clock follows server time
 
 - Added `serverNow` response hint after authenticated GET's database roundtrip. Online room now advances that server sample using `performance.now()` rather than the browser wall clock. This is **display-only**; PostgreSQL retains authoritative game timing, flags and move adjudication. Old/mock responses lacking `serverNow` retain a device-time fallback. React render purity fix moved initial wall-time sampling into a lazy state initializer.

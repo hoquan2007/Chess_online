@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
+import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
 import { safeNext } from "./redirect";
 
 function snapshot(override: Partial<OnlineGame> = {}): OnlineGame {
@@ -79,6 +79,15 @@ describe("clock rendering only", () => {
     expect(displayedClock(game, estimatedServerTime(serverNow, receivedAt, 7000)).w).toBe(295000);
     expect(displayedClock(game, estimatedServerTime(serverNow, receivedAt, 2000)).w).toBe(299000);
     // This clock path never reads a possibly incorrect Date.now() from the browser.
+  });
+  it("keeps the displayed server clock monotonic when HTTP replies arrive late or out of order", () => {
+    const first = { serverNow: 200_000, receivedAt: 1_000 };
+    const stale = { serverNow: 180_000, receivedAt: 5_000 };
+    expect(reconcileServerClockSample(first, stale)).toBe(first);
+    const later = reconcileServerClockSample(first, { serverNow: 202_000, receivedAt: 5_000 });
+    expect(later).toEqual({ serverNow: 204_000, receivedAt: 5_000 });
+    expect(reconcileServerClockSample(later, { serverNow: 203_000, receivedAt: 6_000 })).toBe(later);
+    expect(reconcileServerClockSample(null, first)).toEqual(first);
   });
 });
 

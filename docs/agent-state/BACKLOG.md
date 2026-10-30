@@ -1,5 +1,7 @@
 # Prioritized backlog
 
+**Checkpoint 45:** Game/clock HTTP sample reconciliation verified; native **`npm run check` PASS** (lint/types/90 Vitest/17 pages), Chromium **57 local/mock PASS / 1 real hosted SKIP**. S0 actual Supabase Auth/RLS and public HTTPS reverse proxy needs secure staging runtime (four keys absent). S1 real two-user Realtime; S2 independent PG clock/row-lock races; S3 reconcile migration history, durable rated migration, exactly-once ledger/matching; S4–S6 learning, community and independent audit. **20 gates OPEN / IN_PROGRESS**, rated OFF; no deploy or main merge.
+
 **Checkpoint 44:** Added server-sampled, browser-monotonic online clock display (CH-07/08), plus wall-clock skew regression. Native **`npm run check` PASS** (lint/types/89 Vitest, 17 pages); full Chromium **56 local/mock PASS / 1 hosted staging SKIP**. S0 requires actual runtime credentials and real 3-identity Auth/RLS, HTTPS proxy checks; S1 two-browser Realtime; S2 independent locked DB clock tests; S3 verified rated migration/settlement, matchmaking; S4–S6 hosted/social/release work. **All 20 gates OPEN / IN_PROGRESS**, rated OFF. No migration installation/deploy/main merge.
 
 

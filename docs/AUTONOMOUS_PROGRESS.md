@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 45 — reject stale online game and clock samples together
+
+- Concurrent HTTP polling could accept stale server clock hints even when an older game ply was discarded. Added accepted-game/clock ref reconciliation and browser-monotonic clock sample handling. Chromium verifies an older ply or timestamp cannot undo synchronized `e4`/turn progression or jump the visible clock backwards.
+- Native `npm run check` **PASS**, **90/90 Vitest in 12 suites**, lint/types and **17/17 optimized production pages**; full Chromium **57 local/mock PASS / 1 guarded real staging SKIP**. Fresh value-free configuration probe confirms all four Supabase staging runtime settings absent. Evidence covers local UI behavior only.
+- Continue **S0** genuine staging three-user Auth/RLS plus HTTPS proxy Origin checks → **S1** two-browser private Realtime → **S2** independent DB row-lock/clock contention → **S3** rated migration/matching → **S4–S6** hosted profiles, education, community and independent final audit. **20 gates OPEN / IN_PROGRESS**; rated OFF, no deploy or `main` merge.
+
 ## 2026-10-30, checkpoint 44 — server-sampled monotonic game room clock
 
 - Implemented a post-query `serverNow` display hint and browser monotonic interpolation. A new Chromium test demonstrates that a one-hour skew and later `Date.now()` jump no longer change online clock rendering; server decisions remain DB-owned. Added unit/route regressions; fixed React render purity error discovered during verification.
