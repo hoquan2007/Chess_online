@@ -1,5 +1,7 @@
 # Rookline feature matrix
 
+**Checkpoint 64:** CH-03 local game recovery and CH-05 online game creation now reject inherited Object prototype property names as time controls. Four server deny tests, a valid-control insert test and a Chromium saved-session recovery regression pass. **170 Vitest / 24 files, 70 local/mock Chromium, native 17-page production build, lint/types PASS**; one genuine hosted scenario SKIP. CH-03 locally tested; CH-05 hosted validation still BLOCKED_EXTERNAL. **20 release gates OPEN, rated OFF, IN_PROGRESS.**
+
 **Checkpoint 61:** CH-09 lobby account isolation locally verified: 4 new tests cover auth failure, account switching, stale responses and disposal; old private games are cleared on identity changes and stale challenge navigation is suppressed. **165 Vitest, lint/types, 67 local/mock Chromium, standalone native 17-page build PASS**; 1 real hosted browser test SKIP. Composite build failed Windows `EPERM`; separate native build passed. Vercel has **0 environment variables**; CH-05–10 hosted acceptance stays OPEN, rated OFF. **All 20 gates OPEN, IN_PROGRESS.**
 
 **Checkpoint 60:** CH-19 Vercel preview of tested SHA `890c782` is READY with authenticated 5/5 route HTTP 200 and Rookline markup; anonymous preview requests receive Vercel SSO redirect. Supabase-backed API requests give 503 without production/staging configuration. Preview deployment proof **does not close CH-19 or any full-product gate**. **20 gates OPEN, rated OFF**.

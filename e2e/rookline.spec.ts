@@ -1189,6 +1189,24 @@ test("corrupt browser saves do not crash a complete local game", async ({ page }
   await expect(page.getByRole("region", { name: "Local game archive" }).getByText("Local game · Checkmate")).toBeVisible();
 });
 
+test("local session rejects an inherited time control and starts safely", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.addInitScript(() => {
+    localStorage.setItem("rookline-session-local", JSON.stringify({
+      pgn: "", control: "constructor", seconds: { w: 300, b: 300 },
+      manualResult: null, orientation: "white", playingSide: "w",
+      gameId: "local-invalid-control", undoClocks: [],
+    }));
+  });
+  await page.goto("/play/local");
+  await expect(page.getByRole("button", { name: "5+0", exact: true })).toHaveClass(/active/);
+  await page.locator('[data-square="e2"]').click();
+  await page.locator('[data-square="e4"]').click();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
 test("local threefold repetition requires the player to claim the draw", async ({ page }) => {
   await page.goto("/play/local");
   const claim = page.getByRole("button", { name: "Claim draw" });

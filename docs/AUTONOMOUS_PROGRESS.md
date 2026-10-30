@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 64 — owned time-control validation
+
+- Discovered and reproduced prototype-inherited names bypassing both the hosted game-create control allowlist and saved local-session control validation. Added four RED/GREEN POST regression cases, a valid `3+2` POST assertion, and a real Chromium corrupt-storage regression. Both entry points now require own properties; server validates before privileged insert or rate limit.
+- Fresh lint and strict TypeScript PASS, **170 Vitest PASS**, **70 local/mock Chromium PASS / 1 real hosted SKIP**, and a separate permission-approved production Webpack build PASS, **17/17 pages**. Composite `npm run check` had only a restricted Windows `.next/standalone` copy `EPERM`; separate native build passed. See `TEST_RESULTS.md` for exact commands and risk.
+- S0 real HTTPS Auth/RLS still BLOCKED_EXTERNAL until secure runtime credentials exist; S1–S6 remain planned. **20 gates OPEN, rated OFF, IN_PROGRESS**; no production release.
+
 ## 2026-10-31, checkpoint 63 — fail-closed private game-room client
 
 - Online GameRoom now discards all private board/history/controls immediately after access revocation, failed polling, service errors or Supabase identity changes. Aborted requests and account epochs prevent an older authorized response from repainting another account's game. New browser regressions exercise revocation with delayed success and offline/auth recovery.

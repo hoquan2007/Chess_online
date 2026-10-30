@@ -106,7 +106,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
         if (value) {
           const snapshot = JSON.parse(value) as { pgn: string; control: Control; seconds: Clocks; manualResult: string | null; orientation: "white" | "black"; playingSide: Side; gameId: string; undoClocks?: Clocks[]; running?: boolean; savedAt?: number };
           if (!snapshot || typeof snapshot.pgn !== "string" || snapshot.pgn.length > 100000 ||
-              !(snapshot.control in controlValues) || !snapshot.seconds ||
+              typeof snapshot.control !== "string" || !Object.hasOwn(controlValues, snapshot.control) || !snapshot.seconds ||
               !["w", "b"].every((side) => Number.isFinite(snapshot.seconds[side as Side]) && snapshot.seconds[side as Side] >= 0 && snapshot.seconds[side as Side] <= 36000) ||
               !["white", "black"].includes(snapshot.orientation) || !["w", "b"].includes(snapshot.playingSide) ||
               typeof snapshot.gameId !== "string" || !snapshot.gameId.startsWith("local-") || snapshot.gameId.length > 80 ||

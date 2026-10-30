@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: parsed.status });
   const body = parsed.data;
   const control = typeof body === "object" && body !== null && "control" in body ? body.control : "5+0";
-  if (typeof control !== "string" || !(control in timeControls)) return NextResponse.json({ error: "Unsupported time control" }, { status: 422 });
+  if (typeof control !== "string" || !Object.hasOwn(timeControls, control)) return NextResponse.json({ error: "Unsupported time control" }, { status: 422 });
   const limited = await gameMutationLimit(context.admin, context.user.id, "create");
   if (limited) return limited;
   const { base_ms, increment_ms } = timeControls[control as TimeControl];

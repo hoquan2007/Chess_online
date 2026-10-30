@@ -6,8 +6,9 @@ const authenticatedGameContext = vi.fn();
 vi.mock("@/lib/supabase/server", () => ({ authenticatedGameContext: () => authenticatedGameContext() }));
 vi.mock("@/lib/online/rate-limit", () => ({ gameMutationLimit: vi.fn() }));
 
-import { GET } from "./route";
+import { GET, POST } from "./route";
 import { encodeHistoryCursor } from "@/lib/online/history";
+import { gameMutationLimit } from "@/lib/online/rate-limit";
 
 function example(index: number, created_at = "2026-10-30T14:21:07.123456+00:00") {
   return { id: `20000000-0000-4000-8000-${index.toString().padStart(12, "0")}`, created_at,
@@ -79,5 +80,46 @@ describe("GET /api/games", () => {
     const response = await GET(new Request("https://rookline.example/api/games"));
     expect(response.status).toBe(401);
     expect(admin.from).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/games", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authenticatedGameContext.mockResolvedValue({ admin, user: { id: userId }, status: 200, error: null });
+  });
+
+  function createRequest(control?: unknown) {
+    return new Request("https://rookline.example/api/games", {
+      method: "POST",
+      headers: { "content-type": "application/json", origin: "https://rookline.example" },
+      body: JSON.stringify(control === undefined ? {} : { control }),
+    });
+  }
+
+  it.each(["constructor", "toString", "__proto__", "hasOwnProperty"])(
+    "rejects inherited property %s before privileged mutation and rate-limit calls",
+    async (control) => {
+      const response = await POST(createRequest(control));
+      expect(response.status).toBe(422);
+      expect(await response.json()).toEqual({ error: "Unsupported time control" });
+      expect(admin.from).not.toHaveBeenCalled();
+      expect(gameMutationLimit).not.toHaveBeenCalled();
+    },
+  );
+
+  it("accepts an explicitly supported control and writes its trusted clock values", async () => {
+    const single = vi.fn().mockResolvedValue({ data: { id: "game-id" }, error: null });
+    const select = vi.fn().mockReturnValue({ single });
+    const insert = vi.fn().mockReturnValue({ select });
+    admin.from.mockReturnValue({ insert });
+    const response = await POST(createRequest("3+2"));
+    expect(response.status).toBe(201);
+    expect(await response.json()).toEqual({ id: "game-id" });
+    expect(admin.from).toHaveBeenCalledWith("games");
+    expect(insert).toHaveBeenCalledWith({
+      white_id: userId, base_ms: 180000, increment_ms: 2000,
+      white_ms: 180000, black_ms: 180000, status: "waiting", rated: false,
+    });
   });
 });
