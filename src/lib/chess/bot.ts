@@ -35,8 +35,40 @@ function evaluate(game: Chess, perspective: "w" | "b", ply: number): number {
   return score;
 }
 
+/** Inspect short forced exchanges at the horizon so a capture is not scored
+ * before its obvious recapture. Checks require an actual legal evasion.
+ * Keeping the extension bounded protects the browser Worker on busy boards. */
+function quietSearch(game: Chess, alpha: number, beta: number, perspective: "w" | "b", ply: number, remaining: number): number {
+  const standPat = evaluate(game, perspective, ply);
+  if (remaining === 0 || gameResult(game).finished) return standPat;
+  const maximizing = game.turn() === perspective;
+  const inCheck = game.isCheck();
+  let best = inCheck ? (maximizing ? -Infinity : Infinity) : standPat;
+  if (maximizing) alpha = Math.max(alpha, best);
+  else beta = Math.min(beta, best);
+  if (alpha >= beta) return best;
+
+  const tactical = game.moves({ verbose: true }).filter((move) =>
+    inCheck || move.isCapture() || !!move.promotion);
+  for (const move of tactical) {
+    game.move(move);
+    const score = quietSearch(game, alpha, beta, perspective, ply + 1, remaining - 1);
+    game.undo();
+    if (maximizing) {
+      best = Math.max(best, score);
+      alpha = Math.max(alpha, best);
+    } else {
+      best = Math.min(best, score);
+      beta = Math.min(beta, best);
+    }
+    if (alpha >= beta) break;
+  }
+  return best;
+}
+
 function search(game: Chess, depth: number, alpha: number, beta: number, perspective: "w" | "b", ply: number): number {
-  if (depth === 0 || gameResult(game).finished) return evaluate(game, perspective, ply);
+  if (gameResult(game).finished) return evaluate(game, perspective, ply);
+  if (depth === 0) return quietSearch(game, alpha, beta, perspective, ply, 2);
   const maximizing = game.turn() === perspective;
   let best = maximizing ? -Infinity : Infinity;
   for (const move of game.moves({ verbose: true })) {

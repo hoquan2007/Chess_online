@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 34 — bot recapture regression verified
+
+- Reproduced `Qxf5` losing the queen to `...Rxf5`; a bounded two-extra-ply tactical continuation now avoids it in the bot and Analysis Worker. Real Worker Chromium and nonmutating unit regression PASS. Broader tactical strength and performance remain unverified.
+- Lint/types/**67 Vitest** PASS, Webpack **17 built pages**; restricted composite packaging `EPERM` superseded by native-permission build PASS. Full real Chromium **52 local/mock PASS / 1 staging SKIP**, focused Chromium 2 PASS; diff check PASS. No hosted Auth users tested.
+- S0–S2 hosted checks need secure staging credentials, S3–S6 incomplete. **20 acceptance gates OPEN**, `IN_PROGRESS`. Follow S0→S6; no deployment or main merge.
+
 ## 2026-10-30, checkpoint 33 — computer position evaluation verified
 
 - The medium/hard/advanced computer and two-ply Analysis Worker now consider original piece position and central development alongside material; tactical search prioritizes faster mates. A reproducing Vitest previously failed because the medium bot chose `a3` from the start. New unit and real Chromium Worker tests cover sensible first moves, opponent reply, legality and board immutability.

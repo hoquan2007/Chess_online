@@ -248,6 +248,17 @@ test("analysis candidate search uses a real worker, follows positions, and handl
   await expect(region.getByText("This game is finished. No further move is suggested.")).toBeVisible({ timeout: 20_000 });
 });
 
+test("analysis worker looks past an immediately recaptured queen", async ({ page }) => {
+  await page.goto("/analysis");
+  await page.getByRole("textbox", { name: "FEN position" }).fill("5rk1/8/6n1/5p2/4Q3/8/8/6K1 w - - 0 1");
+  await page.getByRole("button", { name: "Load FEN" }).click();
+  const region = page.getByRole("region", { name: "Candidate move analysis" });
+  await region.getByRole("button", { name: "Find candidate move" }).click();
+  const candidate = region.getByText(/Candidate:/);
+  await expect(candidate).toBeVisible({ timeout: 20_000 });
+  await expect(candidate).not.toContainText("Candidate: Qxf5");
+});
+
 test("analysis keyboard moves validate legality and offer underpromotion", async ({ page }) => {
   await page.goto("/analysis");
   const input = page.getByRole("textbox", { name: /Keyboard move/ });

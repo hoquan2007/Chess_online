@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 34: tactical recapture horizon
+
+- RED Vitest reproduced medium choosing `Qxf5` from `5rk1/8/6n1/5p2/4Q3/8/8/6K1 w - - 0 1` despite immediate `...Rxf5`. Bounded capture/promotion quiescence with legal check evasions (at most two extra plies) now applies to searched bot levels and Analysis Worker. Not an exhaustive chess engine.
+- Unit regression checks the original board stays unchanged; real Chromium Worker loads this FEN and rejects the hanging-queen candidate. Focused bot Vitest **6/6 PASS**, focused Chromium **2/2 PASS**. Full native Chromium `npm run test:e2e -- --workers=1` **52 local/mock PASS, 1 real Supabase staging SKIP (exit 0)**.
+- `npm run check` lint, strict TypeScript, **67/67 Vitest / 10 suites** and Webpack **17/17 pages** passed, then restricted Windows sandbox hit `EPERM` packaging `.next/standalone/node_modules/source-map-js/lib`. A separate native-permission `npm run build` **PASS (exit 0)** including packaging. `git diff --check` PASS with informational CRLF warnings. Rollback: revert checkpoint-34 commit.
+- CH-04 `LOCALLY_TESTED`, CH-12 `PARTIAL`. Hosted runtime credentials absent at last probe, real Auth/RLS/Realtime/server clocks and rated matchmaking unverified. All **20 acceptance gates OPEN**, project `IN_PROGRESS`. No production deploy/main merge.
+
 ## 2026-10-30 — checkpoint 33: computer opening development and positional search
 
 - Reproduced the original weakness with a failing unit test: the medium bot opened with `a3` because all quiet moves had equal material scores. Added original symmetric piece-square/development bonuses for pawn, knight, bishop, rook and queen while keeping material dominant; checkmate scores now prefer shorter wins and delay forced losses. The same evaluation feeds medium/hard/advanced computer moves and the explicitly limited two-ply Analysis Worker. Updated the Analysis explanation to say material **and position**.

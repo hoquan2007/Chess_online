@@ -22,6 +22,14 @@ describe("computer move selection", () => {
       expect(game.fen()).toBe(fen);
     }
   });
+
+  it("does not grab a defended pawn when it immediately loses the queen", () => {
+    // Qxf5 wins a pawn in static evaluation, but the rook on f8 takes the queen.
+    const game = new Chess("5rk1/8/6n1/5p2/4Q3/8/8/6K1 w - - 0 1");
+    const fen = game.fen();
+    expect(chooseBotMove(game, "medium")?.san).not.toBe("Qxf5");
+    expect(game.fen()).toBe(fen);
+  });
 });
 
 describe("original analysis hint", () => {
