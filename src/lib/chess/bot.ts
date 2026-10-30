@@ -58,3 +58,34 @@ export function chooseBotMove(game: Chess, difficulty: Difficulty): Move | null 
   }
   return selected;
 }
+
+/** A deliberately small, original material-search hint, not a full chess engine. */
+export function analyzeBotPosition(game: Chess): {
+  finished: boolean;
+  bestMove: { san: string; from: string; to: string; promotion?: string } | null;
+  scoreCp: number | null;
+  depth: number;
+} {
+  const depth = 2;
+  if (gameResult(game).finished) return { finished: true, bestMove: null, scoreCp: null, depth };
+  const legal = game.moves({ verbose: true });
+  if (legal.length === 0) return { finished: true, bestMove: null, scoreCp: null, depth };
+  const perspective = game.turn();
+  let bestScore = -Infinity;
+  let bestMove = legal[0];
+  for (const move of legal) {
+    game.move(move);
+    const score = search(game, depth - 1, -Infinity, Infinity, perspective);
+    game.undo();
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = move;
+    }
+  }
+  return {
+    finished: false,
+    bestMove: { san: bestMove.san, from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion },
+    scoreCp: perspective === "w" ? bestScore : -bestScore,
+    depth,
+  };
+}

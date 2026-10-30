@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowLeft, ArrowRight, Download, RotateCcw } from "lucide-react";
 import { applyLegalMove, parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
 import { positionInsight } from "@/lib/chess/insights";
+import type { analyzeBotPosition } from "@/lib/chess/bot";
 import { PromotionDialog } from "@/components/PromotionDialog";
 
 type Analysis = { start: string; san: string[]; index: number };
+type AnalysisHint = ReturnType<typeof analyzeBotPosition>;
 
 export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) {
   const [analysis, setAnalysis] = useState<Analysis>(() => ({ start: new Chess().fen(), san: [], index: 0 }));
@@ -21,6 +23,11 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const [keyboardMove, setKeyboardMove] = useState("");
   const [keyboardError, setKeyboardError] = useState("");
   const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
+  const [hint, setHint] = useState<{ key: string; result: AnalysisHint } | null>(null);
+  const [workingKey, setWorkingKey] = useState<string | null>(null);
+  const [hintError, setHintError] = useState<{ key: string; text: string } | null>(null);
+  const analysisWorker = useRef<Worker | null>(null);
+  const analysisRequest = useRef(0);
 
   useEffect(() => {
     let mounted = true;
@@ -55,6 +62,47 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     for (const san of analysis.san.slice(0, analysis.index)) reconstructed.move(san);
     return reconstructed;
   }, [analysis]);
+
+  const boardFen = board.fen();
+  // Equal FENs can have different repetition histories and therefore outcomes.
+  const positionKey = `${analysis.start}|${analysis.san.slice(0, analysis.index).join(" ")}`;
+  // A new position invalidates both outstanding computation and prior suggestions.
+  useEffect(() => () => {
+    analysisRequest.current++;
+    analysisWorker.current?.terminate();
+    analysisWorker.current = null;
+  }, [positionKey]);
+
+  const findCandidate = () => {
+    analysisWorker.current?.terminate();
+    const request = ++analysisRequest.current;
+    setHint(null);
+    setHintError(null);
+    setWorkingKey(positionKey);
+    try {
+      const worker = new Worker(new URL("../workers/analysis.worker.ts", import.meta.url));
+      analysisWorker.current = worker;
+      worker.onmessage = (event: MessageEvent<{ request: number; key: string; result?: AnalysisHint; error?: string }>) => {
+        if (request !== analysisRequest.current || event.data.key !== positionKey || event.data.request !== request) return;
+        setWorkingKey(null);
+        if (event.data.result) setHint({ key: positionKey, result: event.data.result });
+        else setHintError({ key: positionKey, text: event.data.error ?? "No analysis result available." });
+        worker.terminate();
+        if (analysisWorker.current === worker) analysisWorker.current = null;
+      };
+      worker.onerror = () => {
+        if (request !== analysisRequest.current) return;
+        setWorkingKey(null);
+        setHintError({ key: positionKey, text: "Analysis worker failed. Try again." });
+        worker.terminate();
+        if (analysisWorker.current === worker) analysisWorker.current = null;
+      };
+      worker.postMessage({ request, key: positionKey, fen: boardFen, start: analysis.start, san: analysis.san.slice(0, analysis.index) });
+    } catch {
+      setWorkingKey(null);
+      setHintError({ key: positionKey, text: "Analysis is unavailable in this browser." });
+    }
+  };
 
   const seek = (step: number) => {
     setAnalysis((prev) => ({ ...prev, index: Math.max(0, Math.min(step, prev.san.length)) }));
@@ -168,6 +216,20 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
         <p className="muted">Material points: {insight.material} · Legal moves: {insight.legalMoves}</p>
         {insight.drawClaim && <p className="muted">Draw claim available: {insight.drawClaim}.</p>}
         <p className="panel-sub">Material uses standard piece points, not an engine evaluation.</p>
+      </section>
+      <section aria-label="Candidate move analysis" className="stack" style={{ gap: 8 }}>
+        <h3 className="panel-sub">Rookline quick search</h3>
+        <p className="panel-sub">An original two-ply, material-only heuristic. It can miss tactics and does not represent a strong chess engine or a computer rating.</p>
+        <button type="button" className="btn ghost" disabled={workingKey === positionKey} onClick={findCandidate}>Find candidate move</button>
+        <div aria-live="polite" aria-atomic="true">
+          {workingKey === positionKey && <p className="status">Analyzing position…</p>}
+          {hintError?.key === positionKey && <p className="status">{hintError.text}</p>}
+          {hint?.key === positionKey && (hint.result.finished
+            ? <p className="status">This game is finished. No further move is suggested.</p>
+            : <p className="status">Candidate: <strong>{hint.result.bestMove?.san}</strong> · Heuristic estimate: {Math.abs(hint.result.scoreCp ?? 0) >= 100000
+              ? `${(hint.result.scoreCp ?? 0) > 0 ? "White" : "Black"} can force mate within the search horizon`
+              : hint.result.scoreCp === 0 ? "Even" : `${(hint.result.scoreCp ?? 0) > 0 ? "White" : "Black"} +${(Math.abs(hint.result.scoreCp ?? 0) / 100).toFixed(2)}`} (depth {hint.result.depth} plies).</p>)}
+        </div>
       </section>
       <label className="label">PGN game<textarea className="field" rows={4} value={pgn} onChange={(event) => setPgn(event.target.value)} placeholder="1. e4 e5 2. Nf3 Nc6" /></label>
       <button type="button" className="btn primary" onClick={importPgn}>Import PGN</button>

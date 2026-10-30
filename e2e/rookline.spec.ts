@@ -225,6 +225,29 @@ test("analysis position snapshot follows move navigation and detects mate", asyn
   await expect(insight.getByText(/Legal moves: 0/)).toBeVisible();
 });
 
+test("analysis candidate search uses a real worker, follows positions, and handles finished games", async ({ page }) => {
+  await page.goto("/analysis");
+  const region = page.getByRole("region", { name: "Candidate move analysis" });
+  await region.getByRole("button", { name: "Find candidate move" }).click();
+  await expect(region.getByText(/Candidate:/)).toContainText(/Heuristic estimate: .*depth 2 plies/, { timeout: 20_000 });
+  await page.getByRole("textbox", { name: /Keyboard move/ }).fill("e2e4");
+  await page.getByRole("textbox", { name: /Keyboard move/ }).press("Enter");
+  await expect(region.getByText(/Candidate:/)).toHaveCount(0);
+  await region.getByRole("button", { name: "Find candidate move" }).click();
+  await expect(region.getByText(/Candidate:/)).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("textbox", { name: "PGN game" }).fill("1. f3 e5 2. g4 Qh4#");
+  await page.getByRole("button", { name: "Import PGN" }).click();
+  await expect(region.getByText(/Candidate:/)).toHaveCount(0);
+  await region.getByRole("button", { name: "Find candidate move" }).click();
+  await expect(region.getByText("This game is finished. No further move is suggested.")).toBeVisible({ timeout: 20_000 });
+  const repeated = Array.from({ length: 4 }, (_, i) =>
+    `${i * 2 + 1}. Nf3 Nf6 ${i * 2 + 2}. Ng1 Ng8`).join(" ");
+  await page.getByRole("textbox", { name: "PGN game" }).fill(repeated);
+  await page.getByRole("button", { name: "Import PGN" }).click();
+  await region.getByRole("button", { name: "Find candidate move" }).click();
+  await expect(region.getByText("This game is finished. No further move is suggested.")).toBeVisible({ timeout: 20_000 });
+});
+
 test("analysis keyboard moves validate legality and offer underpromotion", async ({ page }) => {
   await page.goto("/analysis");
   const input = page.getByRole("textbox", { name: /Keyboard move/ });

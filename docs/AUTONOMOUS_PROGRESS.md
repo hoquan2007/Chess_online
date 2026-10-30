@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 31 — candidate move search with a dedicated Worker
+
+- Implemented original depth-two material search on the Analysis page. Candidate SAN, approximate white-relative score and terminal outcome are displayed; the UI warns that this is a limited heuristic. Reconstructed SAN history preserves repetition adjudication, and changing positions invalidates stale Worker answers.
+- **Native `npm run check` PASS:** lint/types, **64 Vitest in 10 suites**, **17/17 build pages**. Full real Chromium run **49 local/mock PASS / 1 guarded live staging SKIP**; focused Worker test 1/1 PASS and `git diff --check` PASS. Generated Next.js dev typing imports were restored to the tracked build baseline.
+- CH-12 remains `PARTIAL`, S0–S2 hosted verification remains `BLOCKED_EXTERNAL`, and S3–S6 remain outstanding; 20 acceptance gates OPEN, `IN_PROGRESS`. Next S0 real three-identity Auth/RLS/Realtime plus two-connection clocks once secure runtime credentials exist. No production deployment or `main` merge.
+
 ## 2026-10-30, checkpoint 30 — guided opening and lesson practice
 
 - Implemented White/Black opening and lesson training: chess.js move validation, scripted replies, hints/retry/review, drag/click/keyboard input, board orientation and locally saved per-color mastery. Fixed progress loss when moving between opening and lesson catalogues; additional Chromium browser test checks both saved keys across page navigation.

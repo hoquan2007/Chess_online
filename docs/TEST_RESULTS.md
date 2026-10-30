@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 31: original candidate move search
+
+- Added an opt-in **Rookline quick search** to the analysis page: a two-ply material-only minimax heuristic computes a legal candidate on a dedicated browser Worker. The UI distinguishes this rough estimate from a licensed/strong engine, shows finished games without suggesting moves, and ignores or terminates out-of-date analysis when the user changes positions.
+- The Worker reconstructs the starting FEN and full SAN move sequence before analysis, preserving repetition history that cannot be inferred from a final FEN alone. Unit tests cover legal/nonmutating suggestions, captures from each side, checkmate and fivefold repetition; a real Chromium scenario covers Worker search after a move, PGN checkmate and fivefold repetition.
+- **Native `npm run check` PASS (exit 0)** after the final implementation: ESLint, strict TypeScript, **64/64 Vitest in 10 suites**, optimized Webpack **17/17 pages**. **Native full `npm run test:e2e -- --workers=1` PASS (exit 0): 49 local/mock Chromium scenarios PASS, 1 guarded real staging scenario SKIP**; focused new Worker browser case 1/1 PASS. `git diff --check` PASS with informational CRLF warnings only.
+- No hosted Supabase identities or two-connection clock test ran. The previously observed four absent Next.js staging credential variables remain the external S0 prerequisite; CH-12 stays `PARTIAL` because a full/licensed chess engine, persistence, and breadth remain pending. **All 20 product acceptance gates OPEN**, `IN_PROGRESS`; no production deploy or `main` merge. Rollback: revert checkpoint-31 code/test/documentation commit.
+
 ## 2026-10-30 — checkpoint 30: interactive opening and lesson practice
 
 - Added guided **Practice as White / Practice as Black** to five openings and three lessons. `chess.js` validates legal moves and exact curated SAN; the scripted opponent responds automatically. The user can drag, click squares, or submit coordinate moves, request hints, retry, review, and see board orientation and per-color progress.
