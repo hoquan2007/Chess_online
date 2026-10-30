@@ -301,17 +301,26 @@ test("server denies cross-origin game mutations before using credentials", async
   });
   expect(claim.status()).toBe(403);
   expect(await claim.json()).toMatchObject({ error: "Cross-origin action denied" });
+  const cancel = await request.post("/api/games/00000000-0000-4000-8000-000000000001/cancel", {
+    headers: { Origin: "https://third-party.example" },
+  });
+  expect(cancel.status()).toBe(403);
+  expect(await cancel.json()).toMatchObject({ error: "Cross-origin action denied" });
 });
 
 test("draw claims fail closed without hosted chess credentials", async ({ request }) => {
   test.skip(!!(process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY),
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY &&
+    (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)),
   "This fail-closed assertion applies only to an unconfigured local environment.");
   const claim = await request.post("/api/games/00000000-0000-4000-8000-000000000001/claim", {
     data: { rule: "repetition", expectedPly: 8 },
   });
   expect(claim.status()).toBe(503);
   expect(await claim.json()).toMatchObject({ error: "Chess service is not configured." });
+  const cancel = await request.post("/api/games/00000000-0000-4000-8000-000000000001/cancel");
+  expect(cancel.status()).toBe(503);
+  expect(await cancel.json()).toMatchObject({ error: "Chess service is not configured." });
 });
 
 test("opening explorer replays a legal line and switches openings", async ({ page }) => {
@@ -889,6 +898,51 @@ test("online room exports a parseable PGN with the authoritative result", async 
   parsed.loadPgn(pgn);
   expect(parsed.fen()).toBe(chess.fen());
   expect(parsed.getHeaders().Result).toBe("0-1");
+});
+
+test("challenge creator can cancel a waiting invitation and sees its final state", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000004";
+  const initial = new Chess();
+  const waitingGame = {
+    id, white_id: "white-id", black_id: null, status: "waiting", pgn: "", fen: initial.fen(),
+    turn: "w", ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000, black_ms: 300000,
+    clock_anchor_at: null, result: null, winner_id: null, rated: false, created_at: new Date().toISOString(),
+  };
+  let viewer: "w" | "b" = "w";
+  let status: "waiting" | "cancelled" | "active" = "waiting";
+  let cancelRequests = 0;
+  await page.route(`**/api/games/${id}`, (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ game: { ...waitingGame, status }, viewerColor: viewer }),
+  }));
+  await page.route(`**/api/games/${id}/cancel`, (route) => {
+    cancelRequests++;
+    if (viewer !== "w" || status !== "waiting") {
+      return route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: "Cannot cancel" }) });
+    }
+    status = "cancelled";
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ status }) });
+  });
+  await page.goto(`/game/${id}`);
+  const cancel = page.getByRole("button", { name: "Cancel challenge" });
+  await expect(cancel).toBeVisible();
+  await cancel.click();
+  await expect(page.getByText("Challenge cancelled", { exact: true })).toBeVisible();
+  await expect(cancel).toHaveCount(0);
+  expect(cancelRequests).toBe(1);
+  await page.reload();
+  await expect(page.getByText("Challenge cancelled", { exact: true })).toBeVisible();
+
+  // The control is never offered to an opponent or during an active game.
+  status = "waiting"; viewer = "b";
+  await page.reload();
+  await expect(page.getByText("Invite an opponent to begin.")).toBeVisible();
+  await expect(cancel).toHaveCount(0);
+  viewer = "w"; status = "active";
+  await page.reload();
+  await expect(page.getByText("Your turn", { exact: false }).first()).toBeVisible();
+  await expect(cancel).toHaveCount(0);
+  expect(cancelRequests).toBe(1);
 });
 
 test("game room ignores a stale join prompt after a newer valid game response", async ({ page }) => {

@@ -38,7 +38,7 @@ begin
   end if;
 
   foreach v_function in array array[
-    'rookline_join_game','rookline_commit_move','rookline_resign_game',
+    'rookline_join_game','rookline_cancel_challenge','rookline_commit_move','rookline_resign_game',
     'rookline_expire_game','rookline_claim_draw',
     'create_profile_for_user','rls_auto_enable'
   ] loop
@@ -58,6 +58,13 @@ begin
       raise exception 'Privileged function grant mismatch on public.%', v_function;
     end if;
   end loop;
+
+  if not exists (
+    select 1 from pg_constraint where conrelid = 'public.game_rate_limits'::regclass
+      and conname = 'game_rate_limits_action_check' and pg_get_constraintdef(oid) like '%cancel%'
+  ) then
+    raise exception 'Cancellation action missing from game rate-limit policy';
+  end if;
 
   if not exists (
     select 1 from pg_publication_tables

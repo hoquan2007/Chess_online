@@ -113,7 +113,7 @@ export function GameRoom({ id }: { id: string }) {
   const drawClaims = availableDrawClaims(chess);
   const orientation = (flipped ? viewer === "w" ? "black" : "white" : viewer === "b" ? "black" : "white") as "white" | "black";
 
-  async function action(kind: "join" | "resign") {
+  async function action(kind: "join" | "resign" | "cancel") {
     if (busy) return;
     setBusy(true); setError("");
     try {
@@ -222,7 +222,7 @@ export function GameRoom({ id }: { id: string }) {
   const playerStrip = (color: Viewer) => <div className="player-strip"><span className="player-name"><span className="player-avatar" aria-hidden="true">{color === "w" ? "♙" : "♟"}</span>{color === viewer ? "You" : color === "w" ? "White opponent" : game.black_id ? "Black opponent" : "Waiting for Black"}</span><span className={`clock ${game.status === "active" && game.turn === color ? "running" : ""}`} aria-label={`${color === "w" ? "White" : "Black"} clock`}>{clockLabel(clocks[color])}</span></div>;
 
   return <section className="stack" onPointerDownCapture={unlockMoveAudio} onKeyDownCapture={unlockMoveAudio}>
-    <div><p className="overline">Private online chess · Unrated</p><h1 className="page-title">Your game room</h1><p className="muted">{game.status === "waiting" ? "Invite an opponent to begin." : game.status === "active" ? `${game.turn === viewer ? "Your turn" : "Opponent’s turn"} · ${game.ply} half-moves played` : `Game finished · ${game.result ?? "Finished"}`}</p></div>
+    <div><p className="overline">Private online chess · Unrated</p><h1 className="page-title">Your game room</h1><p className="muted">{game.status === "waiting" ? "Invite an opponent to begin." : game.status === "active" ? `${game.turn === viewer ? "Your turn" : "Opponent’s turn"} · ${game.ply} half-moves played` : game.status === "cancelled" ? "Challenge cancelled" : `Game finished · ${game.result ?? "Finished"}`}</p></div>
     <div className="game-grid"><section className="board-shell" aria-label="Online chess game">
       {playerStrip(top)}
       <div className="board-wrap"><Chessboard options={{ id: `rookline-online-${id}`, position: game.fen, boardOrientation: orientation,
@@ -238,7 +238,7 @@ export function GameRoom({ id }: { id: string }) {
       {playerStrip(bottom)}
     </section><aside className="game-panel" aria-label="Online game controls">
       <div><h2 className="panel-title">Match details</h2><p className="panel-sub">{Math.round(game.base_ms / 60000)}+{Math.round(game.increment_ms / 1000)} · {game.rated ? "Rated" : "Unrated"} · Playing {viewer === "w" ? "White" : "Black"}</p></div>
-      <p role="status" className="status">{game.status === "waiting" ? "Waiting for opponent. Share this game link." : game.status === "active" ? busy ? "Saving move…" : myTurn ? "Your move" : "Waiting for opponent’s move" : `Result: ${game.result ?? game.status}`}</p>
+      <p role="status" className="status">{game.status === "waiting" ? "Waiting for opponent. Share this game link." : game.status === "active" ? busy ? "Saving move…" : myTurn ? "Your move" : "Waiting for opponent’s move" : game.status === "cancelled" ? "This invitation can no longer be accepted." : `Result: ${game.result ?? game.status}`}</p>
       <div className="moves" aria-label="Move history">{history.length === 0 ? <p className="panel-sub">Moves will appear here once your game starts.</p> : Array.from({ length: Math.ceil(history.length / 2) }, (_, index) => <div className="move-row" key={index}><span>{index + 1}.</span><strong>{history[index * 2]?.san}</strong><strong>{history[index * 2 + 1]?.san ?? ""}</strong></div>)}</div>
       <form className="keyboard-move-form" onSubmit={submitKeyboardMove}>
         <label className="panel-sub" htmlFor="online-keyboard-move">Keyboard move · e2e4 or e7e8q</label>
@@ -246,7 +246,7 @@ export function GameRoom({ id }: { id: string }) {
         {keyboardError && <p className="panel-sub" role="alert">{keyboardError}</p>}
       </form>
       <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void copyInvite()}><ClipboardCopy size={16} /> Copy link</button><button className="btn ghost" type="button" onClick={downloadPgn}><ArrowDownToLine size={16} /> Export PGN</button><button className="btn ghost" type="button" onClick={() => setFlipped(!flipped)}><ArrowLeftRight size={16} /> Flip</button><button className="btn ghost" type="button" aria-label={sound ? "Mute moves" : "Enable move sounds"} aria-pressed={sound} onClick={() => { setMoveSoundsEnabled(!sound); setSound(!sound); }}>{sound ? <Volume2 size={16} /> : <VolumeX size={16} />} Sound {sound ? "on" : "off"}</button></div>
-      <div className="game-actions"><button ref={syncButtonRef} className="btn ghost" type="button" onClick={() => void load()}>Sync</button><button className="btn ghost" disabled={busy || game.status !== "active"} type="button" onClick={() => void action("resign")}><Flag size={16} /> Resign</button><Link className="btn ghost" href="/play/online">My games</Link></div>
+      <div className="game-actions"><button ref={syncButtonRef} className="btn ghost" type="button" onClick={() => void load()}>Sync</button>{game.status === "waiting" && viewer === "w" && <button className="btn ghost" disabled={busy} type="button" onClick={() => void action("cancel")}>Cancel challenge</button>}<button className="btn ghost" disabled={busy || game.status !== "active"} type="button" onClick={() => void action("resign")}><Flag size={16} /> Resign</button><Link className="btn ghost" href="/play/online">My games</Link></div>
       <div className="game-actions" aria-label="Draw claim controls"><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.repetition} onClick={() => void claimDraw("repetition")}>Claim threefold draw</button><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.fiftyMoves} onClick={() => void claimDraw("fiftyMoves")}>Claim 50-move draw</button></div>
       {error && <p className="status" role="alert">{error}</p>}{notice && <p className="status" role="status">{notice}</p>}
       <p className="panel-sub">Clocks are calculated by the server. Live updates use secure snapshots after each move; polling covers network interruptions.</p>

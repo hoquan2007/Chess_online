@@ -2,7 +2,7 @@
 
 This test is **PENDING**, not a passing result. Run only against an isolated
 Rookline staging Supabase PostgreSQL database after applying migrations
-`20261029010000` through `20261029080000` in order. These eight migrations
+`20261029010000` through `20261029090000` in order. These nine migrations
 have now been applied to the dedicated project, but **the protocol below has
 not been executed**. Do not run on another
 project's database. Use two distinct authorized test accounts, a disposable
@@ -17,7 +17,7 @@ converted milliseconds to `integer`, which overflows after ~24.85 days.
 ## Preparation
 
 1. Confirm the target database is the dedicated Rookline staging project.
-   Record the project ref without exposing credentials. Verify all eight ordered
+   Record the project ref without exposing credentials. Verify all nine ordered
    migrations; inspect `pg_proc`, security-definer flags, function grants, RLS,
    and rate-limit policies. Verify unauthenticated and ordinary authenticated
    roles cannot execute `rookline_commit_move`, `rookline_claim_draw`, or
@@ -108,3 +108,21 @@ mating material, reconnect, and an out-of-turn client against real RPCs.
 Record database ID (nonsecret), timestamps, transaction results and two-client
 browser evidence in `TEST_RESULTS.md`. Keep all hosted acceptance gates open
 until the test has actually run and passed.
+
+## Installed ninth migration: invitation cancellation race still pending live validation
+
+`20261029090000_cancel_waiting_challenge.sql` was installed and structurally
+verified on the **dedicated staging project** at remote version `20261030003110`.
+Its browser authorization and concurrent join/cancel behavior still require
+live verification. Do not run `db push` with unreconciled migration IDs.
+Use real separate Auth sessions and two fresh waiting games, created through
+the app. Verify outsider and unseated opponent receive HTTP 409 for cancel,
+and direct `authenticated` execution of `rookline_cancel_challenge` is denied.
+The creator's first cancellation must persist across reload; repeating it
+should return HTTP 200, while a later join must return HTTP 409. Start a
+creator cancel and opponent join at the same time on a **new** waiting game;
+expect exactly one HTTP 200 and one HTTP 409, with final state `cancelled`
+or `active` matching the winner. If `active`, a subsequent cancel must reject.
+Verify the row lock guarantees these outcomes and clean all disposable games
+and users. The opt-in `e2e/staging-online.spec.ts` contains this scenario but
+it has **not run against real staging**.

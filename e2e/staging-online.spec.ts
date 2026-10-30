@@ -81,6 +81,44 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     const { error: outsiderLoginError } = await outsider.auth.signInWithPassword({ email: emails[2], password });
     expect(outsiderLoginError).toBeNull();
 
+    // Only the creator may cancel a waiting challenge, including after a
+    // reload. Direct authenticated RPC execution must remain prohibited.
+    const pendingCreate = await whiteContext.request.post("/api/games", { data: { control: "5+0" } });
+    expect(pendingCreate.status()).toBe(201);
+    const pendingId = (await pendingCreate.json()).id as string;
+    createdGames.push(pendingId);
+    expect((await outsiderContext.request.post(`/api/games/${pendingId}/cancel`)).status()).toBe(409);
+    expect((await blackContext.request.post(`/api/games/${pendingId}/cancel`)).status()).toBe(409);
+    const { error: directCancelError } = await outsider.rpc("rookline_cancel_challenge", {
+      p_game: pendingId, p_player: whiteId,
+    });
+    expect(directCancelError).not.toBeNull();
+    await whitePage.goto(`/game/${pendingId}`);
+    await whitePage.getByRole("button", { name: "Cancel challenge" }).click();
+    await expect(whitePage.getByText("Challenge cancelled", { exact: true })).toBeVisible();
+    expect((await whiteContext.request.post(`/api/games/${pendingId}/cancel`)).status()).toBe(200);
+    expect((await blackContext.request.post(`/api/games/${pendingId}/join`)).status()).toBe(409);
+    expect((await gameState(whiteContext, pendingId)).status).toBe("cancelled");
+    const cancelledRead = await blackContext.request.get(`/api/games/${pendingId}`);
+    expect(cancelledRead.status()).toBe(403);
+    expect((await cancelledRead.json()).joinable).toBe(false);
+
+    // A concurrent join and cancellation must produce exactly one winner.
+    const competingCreate = await whiteContext.request.post("/api/games", { data: { control: "5+0" } });
+    expect(competingCreate.status()).toBe(201);
+    const competingId = (await competingCreate.json()).id as string;
+    createdGames.push(competingId);
+    const [cancelRace, joinRace] = await Promise.all([
+      whiteContext.request.post(`/api/games/${competingId}/cancel`),
+      blackContext.request.post(`/api/games/${competingId}/join`),
+    ]);
+    expect([cancelRace.status(), joinRace.status()].sort()).toEqual([200, 409]);
+    const competingState = await gameState(whiteContext, competingId);
+    expect(competingState.status).toBe(cancelRace.status() === 200 ? "cancelled" : "active");
+    if (competingState.status === "active") {
+      expect((await whiteContext.request.post(`/api/games/${competingId}/cancel`)).status()).toBe(409);
+    }
+
     const created = await whiteContext.request.post("/api/games", { data: { control: "5+0" } });
     expect(created.status()).toBe(201);
     const gameId = (await created.json()).id as string;
