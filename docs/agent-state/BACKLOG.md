@@ -1,5 +1,7 @@
 # Prioritized backlog
 
+**Checkpoint 74 (2026-10-31):** CI's intermittent adaptive puzzle reload failure is repaired with hydration-gated controls and live localStorage selection. Windows focused 3/3 and full 73 local/mock Chromium PASS, 1 hosted SKIP; 175 Vitest and lint/TS PASS. Push/recheck Linux CI and protected Preview next. S0 still needs server-only staging credential and genuine HTTPS three-user Auth/RLS; S1–S6 and all 20 release gates remain OPEN, rated OFF.
+
 **Checkpoint 72 (2026-10-31):** S0 migration *content* comparison now PASS 9/9 against live stored SQL, and pinned local checksum validation is in `npm run check`. The remote timestamp/version mismatch still needs a reviewed backup and history reconciliation before DB CLI sync. Priority remains server-only secret in isolated Preview plus genuine three-user HTTPS Auth/RLS. S1–S6 pending; 20 gates OPEN, rated OFF.
 
 **Checkpoint 71 (2026-10-31):** Published `7387dfa` to development branch and refreshed protected READY Preview `dpl_GWwGiiDrqaBx27CqFkBXzPs2B9mf`; four webpage routes 200, anonymous games 503, preferences 401. Build 17 pages, npm audit zero. S0 still BLOCKED_EXTERNAL: Preview has public Supabase URL/key but no server-only secret or three verified real identities. Continue S0–S6; 20 gates OPEN, rated OFF; production withheld.

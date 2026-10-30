@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 74: adaptive puzzle reload regression
+
+- **GitHub Linux evidence:** Actions `41137690679` and `41138490018` failed exactly at `e2e/rookline.spec.ts:350` after selecting Fork immediately after a reload. Each had 72 browser PASS, 1 FAIL and 1 genuine hosted SKIP. An intervening run `41138300540` was GREEN; this was an intermittent client hydration race.
+- **Repair:** Puzzle input/theme/adaptive navigation is disabled until stored completions/practice finish hydration. Theme and adaptive selectors also read current localStorage data to avoid stale selection immediately after reload or an intervening tab update.
+- **Local verification:** Full `npm run check` exit 0: pinned migration fingerprints **9/9**, ESLint and strict TypeScript PASS, **175 Vitest in 25 files PASS**, Next.js Webpack production compile and **17/17 static pages PASS**. Focused Playwright adaptive regression repeated **3/3 PASS** on Windows localhost with approved port access. Complete `npm run test:e2e` exited 0: **73 local/mock Chromium PASS, 1 hosted HTTPS test SKIP**. Remote CI result must be recorded independently; never treat the mock game tests as Supabase Auth, Realtime, RLS or transactional proof.
+
 ## 2026-10-31 — checkpoint 73: GitHub Actions parity enforcement
 
 - Workflow inspection showed `.github/workflows/quality.yml` runs separate `npm ci`, audit, lint, TypeScript, Vitest, build and Playwright steps; it did not invoke the new `verify:migrations` command from `npm run check`. Added the read-only local checksum step immediately after `npm ci`, so future `codex/**` pushes and PRs fail if any of the nine previously deployed SQL files drift. `git ls-files --eol` confirmed the SQL and checker are stored with LF in the Git index. See following checkpoint for full local test evidence. Remote GitHub Actions conclusion remains unverified until a workflow run is inspected; this workflow edit does not complete hosted multiplayer acceptance.

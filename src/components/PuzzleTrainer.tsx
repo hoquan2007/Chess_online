@@ -34,6 +34,7 @@ export function PuzzleTrainer() {
   const [keyboardMove, setKeyboardMove] = useState("");
   const [theme, setTheme] = useState<PuzzleTheme>("All");
   const [adaptive, setAdaptive] = useState(false);
+  const [ready, setReady] = useState(false);
   const [practice, setPractice] = useState<PuzzlePractice>({});
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const retryButtonRef = useRef<HTMLButtonElement>(null);
@@ -54,7 +55,12 @@ export function PuzzleTrainer() {
         setPractice(latest);
       }
     };
-    queueMicrotask(() => syncFromStorage());
+    // Keep server-rendered controls disabled until hydration has restored
+    // progress. Fast clicks after reload must not select from empty defaults.
+    queueMicrotask(() => {
+      syncFromStorage();
+      setReady(true);
+    });
     const onStorage = (event: StorageEvent) => {
       if (event.storageArea === localStorage) syncFromStorage(event.key);
     };
@@ -121,7 +127,9 @@ export function PuzzleTrainer() {
 
   const chooseTheme = (value: PuzzleTheme) => {
     setTheme(value);
-    open(adaptive ? nextAdaptivePuzzleIndex(-1, value, complete, practice) : nextPracticePuzzleIndex(-1, value, complete));
+    const latestComplete = storedCompletions() ?? complete;
+    const latestPractice = storedPractice() ?? practice;
+    open(adaptive ? nextAdaptivePuzzleIndex(-1, value, latestComplete, latestPractice) : nextPracticePuzzleIndex(-1, value, latestComplete));
   };
 
   const nextPuzzle = () => open(adaptive
@@ -140,15 +148,15 @@ export function PuzzleTrainer() {
       <div className="status" role="status">{feedback || "Drag a piece or click two squares to play your answer."}</div>
       <label className="stack" htmlFor="puzzle-topic" style={{ gap: 7 }}>
         <span className="panel-sub">Practice topic</span>
-        <select className="field" id="puzzle-topic" value={theme} onChange={(event) => chooseTheme(event.target.value as PuzzleTheme)}>
+        <select className="field" id="puzzle-topic" value={theme} disabled={!ready} onChange={(event) => chooseTheme(event.target.value as PuzzleTheme)}>
           {puzzleThemes.map((item) => <option key={item} value={item}>{item === "All" ? "All topics" : item}</option>)}
         </select>
       </label>
       <div className="stack" style={{ gap: 5 }}>
-        <button type="button" className={`btn ${adaptive ? "primary" : "ghost"}`} aria-pressed={adaptive}
-          onClick={() => { const enabled = !adaptive; setAdaptive(enabled); open(enabled
-            ? nextAdaptivePuzzleIndex(-1, theme, complete, practice)
-            : nextPracticePuzzleIndex(-1, theme, complete)); }}>
+        <button type="button" className={`btn ${adaptive ? "primary" : "ghost"}`} aria-pressed={adaptive} disabled={!ready}
+          onClick={() => { const enabled = !adaptive; const latestComplete = storedCompletions() ?? complete; setAdaptive(enabled); open(enabled
+            ? nextAdaptivePuzzleIndex(-1, theme, latestComplete, storedPractice() ?? practice)
+            : nextPracticePuzzleIndex(-1, theme, latestComplete)); }}>
           Adaptive review {adaptive ? "on" : "off"}
         </button>
         <p className="panel-sub">Adaptive review revisits positions you missed or needed hints for. Practice history stays on this device.</p>
@@ -157,16 +165,16 @@ export function PuzzleTrainer() {
         <label htmlFor="puzzle-keyboard-move" className="panel-sub">Keyboard move · e2e4 or a7a8q</label>
         <div className="keyboard-move-row">
           <input id="puzzle-keyboard-move" value={keyboardMove} onChange={(event) => setKeyboardMove(event.target.value)}
-            maxLength={12} autoComplete="off" placeholder="e2e4" disabled={solved} />
-          <button type="submit" className="btn ghost" disabled={solved}>Move</button>
+            maxLength={12} autoComplete="off" placeholder="e2e4" disabled={!ready || solved} />
+          <button type="submit" className="btn ghost" disabled={!ready || solved}>Move</button>
         </div>
       </form>
-      <div className="pill-group">{visible.map((index) => <button key={puzzles[index].id} type="button" aria-label={`Puzzle ${index + 1}`} aria-pressed={active === index} className={`pill ${active === index ? "active" : ""}`} onClick={() => open(index)}>{index + 1}{complete.includes(puzzles[index].id) ? " ✓" : ""}</button>)}</div>
+      <div className="pill-group">{visible.map((index) => <button key={puzzles[index].id} type="button" aria-label={`Puzzle ${index + 1}`} aria-pressed={active === index} disabled={!ready} className={`pill ${active === index ? "active" : ""}`} onClick={() => open(index)}>{index + 1}{complete.includes(puzzles[index].id) ? " ✓" : ""}</button>)}</div>
       <p className="muted">Solved {complete.length} / {puzzles.length} positions on this device.</p>
       <p className="panel-sub">{theme === "All" ? "All topics" : theme}: {visible.filter((index) => complete.includes(puzzles[index].id)).length} / {visible.length} solved.</p>
       <div className="game-actions" style={{ marginTop: "auto" }}>
-        <button type="button" className="btn ghost" onClick={() => { if (!solved) record("hint"); setFeedback(current.hint); }}><Lightbulb size={16} /> Hint</button>
-        <button ref={retryButtonRef} type="button" className="btn ghost" onClick={() => open(active)}><RotateCcw size={16} /> Retry</button>
+        <button type="button" className="btn ghost" disabled={!ready} onClick={() => { if (!solved) record("hint"); setFeedback(current.hint); }}><Lightbulb size={16} /> Hint</button>
+        <button ref={retryButtonRef} type="button" className="btn ghost" disabled={!ready} onClick={() => open(active)}><RotateCcw size={16} /> Retry</button>
         {solved && <button type="button" className="btn primary" onClick={nextPuzzle}>Next puzzle <ArrowRight size={16} /></button>}
       </div>
     </aside>

@@ -1,5 +1,7 @@
 # Final acceptance audit (OPEN)
 
+**Checkpoint 74 (2026-10-31):** The intermittent Linux CI puzzle reload failure was traced to interactive controls appearing before client progress hydration and repaired. Full `npm run check` PASS (migration parity 9/9, lint/types, 175 unit tests, 17-page production build); local Chromium 73/73 PASS (one *real hosted* Supabase scenario SKIPPED), focused reload 3/3 PASS. Full-product acceptance is unchanged: the server-only preview credential, genuine HTTPS three-user RLS/Auth, independent Realtime and PostgreSQL clocks/locks, rated settlement, study/community completeness, and release evidence remain missing. **20 OPEN, rated OFF, IN_PROGRESS.**
+
 **Checkpoint 72 (2026-10-31):** Verified remote-to-local SQL content parity for all nine installed staging migrations via stored-statement hashes. Added a local checksum gate. Historical migration *version IDs* remain divergent; no `db push` or live Auth/RLS proof. This improves migration evidence but closes no product acceptance gate. **20 OPEN, rated OFF, IN_PROGRESS.**
 
 **Checkpoint 71 (2026-10-31):** Commit `7387dfa` confirmed on GitHub development branch and protected Vercel Preview `dpl_GWwGiiDrqaBx27CqFkBXzPs2B9mf` READY (17-page build, four page-route HTTP 200s). Anonymous `/api/games` is 503; Preview lacks server-only Supabase credentials. S0 HTTPS Auth/RLS, genuine multiuser/concurrency, rated and final independent acceptance remain unproven. npm audit reported zero vulnerabilities. **20 gates OPEN, rated OFF, IN_PROGRESS.**

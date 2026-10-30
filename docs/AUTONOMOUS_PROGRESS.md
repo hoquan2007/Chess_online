@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 74 — puzzle hydration and CI browser race
+
+- Inspected GitHub Actions runs `41137690679` and `41138490018`: both passed pre-browser checks but failed the same adaptive puzzle reload assertion at `e2e/rookline.spec.ts:350` (72 browser PASS / 1 FAIL / 1 real hosted SKIP). Run `41138300540` passed, confirming intermittent behavior.
+- Corrected the reload initialization race: puzzle controls remain disabled until client progress hydration completes; theme/adaptive selection reads the latest device snapshot when used. The UI no longer accepts a pre-hydration topic change with empty default completion data.
+- Local proof: complete `npm run check` exited 0 (migration fingerprints 9/9, lint, strict TypeScript, Vitest 175/175, Webpack 17-page production build). Focused adaptive puzzle Playwright 3/3 PASS, full Chromium 73 local/mock PASS / 1 real hosted SKIP. The skipped hosted scenario still requires secure real Supabase Auth staging. Production and `main` remain untouched; all 20 acceptance gates OPEN and rated OFF. Remote post-fix CI and Preview require separate confirmation.
+
 ## 2026-10-31, checkpoint 73 — CI migration parity gate
 
 - After publishing source/remote parity evidence as commit `7e2fe5a`, audited `.github/workflows/quality.yml`: CI explicitly ran lint, types, tests and build rather than `npm run check`, so the new parity script was not included. Added `npm run verify:migrations` immediately after `npm ci` on the existing `codex/**` push/PR workflow. Existing 9/9 SQL hashes use LF in the Git index; the Node check remains offline. No web/API code, DB schema or deployed environment changed. Remote CI status must be checked separately.
