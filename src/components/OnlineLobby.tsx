@@ -1,59 +1,105 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { browserSupabase } from "@/lib/supabase/client";
 import { timeControls, type TimeControl } from "@/lib/online/games";
-
-type GamePreview = { id: string; white_id: string; black_id: string | null; status: string; base_ms: number; increment_ms: number; ply: number; created_at: string; result: string | null };
+import { createLobbySession, type LobbyGame } from "@/lib/online/lobby-session";
 
 export function OnlineLobby({ friend = false }: { friend?: boolean }) {
   const router = useRouter();
+  const client = useMemo(() => browserSupabase(), []);
+  const session = useRef<ReturnType<typeof createLobbySession> | null>(null);
+  const creating = useRef<AbortController | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [games, setGames] = useState<GamePreview[]>([]);
+  const [games, setGames] = useState<LobbyGame[]>([]);
   const [control, setControl] = useState<TimeControl>("5+0");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const configured = !!browserSupabase();
+  const configured = !!client;
 
-  const refresh = useCallback(async () => {
-    const client = browserSupabase();
-    if (!client) return;
-    const { data: { user } } = await client.auth.getUser();
-    setUserId(user?.id ?? null);
-    setReady(true);
-    if (!user) { setGames([]); return; }
-    try {
-      const response = await fetch("/api/games", { cache: "no-store" });
-      const json = await response.json();
-      if (response.ok) setGames(json.games ?? []);
-      else setMessage(json.error ?? "Could not load your games.");
-    } catch { setMessage("You appear to be offline. Reconnect and retry."); }
-  }, []);
+  const refresh = useCallback(() => void session.current?.refresh(), []);
 
   useEffect(() => {
-    queueMicrotask(() => void refresh());
-    const interval = window.setInterval(() => void refresh(), 8000);
-    return () => clearInterval(interval);
-  }, [refresh]);
+    if (!client) return;
+    let active = true;
+    const manager = createLobbySession({
+      verifyUser: async () => {
+        const { data, error } = await client.auth.getUser();
+        if (error) throw error;
+        return data.user?.id ?? null;
+      },
+      loadGames: async (signal) => {
+        const response = await fetch("/api/games", { cache: "no-store", signal });
+        const json = await response.json();
+        if (!response.ok) throw new Error(json?.error ?? "Could not load your games.");
+        if (!Array.isArray(json.games)) throw new Error("Invalid game list from server.");
+        return json.games as LobbyGame[];
+      },
+      onState: (next) => {
+        setUserId(next.userId);
+        setReady(next.ready);
+        setGames(next.games);
+        setMessage(next.message);
+      },
+    });
+    session.current = manager;
+    queueMicrotask(() => { if (active) void manager.refresh(); });
+    const interval = window.setInterval(() => void manager.refresh(), 8000);
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, authSession) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      if (event !== "USER_UPDATED" && (authSession?.user.id ?? null) === (manager.token()?.id ?? null)) return;
+      manager.invalidate();
+      creating.current?.abort();
+      setBusy(false);
+      // Supabase auth callbacks run under an internal lock; defer getUser until it exits.
+      window.setTimeout(() => { if (active) void manager.refresh(); }, 0);
+    });
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+      window.clearInterval(interval);
+      creating.current?.abort();
+      manager.dispose();
+      if (session.current === manager) session.current = null;
+    };
+  }, [client]);
 
   async function createGame() {
-    if (busy) return;
+    const manager = session.current;
+    const token = manager?.token();
+    if (!manager || !token || creating.current) return;
+    const abort = new AbortController();
+    creating.current = abort;
     setBusy(true); setMessage("");
     try {
-      const response = await fetch("/api/games", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control }) });
+      const response = await fetch("/api/games", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control }), signal: abort.signal });
       const json = await response.json();
+      if (abort.signal.aborted || !manager.isCurrent(token)) return;
       if (!response.ok) throw new Error(json.error ?? "Challenge could not be created.");
       router.push(`/game/${json.id}`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Unknown error"); }
-    finally { setBusy(false); }
+    } catch (error) {
+      if (!abort.signal.aborted && manager.isCurrent(token)) setMessage(error instanceof Error ? error.message : "Unknown error");
+    } finally {
+      if (creating.current === abort) { creating.current = null; setBusy(false); }
+    }
   }
 
   async function signOut() {
-    await browserSupabase()?.auth.signOut();
-    setGames([]); setUserId(null); router.refresh();
+    session.current?.invalidate();
+    creating.current?.abort();
+    creating.current = null;
+    setBusy(false);
+    try {
+      const { error } = await client?.auth.signOut() ?? { error: null };
+      if (error) throw error;
+      router.refresh();
+    } catch {
+      refresh();
+      setMessage("Sign out failed. Please try again.");
+    }
   }
 
   return <section className="stack">

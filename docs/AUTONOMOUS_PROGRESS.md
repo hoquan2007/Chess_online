@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 61 — account-scoped online lobby refresh
+
+- Added verified-identity lobby session coordination; an old account's game list cannot publish after identity switches, sign-out, out-of-order API responses, or component teardown. Pending create-challenge requests are aborted on account changes. Four new Vitest cases cover isolation, request ordering, failed verification and disposal.
+- Local evidence: lint/types PASS; **165 Vitest (24 files) PASS**; native **67 local/mock Chromium PASS / 1 genuine hosted SKIP**; separate native **17-page build PASS**. The composite `npm run check` encountered a Windows `EPERM` at standalone trace copy after lint/typecheck/tests passed; the native build completed successfully.
+- Vercel project environment listing independently confirms zero configured variables; hosted Auth/RLS and end-to-end online play cannot be considered verified. Advance S0 dedicated secure HTTPS staging and migration reconciliation, then S1 two browsers, S2 row locks/clocks, S3 rated/matchmaking, S4 engine/study, S5 community, S6 final independent audit. **20 gates OPEN, rated OFF, IN_PROGRESS**.
+
 ## 2026-10-31, checkpoint 60 — preview deployment smoke and blockers
 
 - GitHub development branch push succeeded through tested commit `890c782`; `main` untouched. Vercel preview deployment `dpl_8rNpXSfR544VQ8c8M5b2nuF9KimW` of that SHA is READY at `https://chessonline-b5itq6vfa-hnquan.vercel.app`. Authenticated route smoke: five pages HTTP 200 with Rookline homepage markup; build generated 17 pages.

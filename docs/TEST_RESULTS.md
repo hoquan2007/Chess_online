@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 61: online lobby account-isolation regression
+
+- **Code:** `src/lib/online/lobby-session.ts` uses an account epoch, an incrementing request ID and abort signals to prevent previous-account or out-of-order game responses from updating the lobby. `src/components/OnlineLobby.tsx` binds the verified Supabase identity, clears account data on auth change/sign-out, aborts stale challenge creation and disposes listeners and pending requests on unmount. The client additionally filters displayed games to the verified participant, as a defensive UI measure; server authorization and RLS remain authoritative.
+- **Observed local checks from this implementation:** ESLint PASS; strict TypeScript PASS; **165/165 Vitest in 24 files PASS**, including **4/4 new lobby session cases**; full native Chromium **67/67 local/mock PASS**, **1 opted-in real hosted staging SKIP**; separate native `npm run build` **PASS, 17/17 generated pages**. Composite `npm run check` completed lint, typecheck and Vitest, then **FAILED** while copying Next standalone tracing files due to Windows `EPERM`; standalone native build subsequently passed. `git diff --check` PASS before ledger edit.
+- **Hosted readiness:** Current Vercel project environment listing returned **0 variables** (non-decrypted query). Previous preview smoke had `/api/games` and `/api/preferences` at HTTP 503 and public SSO redirects; this slice has **no real authenticated Supabase browser evidence**. Three-user HTTPS Auth/RLS/Origin, two-browser Realtime, independent database row locks/clocks and rated settlement remain OPEN. **20 acceptance gates OPEN; rated OFF; IN_PROGRESS.**
+
 ## 2026-10-31 — checkpoint 60: GitHub push and protected Vercel preview smoke
 
 - **Source and deployment:** GitHub `origin/codex/chess-platform-foundation` successfully advanced `04eedde..890c782`; `main` untouched. Vercel team `team_dReTYXzGNLEbtzkPCKOnEKHI`, project `prj_ZNZGqIQcB9oqWwcczuOTgpHnwcir`, deployment `dpl_8rNpXSfR544VQ8c8M5b2nuF9KimW`, source SHA `890c782592d5f0a7acf4d93578fcaf89706b8fb0`, target **preview**, state **READY**. URL: `https://chessonline-b5itq6vfa-hnquan.vercel.app`.
