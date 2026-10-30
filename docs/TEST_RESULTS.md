@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 43: fail-closed CSRF on hosted game mutations
+
+- Six online game POST routes share a hardened `rejectCrossOrigin`: missing `Origin` without affirmative `Sec-Fetch-Site: same-origin`, same-site siblings, cross-site metadata, Host/scheme mismatches, malformed/opaque origins all reject 403. Development URL normalization is covered with received `Host`. Playwright staging's APIRequestContext now supplies the matching browser-like Origin. The HTTPS reverse-proxy Host/scheme assumption and untested public staging path are documented in `SECURITY_MODEL.md`.
+- `npm run check`: **ESLint PASS, strict TypeScript PASS, 88/88 Vitest PASS in 12 suites**, then build **FAILED** with Windows sandbox `EPERM` creating `.next/types/app/games`. Separate elevated native `npm run build` **PASS, exit 0, 17/17 pages**. Full native `npx playwright test --workers=1` **PASS, exit 0: 55 local/mock Chromium PASS, 1 guarded real staging SKIP**, including CSRF/claim API checks. `next-env.d.ts` restored to tracked production type refs following Next dev regeneration. `git diff --check` to be recorded before commit.
+- Fresh boolean-only `.env.local`/process check: staging URL, publishable, secret and legacy service-role keys **all absent**. Real Supabase Auth/JWT, multi-browser Realtime, authoritative two-connection clocks, rated settlement and HTTPS proxy flow remain **unverified**. Nine remote migrations remain previously applied; tenth rating SQL tested only in rollback. Rated creation OFF; **20 acceptance gates OPEN, IN_PROGRESS**. No remote writes, production deploy or `main` merge. Rollback: revert checkpoint-43 CSRF helper/tests and evidence edits only.
+
 ## 2026-10-30 — checkpoint 42: expanded openings and lesson practice
 
 - Added five original opening lines and two instructional lessons, bringing the catalogues to **10 openings / 5 lessons**. Vitest checks 15 distinct IDs, correct authored move/step counts, legality, and successful guided practice on either side. The native Chromium case completes French Defense as Black and castling practice as White, validates distinct `french:b` and `castle:w` mastery, and verifies persistence across reload.

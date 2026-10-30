@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 43 — fail-closed game mutation origin checks
+
+- Tightened shared six-route POST CSRF guard against missing/sibling/malformed Origin evidence. Added Host, scheme and cross-site metadata regression tests and matching Origin to nonbrowser staging API requests; documented trusted reverse-proxy assumptions.
+- Native lint/strict TypeScript/**88 Vitest PASS**; composite `npm run check` build **FAILED** only at restricted Windows `.next` `EPERM`, while native elevated production build **PASS 17 pages**. Full native Chromium **55 local/mock PASS / 1 live staging SKIP**; generated `next-env.d.ts` restored. Fresh safe configuration probe: four Supabase runtime values absent.
+- Project **IN_PROGRESS, all 20 gates OPEN**. S0 Auth/RLS, S1 multi-browser Realtime, S2 DB clock contention, S3 rated transactions, S4–S6 remain. Rated API OFF; no deployment, staging write or `main` merge.
+
 ## 2026-10-30, checkpoint 42 — expanded original opening and lesson curriculum
 
 - Expanded CH-14 from five to **ten** legal, original opening lines (French Defense, Caro-Kann, Scandinavian Defense, London System and English Opening added) and from three to **five** original lessons (king safety through castling and central pawn breaks added). Existing IDs and per-color device-local mastery remain compatible. A new test exercises all 15 lines as White and Black using legal scripted moves.

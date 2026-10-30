@@ -1,5 +1,7 @@
 # Rookline feature matrix
 
+**Checkpoint 43:** CSRF Origin/Host validation hardening verified locally; lint/types/**88 Vitest PASS**, native 17-page build PASS separately after composite sandbox `EPERM`; full **55 local/mock Chromium PASS / 1 staging SKIP**. CH-18/19 remain PARTIAL; genuine HTTPS proxy/Auth and hosted concurrency unverified, **20 gates OPEN**.
+
 Statuses: `LOCALLY_TESTED` means a named local unit/browser flow passed, **not** complete acceptance; `IMPLEMENTED_UNVERIFIED` means code exists without a needed real integration test; `PARTIAL` means only a subset exists; `PLANNED` means no complete functional implementation; `BLOCKED_EXTERNAL` requires live services. A unit test or local E2E passing is not hosted multiplayer proof.
 
 | ID | Priority | Capability | Dependencies | Status | Acceptance and evidence | Review |
@@ -21,8 +23,8 @@ Statuses: `LOCALLY_TESTED` means a named local unit/browser flow passed, **not**
 | CH-15 | P2 | Chat/friends/search | CH-05, CH-08 | PLANNED | Authentication/moderation tests | Pending |
 | CH-16 | P2 | Notifications, spectators | CH-08 | PLANNED | Channel authorization/reconnect | Pending |
 | CH-17 | P2 | Tournaments and standings | CH-10 | PLANNED | Tournament E2E | Pending |
-| CH-18 | P0 | Security, abuse and rate limits | All hosted features | PARTIAL | Origin/body checks and security headers browser-tested, DB rate limiter draft; RLS/IDOR/abuse integration pending | Partial QA |
-| CH-19 | P0 | CI/CD, full regression, accessibility | All features | PARTIAL | Checkpoint 42 native `npm run check` PASS: ESLint, strict typecheck, 80/80 Vitest, 17/17 build pages; full native Chromium 55 local/mock PASS / 1 guarded staging SKIP. Hosted CI, accessibility/cross-browser/public preview pending. | Partial QA |
+| CH-18 | P0 | Security, abuse and rate limits | All hosted features | PARTIAL | Checkpoint 43 origin validator rejects missing, sibling, opaque/malformed and cross-site mutations (12 origin unit tests and browser API 403 cases pass); HTTPS proxy/Host behavior, Auth/RLS/IDOR and abuse tests pending. | Partial QA |
+| CH-19 | P0 | CI/CD, full regression, accessibility | All features | PARTIAL | Checkpoint 43 ESLint, strict typecheck, 88/88 Vitest PASS; composite build sandbox `EPERM` but separate native 17-page build PASS; full Chromium 55 local/mock PASS / 1 true staging SKIP. Hosted CI, accessibility/cross-browser/public preview pending. | Partial QA |
 | CH-20 | P0 | Evidence-based release audit | CH-01..19 | PLANNED | 20 acceptance gates with citations | Pending |
 
 See `docs/TEST_RESULTS.md` for exact observed results. No feature has yet passed all its required evidence gates.

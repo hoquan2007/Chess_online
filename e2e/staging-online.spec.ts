@@ -56,10 +56,14 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     return (await response.json()).game as { id: string; ply: number; status: string; winner_id: string | null; result: string | null; pgn: string };
   }
 
+  // Playwright's APIRequestContext is not a browser fetch; attach the same
+  // Origin a real authenticated browser POST would send.
+  function postGame(context: BrowserContext, path: string, data?: Record<string, unknown>) {
+    return context.request.post(path, { headers: { Origin: appOrigin }, data });
+  }
+
   async function move(context: BrowserContext, gameId: string, from: string, to: string, expectedPly: number, requestId = randomUUID()) {
-    return context.request.post(`/api/games/${gameId}/move`, {
-      data: { from, to, expectedPly, requestId },
-    });
+    return postGame(context, `/api/games/${gameId}/move`, { from, to, expectedPly, requestId });
   }
 
   try {
@@ -83,12 +87,12 @@ test("two real Supabase users play an authoritative private game", async ({ brow
 
     // Only the creator may cancel a waiting challenge, including after a
     // reload. Direct authenticated RPC execution must remain prohibited.
-    const pendingCreate = await whiteContext.request.post("/api/games", { data: { control: "5+0" } });
+    const pendingCreate = await postGame(whiteContext, "/api/games", { control: "5+0" });
     expect(pendingCreate.status()).toBe(201);
     const pendingId = (await pendingCreate.json()).id as string;
     createdGames.push(pendingId);
-    expect((await outsiderContext.request.post(`/api/games/${pendingId}/cancel`)).status()).toBe(409);
-    expect((await blackContext.request.post(`/api/games/${pendingId}/cancel`)).status()).toBe(409);
+    expect((await postGame(outsiderContext, `/api/games/${pendingId}/cancel`)).status()).toBe(409);
+    expect((await postGame(blackContext, `/api/games/${pendingId}/cancel`)).status()).toBe(409);
     const { error: directCancelError } = await outsider.rpc("rookline_cancel_challenge", {
       p_game: pendingId, p_player: whiteId,
     });
@@ -96,30 +100,30 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     await whitePage.goto(`/game/${pendingId}`);
     await whitePage.getByRole("button", { name: "Cancel challenge" }).click();
     await expect(whitePage.getByText("Challenge cancelled", { exact: true })).toBeVisible();
-    expect((await whiteContext.request.post(`/api/games/${pendingId}/cancel`)).status()).toBe(200);
-    expect((await blackContext.request.post(`/api/games/${pendingId}/join`)).status()).toBe(409);
+    expect((await postGame(whiteContext, `/api/games/${pendingId}/cancel`)).status()).toBe(200);
+    expect((await postGame(blackContext, `/api/games/${pendingId}/join`)).status()).toBe(409);
     expect((await gameState(whiteContext, pendingId)).status).toBe("cancelled");
     const cancelledRead = await blackContext.request.get(`/api/games/${pendingId}`);
     expect(cancelledRead.status()).toBe(403);
     expect((await cancelledRead.json()).joinable).toBe(false);
 
     // A concurrent join and cancellation must produce exactly one winner.
-    const competingCreate = await whiteContext.request.post("/api/games", { data: { control: "5+0" } });
+    const competingCreate = await postGame(whiteContext, "/api/games", { control: "5+0" });
     expect(competingCreate.status()).toBe(201);
     const competingId = (await competingCreate.json()).id as string;
     createdGames.push(competingId);
     const [cancelRace, joinRace] = await Promise.all([
-      whiteContext.request.post(`/api/games/${competingId}/cancel`),
-      blackContext.request.post(`/api/games/${competingId}/join`),
+      postGame(whiteContext, `/api/games/${competingId}/cancel`),
+      postGame(blackContext, `/api/games/${competingId}/join`),
     ]);
     expect([cancelRace.status(), joinRace.status()].sort()).toEqual([200, 409]);
     const competingState = await gameState(whiteContext, competingId);
     expect(competingState.status).toBe(cancelRace.status() === 200 ? "cancelled" : "active");
     if (competingState.status === "active") {
-      expect((await whiteContext.request.post(`/api/games/${competingId}/cancel`)).status()).toBe(409);
+      expect((await postGame(whiteContext, `/api/games/${competingId}/cancel`)).status()).toBe(409);
     }
 
-    const created = await whiteContext.request.post("/api/games", { data: { control: "5+0" } });
+    const created = await postGame(whiteContext, "/api/games", { control: "5+0" });
     expect(created.status()).toBe(201);
     const gameId = (await created.json()).id as string;
     expect(gameId).toMatch(/^[a-f0-9-]{36}$/);
@@ -128,7 +132,7 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     const unjoined = await blackContext.request.get(`/api/games/${gameId}`);
     expect(unjoined.status()).toBe(403);
     expect((await unjoined.json()).joinable).toBe(true);
-    const joined = await blackContext.request.post(`/api/games/${gameId}/join`);
+    const joined = await postGame(blackContext, `/api/games/${gameId}/join`);
     expect(joined.status()).toBe(200);
     expect((await gameState(whiteContext, gameId)).status).toBe("active");
     expect((await gameState(blackContext, gameId)).status).toBe("active");
@@ -173,11 +177,11 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     await expect(blackPage.getByText("Game finished", { exact: false }).first()).toBeVisible();
 
     // Simultaneous legal requests must result in a single accepted ply.
-    const raceCreate = await whiteContext.request.post("/api/games", { data: { control: "5+0" } });
+    const raceCreate = await postGame(whiteContext, "/api/games", { control: "5+0" });
     expect(raceCreate.status()).toBe(201);
     const raceId = (await raceCreate.json()).id as string;
     createdGames.push(raceId);
-    expect((await blackContext.request.post(`/api/games/${raceId}/join`)).status()).toBe(200);
+    expect((await postGame(blackContext, `/api/games/${raceId}/join`)).status()).toBe(200);
     await Promise.all([whitePage.goto(`/game/${raceId}`), blackPage.goto(`/game/${raceId}`)]);
     await expect(blackPage.getByText("Your game room")).toBeVisible();
     const [raceA, raceB] = await Promise.all([
@@ -196,7 +200,7 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     // opponent comes back online, even when Realtime messages were missed.
     await blackContext.setOffline(true);
     try {
-      const resigned = await whiteContext.request.post(`/api/games/${raceId}/resign`);
+      const resigned = await postGame(whiteContext, `/api/games/${raceId}/resign`);
       expect(resigned.status()).toBe(200);
     } finally {
       await blackContext.setOffline(false);

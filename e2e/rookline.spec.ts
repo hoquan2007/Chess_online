@@ -471,6 +471,12 @@ test("server denies cross-origin game mutations before using credentials", async
   });
   expect(cancel.status()).toBe(403);
   expect(await cancel.json()).toMatchObject({ error: "Cross-origin action denied" });
+  const missingOrigin = await request.post("/api/games", { data: { control: "5+0" } });
+  expect(missingOrigin.status()).toBe(403);
+  const siblingSite = await request.post("/api/games", {
+    headers: { "Sec-Fetch-Site": "same-site" }, data: { control: "5+0" },
+  });
+  expect(siblingSite.status()).toBe(403);
 });
 
 test("draw claims fail closed without hosted chess credentials", async ({ request }) => {
@@ -479,11 +485,14 @@ test("draw claims fail closed without hosted chess credentials", async ({ reques
     (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)),
   "This fail-closed assertion applies only to an unconfigured local environment.");
   const claim = await request.post("/api/games/00000000-0000-4000-8000-000000000001/claim", {
+    headers: { Origin: "http://127.0.0.1:3100" },
     data: { rule: "repetition", expectedPly: 8 },
   });
-  expect(claim.status()).toBe(503);
+  expect(claim.status(), await claim.text()).toBe(503);
   expect(await claim.json()).toMatchObject({ error: "Chess service is not configured." });
-  const cancel = await request.post("/api/games/00000000-0000-4000-8000-000000000001/cancel");
+  const cancel = await request.post("/api/games/00000000-0000-4000-8000-000000000001/cancel", {
+    headers: { Origin: "http://127.0.0.1:3100" },
+  });
   expect(cancel.status()).toBe(503);
   expect(await cancel.json()).toMatchObject({ error: "Chess service is not configured." });
 });

@@ -1,5 +1,7 @@
 # Final acceptance audit (OPEN)
 
+**Checkpoint 43 evidence (2026-10-30):** Game POST CSRF origin guard fails closed on absent/hostile evidence, and normalizes received Host vs development request URL; 88 unit tests and 55 local/mock Chromium tests PASS, 1 true hosted test SKIP. Sandbox composite build hit `EPERM`, separate native 17-page Next production build PASS. Public HTTPS proxy, real Auth/Realtime/DB clock/rating and four absent staging runtime values prevent closing CH-18/19; rated creation OFF, **all 20 gates OPEN / IN_PROGRESS**.
+
 **Current decision: IN_PROGRESS.** None of the 20 project completion gates has full end-to-end evidence yet. A local board, 20 original puzzles, successful unit tests, static routes or a compiled asset bundle cannot count as real multiplayer verification.
 
 **Checkpoint 42 evidence (2026-10-30):** Original CH-14 curriculum expanded to ten chess.js-valid openings and five lessons; both-side guided practice validated with 80/80 Vitest. Native `npm run check` **PASS** (ESLint, strict TypeScript, 80 tests, 17/17 production pages) and Chromium **55 local/mock PASS / 1 guarded live Supabase SKIP**. Presence-only configuration probe reconfirmed the four staging runtime values absent; genuine Auth/JWT, two-user Realtime, independent DB locks/clocks and rated settlement remain unverified. Tenth rated migration unapplied, rated creation OFF, **20 acceptance gates OPEN / IN_PROGRESS**.
