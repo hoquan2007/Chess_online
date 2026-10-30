@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 46 — completed online PGN analysis flow
+
+- Added protected completed-room → Analysis link, reconstructed canonical online game PGN at the final ply, preserved the authoritative result through export, and supported navigation and branches. Untrusted or unfinished/corrupt payloads, wrong game IDs and inaccessible sessions fail clearly; pending requests cannot overwrite user edits. Strengthened final-game identity/result/turn validation before import.
+- **92/92 Vitest**, ESLint/TypeScript PASS, **3/3 focused real Chromium PASS**, **final native production Webpack 17/17 pages PASS**; complete browser suite from the preceding implementation state **59 local/mock PASS / 1 opted-in hosted staging SKIP**. Restricted composite check encountered `EPERM` during Next packaging; the separate native build succeeded after final validation hardening.
+- CH-12 gains locally verified online-game review; full-engine/hosted analysis remains partial. Next S0 real Supabase Auth/RLS/public HTTPS proxy → S1 two-browser Realtime → S2 independent DB concurrency → S3 atomic rated settlement/matching → S4 hosted profiles/education → S5 community → S6 20-gate independent audit. **IN_PROGRESS / 20 OPEN**; rated OFF and no main merge/production deployment.
+
 ## 2026-10-30, checkpoint 45 — reject stale online game and clock samples together
 
 - Concurrent HTTP polling could accept stale server clock hints even when an older game ply was discarded. Added accepted-game/clock ref reconciliation and browser-monotonic clock sample handling. Chromium verifies an older ply or timestamp cannot undo synchronized `e4`/turn progression or jump the visible clock backwards.

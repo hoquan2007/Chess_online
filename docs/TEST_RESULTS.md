@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 46: completed online game opens verified analysis
+
+- Completed online rooms now link to `/analysis?onlineGame=<uuid>`. The analysis page retrieves the protected game endpoint, verifies the requested ID, completed state, canonical PGN/FEN/ply, participant/winner/result and turn consistency, then loads the full result-bearing PGN for navigation, branching and download. Invalid IDs do not issue requests; inaccessible/expired sessions and corrupt/unfinished records show clear errors. Abort and user-edit safeguards prevent a late response from replacing local edits.
+- **Final unit/regression evidence:** ESLint exit 0; strict TypeScript exit 0; **92/92 Vitest, 12 suites, exit 0**; focused real Chromium **3/3 PASS**, including result-preserving PGN download and branch variation, untrusted inputs and 401/403; **native production Webpack build PASS, exit 0, 17/17 generated pages** after final validation. The complete Chromium suite run before the final additional validation checks **59 local/mock PASS / 1 real hosted staging SKIP, exit 0 (3.4m)**. These are mock HTTP online responses, not real Auth/hosted game evidence. The initial composite `npm run check` attempt failed only during restricted Next build (`EPERM`); its lint/types/unit stages passed; the separate native build passed after the final checks.
+- S0–S6 remain: staging runtime configuration absent at last boolean-only check; real three-identity Auth/RLS, independent-browser Realtime, concurrent PostgreSQL locks/clocks, HTTPS proxy and durable rated settlement unverified. Tenth migration unapplied and rated mode OFF. **20/20 acceptance gates remain OPEN / IN_PROGRESS**. No database write, production deployment or `main` merge.
+
 ## 2026-10-30 — checkpoint 45: stale online snapshots cannot rewind displayed clocks
 
 - Fixed a polling race where a newer HTTP request returned an older game ply: the room previously rejected the stale board but still accepted its stale `serverNow` clock hint. The room now accepts game and clock samples together through refs, rejects older ply/lifecycle states, and clamps newer server-time samples against elapsed monotonic browser time. This affects **display interpolation only**; Postgres remains the authority for moves, timeouts and rated results.

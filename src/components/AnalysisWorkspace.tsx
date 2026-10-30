@@ -8,6 +8,7 @@ import { applyLegalMove, parseCoordinateMove, selectPromotion } from "@/lib/ches
 import { positionInsight } from "@/lib/chess/insights";
 import type { analyzeBotPosition } from "@/lib/chess/bot";
 import { PromotionDialog } from "@/components/PromotionDialog";
+import { completedGameAnalysis, validUuid } from "@/lib/online/games";
 
 type Analysis = { start: string; san: string[]; index: number };
 type AnalysisHint = ReturnType<typeof analyzeBotPosition>;
@@ -28,12 +29,50 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const [hintError, setHintError] = useState<{ key: string; text: string } | null>(null);
   const analysisWorker = useRef<Worker | null>(null);
   const analysisRequest = useRef(0);
+  const userEdited = useRef(false);
 
   useEffect(() => {
     let mounted = true;
+    const abort = new AbortController();
     queueMicrotask(() => {
       if (!mounted) return;
-      const id = new URLSearchParams(window.location.search).get("localGame");
+      const params = new URLSearchParams(window.location.search);
+      const onlineId = params.get("onlineGame");
+      if (onlineId !== null) {
+        if (!validUuid(onlineId)) {
+          setMessage("Invalid online game link.");
+          return;
+        }
+        setMessage("Loading your completed online game…");
+        void (async () => {
+          try {
+            const response = await fetch(`/api/games/${onlineId}`, { cache: "no-store", signal: abort.signal });
+            if (!response.ok) {
+              if (response.status === 401) throw new Error("Sign in to review your online game.");
+              if (response.status === 403 || response.status === 404) throw new Error("This game is unavailable or you are not a participant.");
+              throw new Error("Could not load this game. Please try again.");
+            }
+            const payload: unknown = await response.json();
+            if (!payload || typeof payload !== "object" || !("game" in payload)) throw new Error("Invalid game response");
+            const source = (payload as { game: unknown }).game;
+            if (!source || typeof source !== "object" || !("id" in source) || source.id !== onlineId) throw new Error("Incorrect game response");
+            const imported = completedGameAnalysis(source);
+            if (!mounted || userEdited.current) return;
+            setAnalysis({ start: imported.start, san: imported.san, index: imported.san.length });
+            setPgn(imported.pgn);
+            setImportedPgn(imported.pgn);
+            setSelected(null);
+            setPromotion(null);
+            setMessage(`${imported.san.length} plies loaded from your completed online game.`);
+          } catch (error) {
+            if (!mounted || abort.signal.aborted || userEdited.current) return;
+            setMessage(error instanceof Error && ["Sign in to review your online game.", "This game is unavailable or you are not a participant.", "Could not load this game. Please try again."].includes(error.message)
+              ? error.message : "This online game could not be verified for analysis.");
+          }
+        })();
+        return;
+      }
+      const id = params.get("localGame");
       if (!id) return;
       try {
         if (!id.startsWith("local-") || id.length > 80) throw new Error("Invalid archive id");
@@ -54,7 +93,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
         setMessage("This local game cannot be loaded. It may have been deleted or corrupted.");
       }
     });
-    return () => { mounted = false; };
+    return () => { mounted = false; abort.abort(); };
   }, []);
 
   const board = useMemo(() => {
@@ -105,12 +144,14 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   };
 
   const seek = (step: number) => {
+    userEdited.current = true;
     setAnalysis((prev) => ({ ...prev, index: Math.max(0, Math.min(step, prev.san.length)) }));
     setSelected(null);
     setPromotion(null);
   };
 
   const importPgn = () => {
+    userEdited.current = true;
     try {
       const parsed = new Chess();
       parsed.loadPgn(pgn);
@@ -124,6 +165,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   };
 
   const loadFen = () => {
+    userEdited.current = true;
     try {
       const parsed = new Chess(fenText.trim());
       setAnalysis({ start: parsed.fen(), san: [], index: 0 });
@@ -135,6 +177,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   };
 
   const makeMove = (from: Square, to: Square, piece?: "q" | "r" | "b" | "n") => {
+    userEdited.current = true;
     if (!piece && selectPromotion(board, from, to)) {
       setPromotion({ from, to });
       setSelected(null);
@@ -231,9 +274,9 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
               : hint.result.scoreCp === 0 ? "Even" : `${(hint.result.scoreCp ?? 0) > 0 ? "White" : "Black"} +${(Math.abs(hint.result.scoreCp ?? 0) / 100).toFixed(2)}`} (depth {hint.result.depth} plies).</p>)}
         </div>
       </section>
-      <label className="label">PGN game<textarea className="field" rows={4} value={pgn} onChange={(event) => setPgn(event.target.value)} placeholder="1. e4 e5 2. Nf3 Nc6" /></label>
+      <label className="label">PGN game<textarea className="field" rows={4} value={pgn} onChange={(event) => { userEdited.current = true; setPgn(event.target.value); }} placeholder="1. e4 e5 2. Nf3 Nc6" /></label>
       <button type="button" className="btn primary" onClick={importPgn}>Import PGN</button>
-      <label className="label">FEN position<input className="field" value={fenText} onChange={(event) => setFenText(event.target.value)} placeholder="Paste FEN here" /></label>
+      <label className="label">FEN position<input className="field" value={fenText} onChange={(event) => { userEdited.current = true; setFenText(event.target.value); }} placeholder="Paste FEN here" /></label>
       <button type="button" className="btn ghost" onClick={loadFen}>Load FEN</button>
       <div className="moves" aria-label="Analysis moves">
         {analysis.san.length === 0 ? <p className="panel-sub">Move a piece to start a variation.</p> : Array.from({ length: Math.ceil(analysis.san.length / 2) }, (_, i) => <div className="move-row" key={i}><span>{i + 1}.</span>{[0, 1].map((offset) => <button type="button" key={offset} disabled={!analysis.san[i * 2 + offset]} onClick={() => seek(i * 2 + offset + 1)} style={{ textAlign: "left", textDecoration: analysis.index === i * 2 + offset + 1 ? "underline" : "none" }}>{analysis.san[i * 2 + offset] || ""}</button>)}</div>)}
@@ -244,7 +287,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
         {keyboardError && <p role="alert" className="panel-sub">{keyboardError}</p>}
       </form>
       {message && <p className="status" role="status">{message}</p>}
-      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setImportedPgn(null); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
+      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { userEdited.current = true; setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setImportedPgn(null); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
     </aside>
     {promotion && <PromotionDialog onChoose={(piece) => makeMove(promotion.from, promotion.to, piece)} onCancel={() => setPromotion(null)} />}
   </div>;

@@ -1292,6 +1292,56 @@ test("online room exports a parseable PGN with the authoritative result", async 
   parsed.loadPgn(pgn);
   expect(parsed.fen()).toBe(chess.fen());
   expect(parsed.getHeaders().Result).toBe("0-1");
+
+  // Review is fetched again from the protected API, never from URL-supplied PGN.
+  await page.getByRole("link", { name: "Analyze game" }).click();
+  await expect(page).toHaveURL(`/analysis?onlineGame=${id}`);
+  await expect(page.getByRole("status").filter({ hasText: "4 plies loaded from your completed online game." })).toBeVisible();
+  await expect(page.getByText("4 / 4")).toBeVisible();
+  await expect(page.getByLabel("Analysis moves").getByText("Qh4#")).toBeVisible();
+  const reviewDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PGN" }).click();
+  const reviewed = new Chess();
+  reviewed.loadPgn(await readFile(await (await reviewDownload).path(), "utf8"));
+  expect(reviewed.history()).toEqual(chess.history());
+  expect(reviewed.getHeaders().Result).toBe("0-1");
+
+  await page.getByRole("button", { name: "Previous move" }).click();
+  await expect(page.getByText("3 / 4")).toBeVisible();
+  await page.getByRole("textbox", { name: /Keyboard move/ }).fill("g8f6");
+  await page.getByRole("button", { name: "Move", exact: true }).click();
+  await expect(page.getByLabel("Analysis moves").getByText("Nf6")).toBeVisible();
+  await expect(page.getByLabel("Analysis moves").getByText("Qh4#")).toHaveCount(0);
+});
+
+test("online analysis rejects untrusted links and unfinished or corrupt snapshots", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000018";
+  let calls = 0;
+  await page.route("**/api/games/**", (route) => {
+    calls++;
+    return route.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify({ game: { id, status: "active" } }) });
+  });
+  await page.goto("/analysis?onlineGame=../../bad");
+  await expect(page.getByRole("status").filter({ hasText: "Invalid online game link." })).toBeVisible();
+  expect(calls).toBe(0);
+  await page.goto(`/analysis?onlineGame=${id}`);
+  await expect(page.getByRole("status").filter({ hasText: "This online game could not be verified for analysis." })).toBeVisible();
+  await expect(page.getByText("0 / 0")).toBeVisible();
+  expect(calls).toBe(1);
+});
+
+test("online analysis handles expired sign-in and inaccessible games", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000019";
+  let responseCode = 401;
+  await page.route(`**/api/games/${id}`, (route) => route.fulfill({ status: responseCode,
+    contentType: "application/json", body: JSON.stringify({ error: "Unavailable" }) }));
+  await page.goto(`/analysis?onlineGame=${id}`);
+  await expect(page.getByRole("status").filter({ hasText: "Sign in to review your online game." })).toBeVisible();
+  responseCode = 403;
+  await page.reload();
+  await expect(page.getByRole("status").filter({ hasText: "This game is unavailable or you are not a participant." })).toBeVisible();
+  await expect(page.getByText("0 / 0")).toBeVisible();
 });
 
 test("challenge creator can cancel a waiting invitation and sees its final state", async ({ page }) => {

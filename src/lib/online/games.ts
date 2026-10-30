@@ -62,6 +62,32 @@ export function exportOnlinePgn(snapshot: OnlineGame) {
   return chess.pgn();
 }
 
+/** Convert a finished, server-authorized game to a locally replayable analysis.
+ * Reject inconsistent or oversized ledgers before they reach the analysis UI.
+ */
+export function completedGameAnalysis(value: unknown) {
+  if (!value || typeof value !== "object") throw new Error("Invalid game snapshot");
+  const game = value as Partial<OnlineGame>;
+  if (game.status !== "completed" || !validUuid(game.id ?? "") ||
+      typeof game.pgn !== "string" || game.pgn.length > 100_000 ||
+      typeof game.fen !== "string" || game.fen.length > 120 ||
+      !Number.isSafeInteger(game.ply) || (game.ply ?? -1) < 0 || (game.ply ?? 0) > 30_000 ||
+      typeof game.white_id !== "string" || !game.white_id ||
+      typeof game.black_id !== "string" || !game.black_id ||
+      typeof game.result !== "string" || !game.result || game.result.length > 200 ||
+      (game.winner_id !== null && game.winner_id !== game.white_id && game.winner_id !== game.black_id) ||
+      (game.turn !== "w" && game.turn !== "b")) {
+    throw new Error("Invalid or unfinished game snapshot");
+  }
+  const validated = game as OnlineGame;
+  const pgn = exportOnlinePgn(validated);
+  const chess = new Chess();
+  chess.loadPgn(pgn);
+  if (chess.turn() !== validated.turn) throw new Error("Inconsistent game turn");
+  const san = chess.history();
+  return { start: chess.header().FEN || new Chess().fen(), san, pgn };
+}
+
 /** For display only. The actual winner is decided in a Postgres transaction. */
 export function displayedClock(game: OnlineGame, nowMs: number) {
   let white = game.white_ms;

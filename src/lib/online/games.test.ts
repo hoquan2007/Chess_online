@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
+import { completedGameAnalysis, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
 import { safeNext } from "./redirect";
 
 function snapshot(override: Partial<OnlineGame> = {}): OnlineGame {
@@ -57,6 +57,44 @@ describe("online PGN export", () => {
     const drawn = new Chess();
     drawn.loadPgn(exportOnlinePgn(snapshot({ status: "completed", result: "Stalemate", winner_id: null })));
     expect(drawn.getHeaders().Result).toBe("1/2-1/2");
+  });
+});
+
+describe("completed online game analysis", () => {
+  const finished = () => {
+    const chess = new Chess();
+    for (const move of ["f3", "e5", "g4", "Qh4#"]) chess.move(move);
+    return snapshot({ status: "completed", pgn: chess.pgn(), fen: chess.fen(),
+      ply: 4, turn: chess.turn(), result: "Checkmate", winner_id: "black-id" });
+  };
+
+  it("reconstructs the canonical completed move sequence and result", () => {
+    const loaded = completedGameAnalysis(finished());
+    const parsed = new Chess();
+    parsed.loadPgn(loaded.pgn);
+    expect(loaded.san).toEqual(["f3", "e5", "g4", "Qh4#"]);
+    expect(loaded.start).toBe(new Chess().fen());
+    expect(parsed.getHeaders().Result).toBe("0-1");
+    expect(parsed.history()).toEqual(loaded.san);
+  });
+
+  it("refuses unfinished, corrupted, oversized and unidentifiable game snapshots", () => {
+    const valid = finished();
+    for (const candidate of [
+      { ...valid, status: "active" },
+      { ...valid, fen: new Chess().fen() },
+      { ...valid, ply: 3 },
+      { ...valid, pgn: "illegal move" },
+      { ...valid, pgn: "x".repeat(100_001) },
+      { ...valid, id: "../../bad" },
+      { ...valid, winner_id: 42 },
+      { ...valid, winner_id: "unrelated-id" },
+      { ...valid, result: null },
+      { ...valid, black_id: null },
+      { ...valid, turn: "b" },
+      { ...valid, white_id: undefined },
+      null,
+    ]) expect(() => completedGameAnalysis(candidate)).toThrow();
   });
 });
 
