@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 70: accessible knight-underpromotion tactic
+
+- **Implementation:** Added original puzzle `promotion-021` with legal SAN `g8=N+`, which forks Black's king and queen; a legal queen promotion is intentionally an incorrect answer. `PuzzleTrainer` now invokes the reusable `PromotionDialog` on board-selected pawn promotions, supports all promotion choices, clears pending choices on Retry/change and restores focus through the shared dialog fallback.
+- **Observed checks:** `npm run lint` PASS; `npm run typecheck` PASS; `npm test` **175/175 tests across 25 files PASS**. Focused native Chromium promotion test **1/1 PASS** (port 34952); full native Chromium run **73 local/mock PASS / 1 real hosted Supabase SKIP**, exit 0 (port 34953). `npm run build` Next.js 16.4.3 Webpack **PASS, exit 0**, static generation **17/17**, tracing complete. `git diff --check` PASS before the ledger update.
+- **Verification boundary:** The browser exercised the genuine local puzzle UI; the online browser fixtures are mocked and the protected hosted Supabase scenario was skipped because secure staging runtime credentials are absent. Supabase three-user Auth/RLS, HTTPS Origin/Host, independent Realtime/SQL concurrency, rated matchmaking/settlement and release acceptance remain OPEN. No production deployment; rated OFF.
+
 ## 2026-10-31 — checkpoint 68: current-branch protected Vercel preview smoke
 
 - **Deployment:** Successfully deployed the clean `codex/chess-platform-foundation` working tree after push `b13ca69` via `vercel deploy --yes --scope hnquan` to a **non-production Preview**: `dpl_C7zcUmt9TisWiSwaeurPYnwkZcqL`, `https://chessonline-nc6i3prlk-hnquan.vercel.app`, `READY`, CLI exit 0. Vercel remote build compiled Next.js 16.4.3, passed strict TypeScript and prerendered **17/17 static pages**.

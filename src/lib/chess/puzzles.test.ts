@@ -4,7 +4,7 @@ import { evaluatePuzzleMove, isPuzzleSolution, nextAdaptivePuzzleIndex, nextPrac
 
 describe("original puzzle set", () => {
   it("contains legal, solvable positions", () => {
-    expect(puzzles).toHaveLength(20);
+    expect(puzzles).toHaveLength(21);
     expect(new Set(puzzles.map((item) => item.id)).size).toBe(puzzles.length);
     for (const item of puzzles) {
       const game = new Chess(item.fen);
@@ -32,6 +32,13 @@ describe("original puzzle set", () => {
   it("requires correct promotion piece on endgame puzzle", () => {
     expect(evaluatePuzzleMove("endgame-009", "a7", "a8", "n").status).toBe("incorrect");
     expect(evaluatePuzzleMove("endgame-009", "a7", "a8", "q")).toMatchObject({ status: "correct", san: "a8=Q+" });
+  });
+  it("requires a knight underpromotion for the king-and-queen fork", () => {
+    const game = new Chess(puzzles.find((puzzle) => puzzle.id === "promotion-021")!.fen);
+    expect(game.moves()).toContain("g8=Q");
+    expect(game.moves()).toContain("g8=N+");
+    expect(evaluatePuzzleMove("promotion-021", "g7", "g8", "q")).toEqual({ status: "incorrect" });
+    expect(evaluatePuzzleMove("promotion-021", "g7", "g8", "n")).toMatchObject({ status: "correct", san: "g8=N+" });
   });
   it("solves newly authored Black-to-move tactics and both promotions", () => {
     for (const id of ["mate-012", "fork-013", "capture-017", "promotion-018"]) {
@@ -62,7 +69,7 @@ describe("original puzzle set", () => {
     expect(nextPracticePuzzleIndex(9, "Fork", ["fork-005", "fork-010"])).toBe(12);
     expect(nextPracticePuzzleIndex(13, "Fork", ["fork-005", "fork-010", "fork-013", "fork-014"])).toBe(4);
     expect(nextPracticePuzzleIndex(9, "All", ["mate-001"])).toBe(10);
-    expect(nextPracticePuzzleIndex(19, "All", ["mate-001"])).toBe(1);
+    expect(nextPracticePuzzleIndex(20, "All", ["mate-001"])).toBe(1);
   });
   it("sanitizes tampered practice history and bounds counters", () => {
     const stored = readPuzzlePractice({

@@ -5,7 +5,8 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowRight, Lightbulb, RotateCcw } from "lucide-react";
 import { evaluatePuzzleMove, nextAdaptivePuzzleIndex, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, readPuzzleCompletions, readPuzzlePractice, recordPuzzlePractice, type PuzzlePractice, type PuzzlePracticeEvent, type PuzzleTheme } from "@/lib/chess/puzzles";
-import { parseCoordinateMove } from "@/lib/chess/rules";
+import { parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
+import { PromotionDialog } from "@/components/PromotionDialog";
 
 const completedKey = "rookline-puzzles";
 const practiceKey = "rookline-puzzle-practice";
@@ -34,6 +35,8 @@ export function PuzzleTrainer() {
   const [theme, setTheme] = useState<PuzzleTheme>("All");
   const [adaptive, setAdaptive] = useState(false);
   const [practice, setPractice] = useState<PuzzlePractice>({});
+  const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
+  const retryButtonRef = useRef<HTMLButtonElement>(null);
   const practiceRef = useRef<PuzzlePractice>({});
   const current = puzzles[active];
   const visible = puzzleIndicesForTheme(theme);
@@ -69,6 +72,7 @@ export function PuzzleTrainer() {
   };
 
   const open = (index: number) => {
+    setPendingPromotion(null);
     setActive(index);
     setFen(puzzles[index].fen);
     setSolved(false);
@@ -79,6 +83,12 @@ export function PuzzleTrainer() {
 
   const attempt = (from: Square, to: Square, promotion?: "q" | "r" | "b" | "n") => {
     if (solved) return false;
+    if (!promotion && selectPromotion(new Chess(current.fen), from, to)) {
+      setPendingPromotion({ from, to });
+      setSelected(null);
+      return false;
+    }
+    setPendingPromotion(null);
     const result = evaluatePuzzleMove(current.id, from, to, promotion);
     if (result.status !== "correct") {
       record("error");
@@ -156,9 +166,10 @@ export function PuzzleTrainer() {
       <p className="panel-sub">{theme === "All" ? "All topics" : theme}: {visible.filter((index) => complete.includes(puzzles[index].id)).length} / {visible.length} solved.</p>
       <div className="game-actions" style={{ marginTop: "auto" }}>
         <button type="button" className="btn ghost" onClick={() => { if (!solved) record("hint"); setFeedback(current.hint); }}><Lightbulb size={16} /> Hint</button>
-        <button type="button" className="btn ghost" onClick={() => open(active)}><RotateCcw size={16} /> Retry</button>
+        <button ref={retryButtonRef} type="button" className="btn ghost" onClick={() => open(active)}><RotateCcw size={16} /> Retry</button>
         {solved && <button type="button" className="btn primary" onClick={nextPuzzle}>Next puzzle <ArrowRight size={16} /></button>}
       </div>
     </aside>
+    {pendingPromotion && <PromotionDialog fallbackFocusRef={retryButtonRef} onChoose={(piece) => attempt(pendingPromotion.from, pendingPromotion.to, piece)} onCancel={() => setPendingPromotion(null)} />}
   </div>;
 }

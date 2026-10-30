@@ -21,6 +21,7 @@ export const puzzles = [
   { id: "promotion-018", theme: "Promotion", goal: "move", level: 2, title: "Black promotes with check", description: "Black to move. Promote to a queen and give check.", fen: "6k1/8/8/8/8/8/4p3/K7 b - - 0 1", solution: "e1=Q+", hint: "The e-pawn can reach the first rank immediately." },
   { id: "promotion-019", theme: "Promotion", goal: "move", level: 2, title: "Queen on the eighth", description: "White to move. Promote to a queen with check.", fen: "k7/6P1/8/8/8/8/8/7K w - - 0 1", solution: "g8=Q+", hint: "The new queen will attack across the eighth rank." },
   { id: "mate-020", theme: "Checkmate", goal: "mate", level: 3, title: "The defended sacrifice", description: "White to move. Checkmate in one using bishop and rook support.", fen: "6k1/6pp/8/7Q/8/3B4/8/5RK1 w - - 0 1", solution: "Qxh7#", hint: "The bishop guards h7, while the rook takes away f8." },
+  { id: "promotion-021", theme: "Promotion", goal: "move", level: 3, title: "A knight from nowhere", description: "White to move. Underpromote to fork the king on e7 and queen on f6.", fen: "8/4k1P1/5q2/8/8/8/K7/8 w - - 0 1", solution: "g8=N+", hint: "A knight on g8 checks the king on e7 and attacks the queen on f6. Choose the promotion piece carefully." },
 ] as const;
 
 export const puzzleThemes = ["All", "Checkmate", "Fork", "Pin", "Capture", "Promotion"] as const;
