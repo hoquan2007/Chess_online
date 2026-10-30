@@ -1,5 +1,7 @@
 # Rookline feature matrix
 
+**Checkpoint 68:** CH-19 protected Vercel Preview refreshed from pushed development work, deployment `dpl_C7zcUmt9TisWiSwaeurPYnwkZcqL` READY. Six authenticated-CLI route smoke checks HTTP 200 and login link fallback correct; `/api/games` 503 and anonymous `/api/preferences` 401. Preview has two public Supabase env entries but no server-only secret, so hosted Auth/RLS and CH-05–10 real acceptance are still OPEN. Production release deferred; **20 gates OPEN, rated OFF**.
+
 **Checkpoint 67:** CH-05 authentication redirect isolation locally fixed and browser-verified: hostile `next=/\t/evil.example` falls back to `/play/online`, preventing URL-parser origin escape. **174 Vitest, 72 local/mock Chromium PASS / 1 real hosted SKIP**, lint/types and native **17-page build PASS**. S0 real hosted three-identity Auth/RLS remains blocked by missing runtime secrets. **20 release gates OPEN, rated OFF, IN_PROGRESS.**
 
 **Checkpoint 66:** CH-03/04 device-local and computer clock resumption now compares `performance.now()` with positive wall-time elapsed to account for OS sleep. A real Chromium case rejects a 181-second-overdue move. **71 local/mock Chromium PASS / 1 hosted SKIP**, **171 unit PASS**, lint, TypeScript and native **17-page production build PASS**. Online server clocks remain authoritative and unmodified. CH-03/04 locally improved; S0 secure three-user live Auth/RLS remains blocked by unconfigured runtime credentials. **20 release gates OPEN, rated OFF, IN_PROGRESS.**

@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 68: current-branch protected Vercel preview smoke
+
+- **Deployment:** Successfully deployed the clean `codex/chess-platform-foundation` working tree after push `b13ca69` via `vercel deploy --yes --scope hnquan` to a **non-production Preview**: `dpl_C7zcUmt9TisWiSwaeurPYnwkZcqL`, `https://chessonline-nc6i3prlk-hnquan.vercel.app`, `READY`, CLI exit 0. Vercel remote build compiled Next.js 16.4.3, passed strict TypeScript and prerendered **17/17 static pages**.
+- **Authenticated HTTP smoke:** Vercel CLI protection bypass returned **200** for `/`, `/play/local`, `/play/computer`, `/settings`, `/login?next=%2F%09%2Fevil.example` and `/play/online`. The malicious-next login HTML contains the exact anchor `href="/register?next=%2Fplay%2Fonline"` (safe fallback). Unauthenticated `/api/games` returned **503**; `/api/preferences` returned **401**, which only verifies its anonymous denial behavior.
+- **Configuration and limits:** Non-decrypted project env list currently has exactly two Preview entries (`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`); **no server-only Supabase secret** exists there. These HTTP checks do not prove hosted games, real signed-in Auth/RLS, two-client Realtime, PG locks/clocks or rated results. Preview remains protected; no production deployment, no main merge. **20 final gates OPEN, rated OFF, IN_PROGRESS.**
+
 ## 2026-10-31 — checkpoint 67: post-auth navigation stays on Rookline
 
 - **Security defect and fix:** `safeNext` previously allowed `/\t/evil.example`, which the WHATWG URL parser can normalize to an external origin. The guard now rejects backslashes, ASCII control characters, non-path inputs and cross-origin resolution while preserving valid internal query strings and fragments. Login and registration links use the safe fallback `/play/online` for hostile `next` values.
