@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 35 — online snapshot race locally verified
+
+- Reproduced stale `GET /api/games/[id]` after expiry RPC waited on a concurrent resignation or legal move: two RED tests, now GREEN after unconditional authoritative reload; third test denies outsider before privileged RPC. Canonical participant is rechecked after the new read. Unit route module alias added to Vitest.
+- ESLint and strict TS PASS, **70/70 Vitest / 11 suites** PASS, native Webpack **17/17 static pages** PASS after restricted composite build `EPERM`, native browser **52 local/mock PASS / one real staging SKIP**. `git diff --check` required before commit. The external DB race is **not** proven by mocks.
+- Four Supabase runtime credentials remain absent by value-free probe. Real S0 Auth/RLS → S1 two-user games → S2 independent DB races remain blocked externally; S3–S6 pending. **All 20 gates OPEN**, `IN_PROGRESS`. Do not deploy production or merge main.
+
 ## 2026-10-30, checkpoint 34 — bot recapture regression verified
 
 - Reproduced `Qxf5` losing the queen to `...Rxf5`; a bounded two-extra-ply tactical continuation now avoids it in the bot and Analysis Worker. Real Worker Chromium and nonmutating unit regression PASS. Broader tactical strength and performance remain unverified.

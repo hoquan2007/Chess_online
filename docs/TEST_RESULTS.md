@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 35: canonical online GET after clock RPC
+
+- RED regression: a participant GET first loaded an active game, but `rookline_expire_game` could wait behind a move or resignation and return `active` or `completed`; the response incorrectly reused the earlier snapshot unless the RPC returned `timeout`. Two new Vitest tests reproduced stale ply and stale completed result before the fix; outsider access check already passed.
+- Fixed `src/app/api/games/[id]/route.ts` to reload the canonical game row after **every successful active-game expiry RPC**, check availability and participant authorization again, and return the reloaded state with `private, no-store`. Added Vitest path alias to import the actual Next route in tests. Focused route tests **3/3 PASS** after fix.
+- `npm run check` ESLint, TypeScript, **70/70 Vitest across 11 suites** PASS; its sandboxed Next packaging failed with `EPERM` at `.next/server/app/_global-error.segments/_global-error`. Separate native-permission `npm run build` **PASS (exit 0)**, Webpack **17/17 prerendered pages**. `npm run test:e2e -- --workers=1` in native permissions **52 local/mock browser PASS, one guarded live Supabase staging SKIP (exit 0)**; the restricted initial browser attempt did not bring up its server and was interrupted. This confirms local behavior, not hosted race correctness.
+- Current presence-only runtime probe: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` all **absent**; real three-user Auth/RLS, database row-lock timing, Realtime, rated settlement remain unverified. CH-06/07 server GET has new local unit coverage; **all 20 final gates OPEN**, project `IN_PROGRESS`. Rollback: revert checkpoint-35 commit. No deploy/main merge.
+
 ## 2026-10-30 — checkpoint 34: tactical recapture horizon
 
 - RED Vitest reproduced medium choosing `Qxf5` from `5rk1/8/6n1/5p2/4Q3/8/8/6K1 w - - 0 1` despite immediate `...Rxf5`. Bounded capture/promotion quiescence with legal check evasions (at most two extra plies) now applies to searched bot levels and Analysis Worker. Not an exhaustive chess engine.
