@@ -1620,6 +1620,80 @@ test("game room ignores a stale join prompt after a newer valid game response", 
   await expect(page.getByRole("button", { name: "Accept challenge" })).toHaveCount(0);
 });
 
+test("game room clears private history on access revocation and ignores a late authorized response", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000021";
+  const chess = new Chess();
+  chess.move("e4"); chess.move("e5");
+  const game = { id, white_id: "white-id", black_id: "black-id", status: "active", pgn: chess.pgn(),
+    fen: chess.fen(), turn: "w", ply: 2, base_ms: 300000, increment_ms: 0,
+    white_ms: 300000, black_ms: 300000, clock_anchor_at: new Date().toISOString(),
+    result: null, winner_id: null, rated: false, created_at: new Date().toISOString() };
+  let requests = 0;
+  let releaseDenied: (() => void) | undefined;
+  let releaseOldSuccess: (() => void) | undefined;
+  await page.route(`**/api/games/${id}`, async (route) => {
+    const number = ++requests;
+    if (number === 2) await new Promise<void>((resolve) => { releaseDenied = resolve; });
+    if (number === 3) await new Promise<void>((resolve) => { releaseOldSuccess = resolve; });
+    try {
+      await route.fulfill({ status: number === 2 || number > 3 ? 403 : 200,
+        contentType: "application/json", body: JSON.stringify(number === 2 || number > 3
+          ? { error: "Game is private." } : { game, viewerColor: "w" }) });
+    } catch { /* An in-flight authorized response may be aborted after revocation. */ }
+  });
+
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(3);
+  const denied = page.waitForResponse((response) => response.url().endsWith(`/api/games/${id}`) && response.status() === 403);
+  releaseDenied?.();
+  await denied;
+  await expect(page.getByRole("heading", { name: "Game unavailable" })).toBeVisible();
+  await expect(page.getByLabel("Online chess game")).toHaveCount(0);
+  await expect(page.getByLabel("Move history")).toHaveCount(0);
+  releaseOldSuccess?.();
+  await page.waitForTimeout(150);
+  await expect(page.getByRole("heading", { name: "Game unavailable" })).toBeVisible();
+  await expect(page.getByLabel("Move history")).toHaveCount(0);
+});
+
+test("game room hides protected state after service errors or sign-out and can recover", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000022";
+  const chess = new Chess(); chess.move("d4");
+  const game = { id, white_id: "white-id", black_id: "black-id", status: "active", pgn: chess.pgn(),
+    fen: chess.fen(), turn: "b", ply: 1, base_ms: 300000, increment_ms: 0,
+    white_ms: 300000, black_ms: 300000, clock_anchor_at: new Date().toISOString(),
+    result: null, winner_id: null, rated: false, created_at: new Date().toISOString() };
+  let status = 200;
+  await page.route(`**/api/games/${id}`, (route) => route.fulfill({ status,
+    contentType: "application/json", body: JSON.stringify(status === 200
+      ? { game, viewerColor: "b" } : { error: status === 401 ? "Sign in required." : "Service is temporarily unavailable." }) }));
+  await page.goto(`/game/${id}`);
+  await expect(page.getByLabel("Move history").getByText("d4")).toBeVisible();
+  status = 503;
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect(page.getByRole("heading", { name: "Game unavailable" })).toBeVisible();
+  await expect(page.getByLabel("Move history")).toHaveCount(0);
+  await expect(page.getByLabel("Online game controls")).toHaveCount(0);
+  status = 200;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await expect(page.getByLabel("Move history").getByText("d4")).toBeVisible();
+  status = 401;
+  await page.getByRole("button", { name: "Sync" }).click();
+  await expect(page.getByRole("heading", { name: "Sign in to join this board." })).toBeVisible();
+  await expect(page.getByLabel("Move history")).toHaveCount(0);
+  await expect(page.getByLabel("Online game controls")).toHaveCount(0);
+  status = 200;
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await expect(page.getByLabel("Move history").getByText("d4")).toBeVisible();
+});
+
 test("baseline security headers are sent for document routes", async ({ request }) => {
   const response = await request.get("/settings");
   expect(response.status()).toBe(200);

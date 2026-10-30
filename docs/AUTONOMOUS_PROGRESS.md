@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 63 — fail-closed private game-room client
+
+- Online GameRoom now discards all private board/history/controls immediately after access revocation, failed polling, service errors or Supabase identity changes. Aborted requests and account epochs prevent an older authorized response from repainting another account's game. New browser regressions exercise revocation with delayed success and offline/auth recovery.
+- Complete native Chromium run after latest regression: **69 local/mock PASS, 1 true hosted Supabase SKIP**. Fresh ESLint and strict TypeScript PASS, **165 Vitest PASS** across 24 files, and native standalone Webpack **17/17 pages PASS** (exit 0); commands logged in `docs/TEST_RESULTS.md`.
+- Staging remains externally blocked by absent Supabase runtime settings, and real three-user HTTPS Auth/RLS, independent Realtime, PostgreSQL clocks/locks, rated settlement and final 20-gate acceptance are still outstanding. Continue S0–S6. **20 OPEN, rated OFF, IN_PROGRESS; no production deployment or main merge**.
+
 ## 2026-10-31, checkpoint 62 — published lobby fix and refreshed hosted readiness
 
 - Development commit `c88473e` (`fix(online): isolate lobby across account switches`) successfully pushed to `origin/codex/chess-platform-foundation`; `main` untouched. Fresh local ESLint, strict TypeScript and 165/165 Vitest PASS; checkpoint 61's 67/67 local/mock Chromium PASS and separate native 17-page build were already recorded and were not rerun in this checkpoint.

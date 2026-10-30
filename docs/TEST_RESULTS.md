@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 63: online-room access revocation and stale requests
+
+- **Code:** `GameRoom` tracks an authorization epoch, aborts pending reads/mutations and clears the protected board, move history, clock, controls and viewer identity after 401, 403, failed response, network error or Supabase account transition. On restored access it refetches. A late previously authorized response cannot restore the revoked board.
+- **Observed browser evidence:** `ROOKLINE_E2E_PORT=3197 npx playwright test --workers=1` finished with **69 local/mock Chromium PASS, 1 genuine hosted staging SKIP, exit 0** (70 discovered, 2.4m). The two added regressions include 403 revocation versus a delayed old 200, 503 outage then recovery, 401 sign-out then recovery. Other local flows did not regress in the suite.
+- **Fresh source checks:** `npm run lint` PASS, `npm run typecheck` PASS, `npm run test` PASS (**165/165 Vitest across 24 files**, exit 0) following the complete Chromium run.
+- **Fresh standalone native production build:** `npm run build` PASS, exit 0; Next.js 16.4.3 Webpack compiled, checked TypeScript and generated **17/17 pages**. Earlier composite `npm run check` hit restricted Windows `.next` `EPERM`; this separate build verifies production compilation. The browser suite is mocked for online data and **does not validate real hosted Supabase Auth/RLS/Realtime or independent PostgreSQL clock/row-lock behavior**. All 20 release gates OPEN; rated OFF; no production deployment.
+
 ## 2026-10-31 — checkpoint 62: remote structural evidence and GitHub publication
 
 - **Published:** `c88473e` pushed on development branch. **Fresh:** `npm run lint` PASS; `npm run typecheck` PASS; `npm run test` PASS **165/165 across 24 files**; `git diff --cached --check` PASS before commit. Checkpoint 61 previously ran **67/67 local/mock Chromium**, 1 hosted SKIP, and a successful standalone native 17-page build (composite build separately encountered Windows EPERM); these were not rerun here.

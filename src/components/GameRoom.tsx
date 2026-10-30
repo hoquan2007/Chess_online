@@ -43,6 +43,9 @@ export function GameRoom({ id }: { id: string }) {
   const nextLoadId = useRef(0);
   const lastAppliedLoadId = useRef(0);
   const lastAudiblePly = useRef<number | null>(null);
+  const roomEpoch = useRef(0);
+  const pendingLoads = useRef(new Set<AbortController>());
+  const pendingMutations = useRef(new Set<AbortController>());
   const [sound, setSound] = useState(true);
 
   useEffect(() => {
@@ -52,23 +55,42 @@ export function GameRoom({ id }: { id: string }) {
     return () => window.removeEventListener("rookline:preferences-changed", syncSound);
   }, []);
 
+  const invalidateRoom = useCallback(() => {
+    roomEpoch.current++;
+    for (const controller of pendingLoads.current) controller.abort();
+    pendingLoads.current.clear();
+    for (const controller of pendingMutations.current) controller.abort();
+    pendingMutations.current.clear();
+    acceptedGame.current = null;
+    acceptedClock.current = null;
+    lastAudiblePly.current = null;
+    setGame(null); setViewer(null); setJoinable(false); setUnauthenticated(false);
+    setSelected(null); setPromotion(null); setKeyboardMove(""); setKeyboardError("");
+    setNotice(""); setError(""); setBusy(false); setLoading(false);
+  }, []);
+
   const load = useCallback(async () => {
+    const epoch = roomEpoch.current;
     const loadId = ++nextLoadId.current;
+    const controller = new AbortController();
+    pendingLoads.current.add(controller);
     try {
-      const response = await fetch(`/api/games/${id}`, { cache: "no-store" });
+      const response = await fetch(`/api/games/${id}`, { cache: "no-store", signal: controller.signal });
       const data = await response.json();
       const receivedAt = performance.now();
+      if (controller.signal.aborted || epoch !== roomEpoch.current) return;
       // Polling and realtime hints may complete out of order. An obsolete 403
       // must not replace a room already joined in a more recent response.
       if (loadId < lastAppliedLoadId.current) return;
       lastAppliedLoadId.current = loadId;
       if (response.status === 401) {
-        acceptedGame.current = null; acceptedClock.current = null;
-        setUnauthenticated(true); setJoinable(false); setGame(null);
+        invalidateRoom();
+        setUnauthenticated(true);
       } else if (response.status === 403 && data.joinable) {
-        acceptedGame.current = null; acceptedClock.current = null;
-        setJoinable(true); setGame(null); setUnauthenticated(false);
+        invalidateRoom();
+        setJoinable(true);
       } else if (!response.ok) {
+        invalidateRoom();
         setError(data.error ?? "Could not load the game.");
       } else {
         // A newer request can still return a stale database snapshot. Reject
@@ -88,13 +110,24 @@ export function GameRoom({ id }: { id: string }) {
         setJoinable(false); setUnauthenticated(false); setError("");
       }
     } catch {
-      if (loadId >= lastAppliedLoadId.current) setError("Connection lost. Game state will reload when you reconnect.");
+      if (!controller.signal.aborted && epoch === roomEpoch.current && loadId >= lastAppliedLoadId.current) {
+        lastAppliedLoadId.current = loadId;
+        invalidateRoom();
+        setError("Connection lost. Game state will reload when you reconnect.");
+      }
     }
-    finally { setLoading(false); }
-  }, [id]);
+    finally {
+      pendingLoads.current.delete(controller);
+      if (epoch === roomEpoch.current) setLoading(false);
+    }
+  }, [id, invalidateRoom]);
 
   useEffect(() => {
-    queueMicrotask(() => void load());
+    const epochRef = roomEpoch;
+    const loadsRef = pendingLoads;
+    const mutationsRef = pendingMutations;
+    let active = true;
+    queueMicrotask(() => { if (active) void load(); });
     const interval = window.setInterval(() => void load(), 3000);
     const tick = window.setInterval(() => setNow(performance.now()), 250);
     const client = browserSupabase();
@@ -102,14 +135,33 @@ export function GameRoom({ id }: { id: string }) {
     const channel = client?.channel(`rookline-room-${id}`).on("postgres_changes", {
       event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${id}`,
     }, () => void load()).subscribe();
+    let knownUserId: string | null | undefined;
+    const { data: { subscription } } = client?.auth.onAuthStateChange((event, session) => {
+      const userId = session?.user.id ?? null;
+      if (event === "INITIAL_SESSION") { knownUserId = userId; return; }
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      if (event !== "USER_UPDATED" && knownUserId === userId) return;
+      knownUserId = userId;
+      // The auth callback holds a Supabase lock. Clear immediately, then refetch outside it.
+      invalidateRoom();
+      setLoading(true);
+      window.setTimeout(() => { if (active) void load(); }, 0);
+    }) ?? { data: { subscription: null } };
     const onFocus = () => void load();
     window.addEventListener("focus", onFocus);
     return () => {
+      active = false;
+      subscription?.unsubscribe();
+      epochRef.current++;
+      for (const controller of loadsRef.current) controller.abort();
+      loadsRef.current.clear();
+      for (const controller of mutationsRef.current) controller.abort();
+      mutationsRef.current.clear();
       window.clearInterval(interval); window.clearInterval(tick);
       window.removeEventListener("focus", onFocus);
       if (client && channel) void client.removeChannel(channel);
     };
-  }, [id, load]);
+  }, [id, invalidateRoom, load]);
 
   const position = useMemo(() => {
     if (!game) return { chess: new Chess(), valid: true };
@@ -136,14 +188,22 @@ export function GameRoom({ id }: { id: string }) {
 
   async function action(kind: "join" | "resign" | "cancel") {
     if (busy) return;
+    const epoch = roomEpoch.current;
+    const controller = new AbortController();
+    pendingMutations.current.add(controller);
     setBusy(true); setError("");
     try {
-      const response = await fetch(`/api/games/${id}/${kind}`, { method: "POST" });
+      const response = await fetch(`/api/games/${id}/${kind}`, { method: "POST", signal: controller.signal });
       const result = await response.json();
+      if (controller.signal.aborted || epoch !== roomEpoch.current) return;
       if (!response.ok) throw new Error(result.error ?? "Request failed.");
       await load();
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Request failed."); }
-    finally { setBusy(false); }
+    } catch (caught) {
+      if (!controller.signal.aborted && epoch === roomEpoch.current) setError(caught instanceof Error ? caught.message : "Request failed.");
+    } finally {
+      pendingMutations.current.delete(controller);
+      if (epoch === roomEpoch.current) setBusy(false);
+    }
   }
 
   async function makeMove(from: Square, to: Square, piece?: Promotion) {
@@ -151,33 +211,50 @@ export function GameRoom({ id }: { id: string }) {
     if (!piece && selectPromotion(chess, from, to)) { setPromotion({ from, to }); return; }
     const legal = chess.moves({ square: from, verbose: true }).some((move) => move.to === to && (move.promotion ?? null) === (piece ?? null));
     if (!legal) { setSelected(null); return; }
+    const epoch = roomEpoch.current;
+    const controller = new AbortController();
+    pendingMutations.current.add(controller);
     setBusy(true); setError(""); setSelected(null); setPromotion(null);
     try {
       const response = await fetch(`/api/games/${id}/move`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
         body: JSON.stringify({ from, to, promotion: piece, expectedPly: game.ply, requestId: crypto.randomUUID() }),
       });
       const result = await response.json();
+      if (controller.signal.aborted || epoch !== roomEpoch.current) return;
       if (!response.ok) throw new Error(result.error ?? "Move rejected.");
       await load();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Move failed. Reload game state.");
-      await load();
-    } finally { setBusy(false); }
+      if (!controller.signal.aborted && epoch === roomEpoch.current) {
+        setError(caught instanceof Error ? caught.message : "Move failed. Reload game state.");
+        await load();
+      }
+    } finally {
+      pendingMutations.current.delete(controller);
+      if (epoch === roomEpoch.current) setBusy(false);
+    }
   }
 
   async function claimDraw(rule: DrawClaim) {
     if (!myTurn || busy || !game || !drawClaims[rule]) return;
+    const epoch = roomEpoch.current;
+    const controller = new AbortController();
+    pendingMutations.current.add(controller);
     setBusy(true); setError("");
     try {
       const response = await fetch(`/api/games/${id}/claim`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
         body: JSON.stringify({ rule, expectedPly: game.ply }),
       });
       const result = await response.json();
+      if (controller.signal.aborted || epoch !== roomEpoch.current) return;
       if (!response.ok) throw new Error(result.error ?? "Draw claim rejected.");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not claim a draw."); }
-    finally { await load(); setBusy(false); }
+    } catch (caught) {
+      if (!controller.signal.aborted && epoch === roomEpoch.current) setError(caught instanceof Error ? caught.message : "Could not claim a draw.");
+    } finally {
+      pendingMutations.current.delete(controller);
+      if (epoch === roomEpoch.current) { await load(); if (epoch === roomEpoch.current) setBusy(false); }
+    }
   }
 
   const squareClick = (square: string) => {
