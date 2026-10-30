@@ -3,7 +3,7 @@
 ## 2026-10-30, checkpoint 56 — two-tab puzzle progress integrity
 
 - CH-13: Two open puzzle tabs now refresh completed IDs and adaptive practice counters from shared device storage. Before saving a solution or score, the active tab reads the latest stored state, avoiding ordinary stale-tab overwrites. Restored completion IDs are deduplicated and limited to known puzzles. If the browser refuses storage writes, practice counters continue in memory.
-- Verified post-change: focused Chromium **2 PASS** (two real same-context tabs, quota-rejected writes); full Chromium **63 local/mock PASS / 1 guarded genuine staging SKIP**; lint, strict TypeScript and **154 Vitest PASS**; native isolated Webpack production **17-page build PASS**. The composite default-sandbox build hit known Windows `.next` `EPERM` after lint/types/unit passed; an authorized native build passed. No remote staging operations were performed.
+- Verified post-change: focused Chromium **2 PASS** (two real same-context tabs, quota-rejected writes); full Chromium **63 local/mock PASS / 1 guarded genuine staging SKIP**; native `npm run check` **PASS** (ESLint, strict TypeScript, **154 Vitest**, Webpack production build with **17 pages**). The earlier default-sandbox build hit Windows `.next` `EPERM`; the complete authorized native rerun passed. No remote staging operations were performed.
 - S0 real three-user HTTPS staging Auth/RLS remains blocked by absent runtime credentials; continue S0→S6. CH-13 remains PARTIAL pending larger curriculum and hosted learning; **all 20 acceptance gates OPEN, rated OFF, IN_PROGRESS**. No main merge or production deploy.
 
 ## 2026-10-30, checkpoint 55 — user-scoped settings persistence and session-switch safety
