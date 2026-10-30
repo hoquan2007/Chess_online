@@ -1,5 +1,18 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 26 — clean dependency audit and cancellation regression
+
+- Removed unused `shadcn@4.1.0` CLI runtime dependency and its unused Tailwind CSS import; removed 251 transitive packages. Patched three npm transitive dependencies without a breaking `--force` update. Full **online production + development npm audit 0 vulnerabilities**, where the pre-fix production audit contained a critical and five high findings. Added CI `npm audit --audit-level=high` after installation; actual GitHub CI still awaits a remote run.
+- Native `npm run check` PASS: lint, strict TypeScript, **52 Vitest**, Webpack **17/17 pages**; `npm run test:e2e -- --workers=1` PASS with **41 real Chromium local/mock tests and 1 guarded staging SKIP**. Verified cancellation UI continues to pass; no hosted identity or join/cancel race has run.
+- Environment variables for hosted Supabase remain absent (presence-only check; no key output). S0/S1/S2 live validation remains `BLOCKED_EXTERNAL`, pending secure runtime setup and explicit live evidence. Nine migrations remain installed on dedicated staging with differing local/remote history IDs. **20 product gates OPEN**, project `IN_PROGRESS`; no production deployment or merge.
+
+## 2026-10-30, checkpoint 24 — waiting-challenge cancellation and staging schema
+
+- Reviewed and tested creator-only cancellation of an unjoined private invite: `POST /api/games/[id]/cancel` enforces origin, authenticated identity and DB rate limits, then calls the service-only, row-locked `rookline_cancel_challenge`. The game room offers cancellation to the creator only while waiting; cancelled state survives reload and appears in the lobby. The guarded three-account staging spec now contains noncreator denial, direct RPC denial, idempotency and a cancellation-versus-join race, but **those hosted browser cases have not executed**.
+- Applied **only** `20261029090000_cancel_waiting_challenge.sql` to the dedicated `chessonline` staging database. Supabase recorded remote version **`20261030003110`**; `list_migrations` confirmed **9/9** installed. Read-only hosted structural acceptance SQL **PASS**, plus direct checks: row lock present, rate-limit `cancel` recognized, `anon`/`authenticated` cannot invoke cancellation, `service_role` can. The structural test does **not** prove an authenticated join/cancel race.
+- Local verification: ESLint PASS, strict TypeScript PASS, **52/52 Vitest PASS**, native-permission Webpack build **17/17 pages PASS** (the restricted composite run encountered `.next` `EPERM`). Native Chromium `npm run test:e2e -- --workers=1` **41 PASS / 1 guarded staging SKIP**, exit 0 (1.5 min). No credential-backed two-user flow ran.
+- S0 real Auth/RLS and S1–S2 multiplayer/clock concurrency remain `BLOCKED_EXTERNAL` until dedicated Next.js runtime credentials are securely configured. Matchmaking, rated settlement, profiles, community and release audit remain pending. All **20 full-product gates OPEN**; project `IN_PROGRESS`. No production deployment or `main` merge.
+
 ## 2026-10-30, checkpoint 23 — codebase audit and prioritized continuation plan
 
 - Completed a read-only implementation/security/verification review across the current Next.js application and API boundaries, Supabase migration history and RPC design, local chess/learning flows, release workflow and 20 acceptance gates. Published `CODEBASE_AUDIT_2026-10-30.md` and `CONTINUATION_PLAN_2026-10-30.md`; no application code, migration or hosted resource changed.

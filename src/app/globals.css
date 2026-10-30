@@ -4,7 +4,6 @@
 /* Hallmark · pre-emit critique: P4 H4 E4 S5 R4 V4 · weakest: E, using genuine board controls and verified states. */
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @import "@fontsource/gabarito/800.css";
 @import "@fontsource/manrope/500.css";
 @import "@fontsource/manrope/700.css";
