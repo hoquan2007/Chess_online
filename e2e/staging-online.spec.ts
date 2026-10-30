@@ -2,13 +2,14 @@ import { expect, test, type BrowserContext } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { loadEnvConfig } from "@next/env";
 import { randomBytes, randomUUID } from "node:crypto";
+import { resolveStagingAppOrigin } from "./staging-target";
 
 // Opt-in only: this test creates real Auth identities and games on the dedicated
 // Rookline staging project. It never runs as part of the default browser suite.
 loadEnvConfig(process.cwd(), true);
 const enabled = process.env.ROOKLINE_STAGING_E2E === "1";
 const projectRef = "tyvczicinpjixmxgjhjn";
-const appOrigin = "http://127.0.0.1:3100";
+const appOrigin = enabled ? resolveStagingAppOrigin(process.env.ROOKLINE_STAGING_APP_ORIGIN) : "http://127.0.0.1:3100";
 
 test("two real Supabase users play an authoritative private game", async ({ browser }) => {
   test.skip(!enabled, "Opt in with ROOKLINE_STAGING_E2E=1 and dedicated staging credentials.");
@@ -80,6 +81,32 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     const whitePage = await signIn(whiteContext, emails[0]);
     const blackPage = await signIn(blackContext, emails[1]);
     await signIn(outsiderContext, emails[2]);
+
+    // The actual browser sets Host, Origin and Fetch Metadata through the
+    // public TLS proxy; explicit APIRequestContext headers cannot prove this.
+    const browserCreate = await whitePage.evaluate(async () => {
+      const response = await fetch("/api/games", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ control: "5+0" }),
+      });
+      return { status: response.status, body: await response.json() };
+    });
+    expect(browserCreate.status).toBe(201);
+    const browserId = browserCreate.body.id as string;
+    expect(browserId).toMatch(/^[a-f0-9-]{36}$/);
+    createdGames.push(browserId);
+    expect((await postGame(whiteContext, `/api/games/${browserId}/cancel`)).status()).toBe(200);
+
+    // Through the same public entry point, a forged or downgraded Origin must
+    // fail before authentication or database mutation occurs.
+    for (const hostileOrigin of ["https://untrusted.example", appOrigin.replace(/^https:/, "http:")]) {
+      if (hostileOrigin === appOrigin) continue;
+      const denied = await whiteContext.request.post("/api/games", {
+        headers: { Origin: hostileOrigin }, data: { control: "5+0" },
+      });
+      expect(denied.status()).toBe(403);
+      expect(await denied.json()).toMatchObject({ error: "Cross-origin action denied" });
+    }
 
     const outsider = createClient(url, publishable, { auth: { persistSession: false, autoRefreshToken: false } });
     const { error: outsiderLoginError } = await outsider.auth.signInWithPassword({ email: emails[2], password });

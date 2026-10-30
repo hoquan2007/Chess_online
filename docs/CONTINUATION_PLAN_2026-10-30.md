@@ -16,6 +16,12 @@
 
 ## Immediate executable next slice — S0
 
+### Real HTTPS staging browser entry point (checkpoint 48 preparation)
+
+After an isolated staging Next runtime is reachable on a **dedicated HTTPS hostname**, set `ROOKLINE_STAGING_E2E=1` and `ROOKLINE_STAGING_APP_ORIGIN=https://<staging-host>` in the test runner's environment, alongside the three server/public Supabase settings for the **dedicated** project. Invoke `npx playwright test e2e/staging-online.spec.ts --workers=1`. Do not run against the production site. With this explicit app origin, Playwright uses that public endpoint, does not spawn a local Next development server, and selects only the isolated hosted test. The target parser rejects HTTP on a non-loopback host, paths, query strings, fragments and embedded credentials. Without an explicit app origin, the original local `http://127.0.0.1:3100` runner remains available.
+
+The hosted test now makes a **real browser** cookie-authenticated challenge POST without manually setting Origin or Host, then verifies the challenge can be cancelled. It also rejects forged third-party Origins and an HTTP downgrade against the same HTTPS entry point. A pass is actual browser/proxy/Next/RLS evidence only when the test executes against the configured public staging app with real disposable Supabase Auth identities and cleans up successfully; an ordinary local run still **skips** hosted acceptance.
+
 1. Confirm target Supabase project ref `tyvczicinpjixmxgjhjn` and existing **nine** remote migrations (including creator cancellation) against `SUPABASE_MIGRATION_HISTORY.md`; **do not run `db push`** until histories are reconciled.
 2. Configure runtime environment securely with `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and server-only `SUPABASE_SECRET_KEY` (or approved legacy service-role equivalent); configure correct Auth redirect URLs. Do not echo or commit credentials.
 3. Execute `ROOKLINE_STAGING_E2E=1` guarded Playwright scenario in an isolated staging runtime with authorized disposable Auth users; verify actual browser response/status, session separation, cross-user denial and fixture cleanup. Capture results without leaking email/password/keys.

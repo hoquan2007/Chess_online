@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 48 — external HTTPS staging E2E readiness
+
+- Prepared strict public-origin Playwright targeting with hosted-only spec selection and no local dev server. The guarded three-disposable-user spec now exercises genuine browser-originated game create/cancel and rejects forged or downgraded Origins. The new hosted checks remain **unexecuted** until staging is available.
+- ESLint/TypeScript **PASS**, **95/95 Vitest (13 files)**, native Chromium **59 local/mock PASS / 1 hosted SKIP**, native Webpack **17/17 pages PASS** after sandbox-only `EPERM`. Local/default discovery 60 tests and external staging discovery 1. Four Supabase runtime settings absent by fresh presence-only probe.
+- Priority S0: real dedicated HTTPS staging `tyvczicinpjixmxgjhjn`, reconcile nine remote migration IDs, real Auth/RLS/Host/Origin → S1 two-browser Realtime → S2 independent PG clocks/locks → S3 durable rated SQL/matching → S4 hosted profiles/education → S5 community → S6 independent acceptance. **IN_PROGRESS / 20 OPEN**, rated OFF, no production deployment/main merge.
+
 ## 2026-10-30, checkpoint 46 — completed online PGN analysis flow
 
 - Added protected completed-room → Analysis link, reconstructed canonical online game PGN at the final ply, preserved the authoritative result through export, and supported navigation and branches. Untrusted or unfinished/corrupt payloads, wrong game IDs and inaccessible sessions fail clearly; pending requests cannot overwrite user edits. Strengthened final-game identity/result/turn validation before import.

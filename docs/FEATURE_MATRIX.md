@@ -1,5 +1,7 @@
 # Rookline feature matrix
 
+**Checkpoint 48:** CH-05/06/18/19 isolated HTTPS staging browser harness prepared: strict bare-origin validation and hosted-only spec selection, with real browser create/cancel and forged Origin assertions **pending live execution**. **95 Vitest, 59 local/mock Chromium PASS / 1 hosted SKIP, native 17-page build PASS**. Four Supabase runtime settings absent; live Auth/RLS/HTTPS proxy/Realtime/DB locks unverified. **20 gates OPEN**, rated OFF.
+
 **Checkpoint 46:** CH-12 now includes a completed-online-room → protected analysis link, canonical PGN/FEN/ply verification, original result-preserving PGN export, branches, and invalid/forbidden/expired-session handling. **92 Vitest + 3 focused real Chromium PASS; full 59 local/mock PASS / 1 genuine staging SKIP** from before final validation hardening. Licensed full engine and real hosted replay remain outstanding. **All 20 gates OPEN**.
 
 **Checkpoint 45:** Online game and server-time samples are accepted together; stale ply/status/time hints cannot regress the displayed game. Native `npm run check` **PASS (90 Vitest, 17 pages)** and Chromium **57 local/mock PASS / 1 real hosted staging SKIP**. CH-07/08 remain `IMPLEMENTED_UNVERIFIED` pending real Supabase Auth/Realtime and DB concurrency; **20 gates OPEN**.

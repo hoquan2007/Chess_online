@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 48: isolated HTTPS staging acceptance runner prepared
+
+- Added strict staging app-origin validation: explicit bare HTTPS origins (or HTTP loopback only); paths, embedded credentials, cleartext remote HTTP and malformed URLs rejected. Opt-in Playwright external mode runs only the real hosted spec and does not start a local dev server.
+- Extended the guarded three-identity scenario with a genuine browser-generated authenticated create-and-cancel POST plus forged/downgraded Origin 403 checks. **The hosted assertions are authored but not executed**, pending a dedicated public HTTPS staging runtime with valid credentials.
+- Observed verification: ESLint PASS; strict TypeScript PASS; **95/95 Vitest in 13 files PASS**; Playwright default discovery 60 tests, explicit public-target discovery 1 hosted test; native Chromium **59 local/mock PASS / 1 real staging SKIP, exit 0 (3.5 min)**. Restricted build hit `EPERM` under `.next`; native-permission **17/17-page Webpack production build PASS, exit 0**. Generated `next-env.d.ts` restored.
+- Boolean-only runtime probe: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` **absent** in process and `.env.local`; no secret values read. Nine prior remote migrations unchanged, tenth rated migration rollback-tested only, rated OFF. Real Auth/RLS, HTTPS proxy, two-client Realtime, independent PG locks/clocks and rated settlement still unverified; **20 gates OPEN / IN_PROGRESS**. No external writes/deploy/main merge.
+
 ## 2026-10-30 — checkpoint 46: completed online game opens verified analysis
 
 - Completed online rooms now link to `/analysis?onlineGame=<uuid>`. The analysis page retrieves the protected game endpoint, verifies the requested ID, completed state, canonical PGN/FEN/ply, participant/winner/result and turn consistency, then loads the full result-bearing PGN for navigation, branching and download. Invalid IDs do not issue requests; inaccessible/expired sessions and corrupt/unfinished records show clear errors. Abort and user-edit safeguards prevent a late response from replacing local edits.
