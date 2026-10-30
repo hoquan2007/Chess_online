@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 30: interactive opening and lesson practice
+
+- Added guided **Practice as White / Practice as Black** to five openings and three lessons. `chess.js` validates legal moves and exact curated SAN; the scripted opponent responds automatically. The user can drag, click squares, or submit coordinate moves, request hints, retry, review, and see board orientation and per-color progress.
+- Review found and fixed a cross-catalog persistence bug: completing lessons could overwrite saved opening mastery. Progress now validates both catalogues' IDs and merges with existing storage before saving. A new browser regression completes an opening and lesson, checks both records, and revisits both routes.
+- **Native `npm run check` PASS (exit 0):** ESLint, strict TypeScript, **61/61 Vitest in 9 suites**, Webpack **17/17** generated pages. **Native `npm run test:e2e -- --workers=1` PASS (exit 0): 48 local/mock Chromium PASS, 1 guarded real staging SKIP** (2.3 minutes). The first pre-fix full run had 47 local/mock PASS and 1 staging SKIP; final counts supersede it. `git diff --check` PASS with only informational CRLF warnings.
+- Value-free runtime probe reconfirmed all four Supabase runtime variables absent. No real Auth/RLS/Realtime/clock/rated verification occurred. CH-14 remains `LOCALLY_TESTED` with content breadth outstanding, **20 full acceptance gates OPEN**, `IN_PROGRESS`. No hosted mutation, `main` merge or production deploy. Rollback: revert the checkpoint-30 source/test/documentation commit.
+
 ## 2026-10-30 — checkpoint 29: position snapshot in analysis
 
 - Implemented descriptive `positionInsight` for reconstructed analysis positions: side to move, terminal/checkmate status, piece-point material difference (P1/N3/B3/R5/Q9), legal move count and available threefold/50-move draw claims. The UI clearly distinguishes material arithmetic from a chess-engine evaluation and updates when importing PGN, manually playing and navigating moves. No game state mutation or hosted database change.

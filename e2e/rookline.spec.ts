@@ -416,6 +416,81 @@ test("opening explorer replays a legal line and switches openings", async ({ pag
   await expect(page.getByText("Position 0 / 7")).toBeVisible();
 });
 
+test("opening practice rejects wrong moves, guides White, and saves mastered progress", async ({ page }) => {
+  await page.goto("/openings");
+  await page.getByRole("button", { name: "Practice as White" }).click();
+  const entry = page.getByRole("textbox", { name: /Keyboard move/ });
+  const feedback = page.locator("p[role='status']");
+  await entry.fill("e2e5");
+  await entry.press("Enter");
+  await expect(feedback).toContainText("Illegal move");
+  await entry.fill("d2d4");
+  await entry.press("Enter");
+  await expect(feedback).toContainText("Legal move, but this line");
+  await page.getByRole("button", { name: "Hint" }).click();
+  await expect(feedback).toContainText("Hint: play e4");
+  for (const [input, position] of [["e2e4", 2], ["g1f3", 4], ["f1c4", 6]] as const) {
+    await entry.fill(input);
+    await entry.press("Enter");
+    await expect(page.getByText(`Practice position ${position} / 6`)).toBeVisible();
+  }
+  await expect(feedback).toContainText("Line complete!");
+  await expect(entry).toBeDisabled();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("rookline-study-practice") || "[]"))).toContain("italian:w");
+  await page.reload();
+  await expect(page.getByText("Practice completed on this device")).toBeVisible();
+  await page.getByRole("button", { name: "Practice as White" }).click();
+  await expect(page.getByText("This line is mastered.", { exact: false })).toBeVisible();
+});
+
+test("opening practice lets Black reply to scripted White and restart", async ({ page }) => {
+  await page.goto("/openings");
+  await page.getByRole("button", { name: "Practice as Black" }).click();
+  const entry = page.getByRole("textbox", { name: /Keyboard move/ });
+  await expect(page.getByText("Practice position 1 / 6")).toBeVisible();
+  await entry.fill("e7e5");
+  await entry.press("Enter");
+  await expect(page.getByText("Practice position 3 / 6")).toBeVisible();
+  await page.getByRole("button", { name: "Retry line" }).click();
+  await expect(page.getByText("Practice position 1 / 6")).toBeVisible();
+  for (const [input, position] of [["e7e5", 3], ["b8c6", 5], ["f8c5", 6]] as const) {
+    await entry.fill(input);
+    await entry.press("Enter");
+    await expect(page.getByText(`Practice position ${position} / 6`)).toBeVisible();
+  }
+  await expect(page.locator("p[role='status']")).toContainText("Line complete!");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("rookline-study-practice") || "[]"))).toContain("italian:b");
+  await page.getByRole("button", { name: "Review moves" }).click();
+  await expect(page.getByText("Position 0 / 6", { exact: true })).toBeVisible();
+});
+
+test("lesson practice preserves completed openings across page navigation", async ({ page }) => {
+  await page.goto("/openings");
+  await page.getByRole("button", { name: "Practice as White" }).click();
+  const openingInput = page.getByRole("textbox", { name: /Keyboard move/ });
+  for (const move of ["e2e4", "g1f3", "f1c4"]) {
+    await openingInput.fill(move);
+    await openingInput.press("Enter");
+  }
+  await expect(page.locator("p[role='status']")).toContainText("Line complete!");
+
+  await page.goto("/learn");
+  await page.getByRole("button", { name: "Practice as White" }).click();
+  const lessonInput = page.getByRole("textbox", { name: /Keyboard move/ });
+  for (const move of ["e2e4", "g1f3", "f1c4"]) {
+    await lessonInput.fill(move);
+    await lessonInput.press("Enter");
+  }
+  await expect(page.locator("p[role='status']")).toContainText("Line complete!");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("rookline-study-practice") || "[]")))
+    .toEqual(expect.arrayContaining(["italian:w", "develop:w"]));
+
+  await page.goto("/openings");
+  await expect(page.getByText("Practice completed on this device")).toBeVisible();
+  await page.goto("/learn");
+  await expect(page.getByText("Practice completed on this device")).toBeVisible();
+});
+
 test("lesson explorer works on a small screen without horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/learn");

@@ -1,17 +1,74 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
-import { studyPosition, type StudyLine } from "@/lib/chess/study";
+import { ChevronLeft, ChevronRight, Lightbulb, RotateCcw } from "lucide-react";
+import { evaluatePracticeMove, lessonLines, openingLines, practiceNextPly, studyPosition, type PracticeSide, type StudyLine } from "@/lib/chess/study";
+import { parseCoordinateMove } from "@/lib/chess/rules";
+
+const progressKey = "rookline-study-practice";
+const knownPracticeKeys = new Set([...openingLines, ...lessonLines].flatMap((line) => [`${line.id}:w`, `${line.id}:b`]));
+
+function readCompletedPractice(): string[] {
+  try {
+    const stored: unknown = JSON.parse(localStorage.getItem(progressKey) ?? "[]");
+    return Array.isArray(stored)
+      ? [...new Set(stored.filter((entry): entry is string => typeof entry === "string" && knownPracticeKeys.has(entry)))]
+      : [];
+  } catch { return []; }
+}
 
 export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
   const [selectedId, setSelectedId] = useState(lines[0].id);
   const [ply, setPly] = useState(0);
+  const [mode, setMode] = useState<"review" | "practice">("review");
+  const [side, setSide] = useState<PracticeSide>("w");
+  const [selectedSquare, setSelectedSquare] = useState<Square | null>(null);
+  const [keyboardMove, setKeyboardMove] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [completed, setCompleted] = useState<string[]>([]);
   const selected = lines.find((line) => line.id === selectedId) ?? lines[0];
   const chess = useMemo(() => studyPosition(selected.moves, ply), [selected, ply]);
+  const finished = mode === "practice" && ply === selected.moves.length;
+  const completedKey = `${selected.id}:${side}`;
 
-  const choose = (id: string) => { setSelectedId(id); setPly(0); };
+  useEffect(() => {
+    queueMicrotask(() => setCompleted(readCompletedPractice()));
+  }, []);
+
+  const resetInputs = () => { setKeyboardMove(""); setSelectedSquare(null); setFeedback(""); };
+  const choose = (id: string) => { setSelectedId(id); setMode("review"); setPly(0); resetInputs(); };
+  const startPractice = (color: PracticeSide) => {
+    setMode("practice"); setSide(color); setPly(practiceNextPly(selected, color, 0)); resetInputs();
+  };
+  const saveCompletion = () => {
+    const next = [...new Set([...readCompletedPractice(), ...completed, completedKey])];
+    setCompleted(next);
+    try { localStorage.setItem(progressKey, JSON.stringify(next)); }
+    catch { /* Practice remains usable when storage is disabled or full. */ }
+  };
+  const attempt = (from: Square, to: Square, promotion?: "q" | "r" | "b" | "n") => {
+    if (mode !== "practice" || finished) return false;
+    const result = evaluatePracticeMove(selected, side, ply, { from, to, promotion });
+    setSelectedSquare(null);
+    if (result.status === "illegal") { setFeedback("Illegal move. Check the squares and try again."); return false; }
+    if (result.status === "off-line") { setFeedback("Legal move, but this line uses a different move. Try again or request a hint."); return false; }
+    if (result.status !== "correct") return false;
+    setPly(result.ply);
+    setKeyboardMove("");
+    if (result.ply === selected.moves.length) {
+      setFeedback(`Line complete! Last move: ${result.san}.`);
+      saveCompletion();
+    } else setFeedback(`Correct: ${result.san}. Your next move is ready.`);
+    return true;
+  };
+  const submitKeyboardMove = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const move = parseCoordinateMove(keyboardMove);
+    if (!move) { setFeedback("Enter a move such as e2e4 or e7e8q."); return; }
+    attempt(move.from, move.to, move.promotion);
+  };
   return <div className="study-grid">
     <div className="text-panel stack" aria-label="Study catalogue">
       <h2>Choose a line</h2>
@@ -19,20 +76,50 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
         {lines.map((line) => <button className={`study-choice ${selected.id === line.id ? "active" : ""}`} type="button"
           key={line.id} aria-pressed={selected.id === line.id} onClick={() => choose(line.id)}>
           <strong>{line.title}</strong><small className="muted">{line.subtitle}</small>
+          {completed.some((key) => key.startsWith(`${line.id}:`)) && <small className="muted">Practice completed on this device</small>}
         </button>)}
       </div>
     </div>
     <section className="stack" aria-labelledby="study-heading">
       <div><p className="overline">Interactive replay</p><h2 id="study-heading" className="panel-title">{selected.title}</h2>
         <p className="muted">{selected.idea}</p></div>
+      <div className="game-actions" role="group" aria-label="Study mode">
+        <button type="button" className={`btn ${mode === "review" ? "primary" : "ghost"}`} aria-pressed={mode === "review"} onClick={() => { setMode("review"); setPly(0); resetInputs(); }}>Review moves</button>
+        <button type="button" className={`btn ${mode === "practice" && side === "w" ? "primary" : "ghost"}`} aria-pressed={mode === "practice" && side === "w"} onClick={() => startPractice("w")}>Practice as White</button>
+        <button type="button" className={`btn ${mode === "practice" && side === "b" ? "primary" : "ghost"}`} aria-pressed={mode === "practice" && side === "b"} onClick={() => startPractice("b")}>Practice as Black</button>
+      </div>
       <div className="board-wrap" style={{ maxWidth: 600 }} aria-label={`${selected.title} chessboard`}>
-        <Chessboard options={{ id: `rookline-study-${selected.id}`, position: chess.fen(),
+        <Chessboard options={{ id: `rookline-study-${selected.id}`, position: chess.fen(), boardOrientation: mode === "practice" && side === "b" ? "black" : "white",
           lightSquareStyle: { backgroundColor: "var(--board-light)" }, darkSquareStyle: { backgroundColor: "var(--board-dark)" },
           boardStyle: { width: "100%", height: "100%" }, animationDurationInMs: 180,
-          onPieceDrop: () => false,
+          onPieceDrop: ({ sourceSquare, targetSquare }) => !!targetSquare && attempt(sourceSquare as Square, targetSquare as Square),
+          onSquareClick: ({ square }) => {
+            if (mode !== "practice" || finished) return;
+            const target = square as Square;
+            if (selectedSquare && selectedSquare !== target && attempt(selectedSquare, target)) return;
+            const current = new Chess(chess.fen());
+            setSelectedSquare(current.get(target)?.color === side ? target : null);
+          },
+          squareStyles: selectedSquare ? { [selectedSquare]: { boxShadow: "inset 0 0 0 3px var(--color-focus)" } } : {},
         }} />
       </div>
       <div className="text-panel stack" style={{ gap: 14 }}>
+        {mode === "practice" ? <>
+          <strong>Practice position {ply} / {selected.moves.length}</strong>
+          <p className="muted">Play the next {side === "w" ? "White" : "Black"} move from this opening. The other side follows the lesson automatically.</p>
+          <form className="stack" onSubmit={submitKeyboardMove} style={{ gap: 7 }}>
+            <label className="panel-sub" htmlFor="study-keyboard-move">Keyboard move · e2e4 or g8f6</label>
+            <div className="keyboard-move-row"><input id="study-keyboard-move" value={keyboardMove} onChange={(event) => setKeyboardMove(event.target.value)}
+              maxLength={12} autoComplete="off" placeholder="e2e4" disabled={finished} />
+              <button type="submit" className="btn ghost" disabled={finished}>Move</button></div>
+          </form>
+          <p role="status" className="status">{feedback || (finished ? "Line complete!" : "Drag a piece, select two squares, or enter coordinates to practice.")}</p>
+          <div className="game-actions">
+            <button type="button" className="btn ghost" disabled={finished} onClick={() => setFeedback(`Hint: play ${selected.moves[ply]}.`)}><Lightbulb size={16} /> Hint</button>
+            <button type="button" className="btn ghost" onClick={() => startPractice(side)}><RotateCcw size={16} /> Retry line</button>
+          </div>
+          <p className="muted">Mastered {completed.filter((key) => lines.some((line) => key === `${line.id}:${side}`)).length} / {lines.length} lines as {side === "w" ? "White" : "Black"} on this device.{completed.includes(completedKey) ? " This line is mastered." : ""}</p>
+        </> : <>
         <div className="game-actions" style={{ justifyContent: "space-between", alignItems: "center" }}>
           <strong>Position {ply} / {selected.moves.length}</strong>
           <div className="game-actions">
@@ -45,6 +132,7 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
           aria-label={`Go to move ${index + 1}: ${move}`} aria-current={ply === index + 1 ? "step" : undefined}
           onClick={() => setPly(index + 1)} className={`pill ${ply === index + 1 ? "active" : ""}`}>{index % 2 === 0 ? `${Math.floor(index / 2) + 1}. ` : ""}{move}</button>)}</div>
         <p role="status" className="status">{ply === 0 ? "Starting position. Select Next to begin." : selected.steps[ply - 1]}</p>
+        </>}
         <p className="muted"><strong>Remember:</strong> {selected.takeaway}</p>
       </div>
     </section>

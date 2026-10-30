@@ -1,4 +1,5 @@
 import { Chess } from "chess.js";
+import type { MoveInput } from "./rules";
 
 export type StudyLine = {
   id: string;
@@ -80,4 +81,30 @@ export function studyPosition(moves: readonly string[], ply: number) {
     if (!chess.move(san)) throw new Error("Invalid instructional move");
   }
   return chess;
+}
+
+export type PracticeSide = "w" | "b";
+export type PracticeAttempt =
+  | { status: "correct"; ply: number; san: string }
+  | { status: "illegal" | "off-line" | "finished"; ply: number };
+
+/** Advance scripted opponent turns without taking away any learner moves. */
+export function practiceNextPly(line: StudyLine, side: PracticeSide, ply: number) {
+  let next = ply;
+  while (next < line.moves.length && (next % 2 === 0 ? "w" : "b") !== side) next++;
+  return next;
+}
+
+/** Compare the canonical SAN of a legal move to the curated line, never changing its source. */
+export function evaluatePracticeMove(line: StudyLine, side: PracticeSide, ply: number, input: MoveInput): PracticeAttempt {
+  if (!Number.isSafeInteger(ply) || ply < 0 || ply > line.moves.length || practiceNextPly(line, side, ply) !== ply) {
+    throw new Error("Invalid practice turn");
+  }
+  if (ply === line.moves.length) return { status: "finished", ply };
+  const chess = studyPosition(line.moves, ply);
+  let move;
+  try { move = chess.move(input); } catch { return { status: "illegal", ply }; }
+  if (!move) return { status: "illegal", ply };
+  if (move.san !== line.moves[ply]) return { status: "off-line", ply };
+  return { status: "correct", san: move.san, ply: practiceNextPly(line, side, ply + 1) };
 }

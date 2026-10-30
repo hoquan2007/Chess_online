@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 30 — guided opening and lesson practice
+
+- Implemented White/Black opening and lesson training: chess.js move validation, scripted replies, hints/retry/review, drag/click/keyboard input, board orientation and locally saved per-color mastery. Fixed progress loss when moving between opening and lesson catalogues; additional Chromium browser test checks both saved keys across page navigation.
+- Native `npm run check` PASS (lint/types, **61 Vitest, 17/17 build pages**). Native full Chromium **48 local/mock PASS, 1 guarded real staging SKIP**, exit 0. `git diff --check` PASS. All four staging runtime variables absent in a value-free probe.
+- CH-14 `LOCALLY_TESTED`, broad curriculum pending. S0 hosted Auth/RLS, S1 actual two-client Realtime and S2 authoritative clocks remain `BLOCKED_EXTERNAL`; S3–S6 unfinished; all **20** gates OPEN, `IN_PROGRESS`. Continue S0→S6 when secure staging credentials exist and local QA in the meantime. No production deploy or main merge.
+
 ## 2026-10-30, checkpoint 29 — descriptive analysis position insight
 
 - Added pure chess.js snapshot calculation and visible analysis summary covering side to move, outcome, material points, legal-move count and draw claims. Unit checks cover immutability, captures, mate/stalemate and repetition; Chromium verifies analysis import/replay/mate.
