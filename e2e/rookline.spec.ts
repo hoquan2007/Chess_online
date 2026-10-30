@@ -1001,7 +1001,8 @@ test("online room does not sound an inconsistent server ledger before a valid mo
   expect(await played()).toBe(1);
   snapshot = incorrectTurn;
   await page.getByRole("button", { name: "Sync", exact: true }).click();
-  await expect(page.getByText("Server game ledger could not be verified. Stop play and contact support.")).toBeVisible();
+  await expect(page.getByText("Server game ledger could not be verified. Stop play and contact support.")).toHaveCount(0);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
   expect(await played()).toBe(1);
   snapshot = valid;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -1475,6 +1476,34 @@ test("game room ignores an old HTTP snapshot arriving after a newer ply", async 
   releaseOld?.();
   await (await staleResponse).finished();
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+});
+
+test("game room rejects a contradictory active clock at the same ply", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000083";
+  const chess = new Chess();
+  chess.move("e4");
+  const now = new Date().toISOString();
+  const active = { id, white_id: "white-id", black_id: "black-id", status: "active",
+    pgn: chess.pgn(), fen: chess.fen(), turn: "b", ply: 1,
+    base_ms: 300000, increment_ms: 0, white_ms: 300000, black_ms: 300000,
+    clock_anchor_at: now, result: null, winner_id: null, rated: false, created_at: now };
+  let requests = 0;
+  await page.route(`**/api/games/${id}`, (route) => {
+    const game = ++requests === 1 ? active : { ...active, white_ms: 0 };
+    return route.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify({ game, viewerColor: "w" }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(page.getByLabel("White clock")).toHaveText("05:00");
+  const changedReply = page.waitForResponse((response) =>
+    response.url().endsWith(`/api/games/${id}`) && response.status() === 200);
+  await page.getByRole("button", { name: "Sync" }).click();
+  await (await changedReply).finished();
+  await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(page.getByLabel("White clock")).toHaveText("05:00");
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 

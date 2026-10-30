@@ -183,6 +183,31 @@ describe("out-of-order authoritative snapshots", () => {
     ]) expect(isOlderGameSnapshot(changed.status === "cancelled" ? cancelled : completed, changed)).toBe(true);
     expect(isOlderGameSnapshot(snapshot(), snapshot({ id: "00000000-0000-4000-8000-000000000002" }))).toBe(true);
   });
+  it("rejects contradictory waiting and active replies at the same ply", () => {
+    const active = snapshot({ ply: 4, white_ms: 211000, black_ms: 229000 });
+    const waiting = snapshot({ status: "waiting", black_id: null, clock_anchor_at: null });
+    expect(isOlderGameSnapshot(active, { ...active })).toBe(false);
+    expect(isOlderGameSnapshot(waiting, { ...waiting })).toBe(false);
+    for (const changed of [
+      { ...active, fen: "corrupted" },
+      { ...active, pgn: "1. e4" },
+      { ...active, white_ms: 0 },
+      { ...active, black_ms: 0 },
+      { ...active, clock_anchor_at: "2026-10-29T03:00:00.000Z" },
+      { ...active, rated: true },
+      { ...active, black_id: "unexpected-player" },
+    ]) expect(isOlderGameSnapshot(active, changed)).toBe(true);
+    expect(isOlderGameSnapshot(waiting, { ...waiting, white_ms: 0 })).toBe(true);
+    expect(isOlderGameSnapshot(waiting, snapshot({ status: "active" }))).toBe(false);
+    expect(isOlderGameSnapshot(active, { ...active, status: "completed", result: "Resignation", winner_id: "black-id" })).toBe(false);
+    expect(isOlderGameSnapshot(active, { ...active, ply: 5 })).toBe(false);
+    const chess = new Chess(); chess.move("e4");
+    const valid = snapshot({ ply: 1, fen: chess.fen(), pgn: chess.pgn(), turn: "b" });
+    const corrupt = { ...valid, pgn: "" };
+    expect(isOlderGameSnapshot(valid, corrupt)).toBe(true);
+    expect(isOlderGameSnapshot(corrupt, valid)).toBe(false);
+    expect(isOlderGameSnapshot(corrupt, { ...valid, pgn: "1. f4" })).toBe(true);
+  });
 });
 
 describe("auth redirects", () => {

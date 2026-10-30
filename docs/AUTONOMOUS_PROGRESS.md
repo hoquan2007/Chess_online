@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 77 — consistent same-ply snapshots with replay recovery
+
+- Active/waiting game room rejects equal-phase/equal-ply contradictory clocks, FEN, PGN, clock anchors, participants and rated flags; an invalid ledger can recover when a later server record replays correctly. Previously committed terminal game snapshots remain immutable.
+- Focused **23 Vitest** and **2 real Chromium** regression cases PASS. Elevated `npm run check` exit 0: nine pinned migration SQL hashes, ESLint, strict TypeScript, **178 Vitest** across 25 files, optimized Webpack **17/17 pages**. Full Playwright exit 0: **76 local/mock PASS and 1 genuine hosted Supabase SKIP** (77 discovered). `git diff --check` no whitespace issues.
+- Prior pushed `c1fe228` had Linux CI run `41143891998` SUCCESS and protected Preview `dpl_EGrBPMPV5t9pujnhnEvEQUmXEgiU` READY; current checkpoint needs independent new-SHA remote verification.
+- S0 still awaits isolated server-only Supabase credential and genuine three-user HTTPS Auth/RLS/Origin, and nine content-matched remote migration version IDs require backup/reconciliation before CLI push. Then S1 Realtime/reconnect, S2 independent DB clock/row-lock races, S3 rated settlement, S4 study/engine, S5 community, S6 independent audit. **20 release gates OPEN; rated OFF; IN_PROGRESS; production/main withheld.**
+
 ## 2026-10-31, checkpoint 76 — immutable terminal game records
 
 - Reproduced a same-status, same-ply terminal snapshot regression: a late HTTP response could replace a finished game's winner, result, clocks or PGN/FEN while retaining `completed` status. A mismatched game ID was also accepted. Tightened `isOlderGameSnapshot` to preserve all committed terminal fields by key and reject foreign IDs, while permitting identical records regardless of object key order.

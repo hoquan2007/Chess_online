@@ -35,17 +35,30 @@ export const validSquare = (value: unknown): value is string => typeof value ===
  */
 export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
   if (current.id !== incoming.id) return true;
-  // Every field in a committed terminal game is immutable. Compare values by
-  // key rather than JSON serialization so equivalent key order stays valid.
-  if (current.status === "completed" || current.status === "cancelled") {
+  // A committed state at the same lifecycle phase and ply is immutable. SQL
+  // mutations either advance the ply or transition the lifecycle phase.
+  // Compare values by key so equivalent object key order remains valid.
+  const sameSnapshot = () => {
     const keys = Object.keys(current) as (keyof OnlineGame)[];
-    return keys.length !== Object.keys(incoming).length || keys.some((key) => current[key] !== incoming[key]);
-  }
+    return keys.length === Object.keys(incoming).length && keys.every((key) => current[key] === incoming[key]);
+  };
+  if (current.status === "completed" || current.status === "cancelled") return !sameSnapshot();
   const phase: Record<OnlineGame["status"], number> = {
     waiting: 0, active: 1, completed: 2, cancelled: 2,
   };
   if (phase[incoming.status] < phase[current.status]) return true;
-  return incoming.ply < current.ply;
+  if (incoming.ply < current.ply) return true;
+  if (phase[incoming.status] !== phase[current.status] || incoming.ply !== current.ply) return false;
+  if (sameSnapshot()) return false;
+  // A malformed server ledger may have been rendered in a fail-closed state.
+  // Let a later verified record repair it without permitting valid records
+  // to be rewritten by contradictory same-ply responses.
+  try { replayGame(current); }
+  catch {
+    try { replayGame(incoming); return false; }
+    catch { /* Keep refusing another malformed record. */ }
+  }
+  return true;
 }
 
 /** Rebuild from the server's canonical, durable PGN to preserve repetition history. */

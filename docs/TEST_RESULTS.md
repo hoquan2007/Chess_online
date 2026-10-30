@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 77: same-ply integrity and bad ledger recovery
+
+- `npx vitest run src/lib/online/games.test.ts`: exit 0, **23/23**; rejects contradictory waiting/active snapshots, accepts advancing phase/ply and allows repair of malformed PGN by a valid replay.
+- Focused elevated Playwright on port 3218: **2/2 PASS** (contradictory active clock and eventual recovery from inconsistent ledger). Initial `--project=chromium` invocation exited 1 because config defines no named project; rerun without that option passed.
+- Full elevated `npm run check`: exit 0 (local pinned migration parity 9/9, ESLint, strict TypeScript, **178/178 Vitest**, Webpack **17/17 pages**). `ROOKLINE_E2E_PORT=3218 npm run test:e2e -- --workers=1`: exit 0 (**76 mocked/local Chromium PASS / 1 opt-in hosted Supabase SKIP**). `git diff --check` clean except informational CRLF notices.
+- Mock HTTP does not prove hosted Supabase Auth/RLS, genuine HTTPS Origin/Host, private Realtime, independent PostgreSQL clock/lock races or rated settlement; migration ID reconciliation outstanding. **20 gates OPEN, rated OFF.**
+
 ## 2026-10-31 — checkpoint 76: same-ply terminal record immutability
 
 - **Regression:** `npx vitest run src/lib/online/games.test.ts -t 'entire committed terminal record'` returned exit 1 before the fix (late terminal field changes incorrectly accepted); after the fix 22/22 focused and **177/177 complete Vitest PASS**. All terminal fields, foreign IDs and equal-content records with reversed key insertion order are covered.
