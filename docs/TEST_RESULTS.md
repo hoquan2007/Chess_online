@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 42: expanded openings and lesson practice
+
+- Added five original opening lines and two instructional lessons, bringing the catalogues to **10 openings / 5 lessons**. Vitest checks 15 distinct IDs, correct authored move/step counts, legality, and successful guided practice on either side. The native Chromium case completes French Defense as Black and castling practice as White, validates distinct `french:b` and `castle:w` mastery, and verifies persistence across reload.
+- Native `npm run check` **PASS (exit 0)**: ESLint PASS, `tsc --noEmit` PASS, **80/80 Vitest / 12 suites** PASS, Next 16.4.3 optimized Webpack build **17/17 generated pages** PASS. Focused new browser test **1/1 PASS**. Native full Playwright **55 local/mock Chromium PASS, 1 guarded real Supabase staging SKIP, exit 0 (2.9m)**. Initial restricted browser run could not establish local socket access and was cancelled; a fresh native-permission rerun passed. `git diff --check` PASS before documentation changes; repeat before commit.
+- No real hosted acceptance claimed: fresh **name/boolean-only** `.env.local` and process-env probe found all four relevant Supabase runtime values absent; test skipped because `ROOKLINE_STAGING_E2E` was not enabled. Real Supabase Auth/JWT, multiuser Realtime, row-lock/time controls and rated settlement remain unverified. Remote migration history remains nine previously installed versus tenth rated SQL only rollback-tested. **20 gates OPEN, IN_PROGRESS**. Rollback: revert checkpoint-42 study catalogue, study unit/browser tests and evidence documents. No external writes, production deploy or `main` merge.
+
 ## 2026-10-30 — checkpoint 41: 20 original tactical puzzles and full native browser regression
 
 - Added ten legal positions (20 total) across checkmate, fork, pin, capture and promotion; unit test verifies unique IDs, legal authored SAN and true mate for every explicit `goal: "mate"` entry. Black-to-move examples and promotion choices are validated through `evaluatePuzzleMove`, and topic cycling exercises the expanded four-fork catalogue. Existing device-local save IDs remain stable.

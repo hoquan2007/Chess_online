@@ -3,9 +3,36 @@ import { evaluatePracticeMove, lessonLines, openingLines, practiceNextPly, study
 
 describe("original instructional lines", () => {
   it("every documented move is legal and step descriptions align with positions", () => {
+    expect(openingLines).toHaveLength(10);
+    expect(lessonLines).toHaveLength(5);
+    expect(new Set([...openingLines, ...lessonLines].map((line) => line.id)).size).toBe(15);
     for (const line of [...openingLines, ...lessonLines]) {
       expect(line.steps).toHaveLength(line.moves.length);
       expect(studyPosition(line.moves, line.moves.length).history()).toEqual([...line.moves]);
+    }
+  });
+  it("all fifteen lines are completable from either side using only legal moves", () => {
+    for (const line of [...openingLines, ...lessonLines]) {
+      for (const side of ["w", "b"] as const) {
+        let ply = practiceNextPly(line, side, 0);
+        let learnerMoves = 0;
+        while (ply < line.moves.length) {
+          const game = studyPosition(line.moves, ply);
+          const expected = game.moves({ verbose: true }).find((move) => move.san === line.moves[ply]);
+          expect(expected, `${line.id} at ply ${ply}`).toBeDefined();
+          const promotion = expected!.promotion;
+          const result = evaluatePracticeMove(line, side, ply, {
+            from: expected!.from, to: expected!.to,
+            promotion: promotion === "q" || promotion === "r" || promotion === "b" || promotion === "n" ? promotion : undefined,
+          });
+          expect(result.status).toBe("correct");
+          expect(result.ply).toBeGreaterThan(ply);
+          ply = result.ply;
+          learnerMoves++;
+        }
+        expect(learnerMoves).toBeGreaterThan(0);
+        expect(ply).toBe(line.moves.length);
+      }
     }
   });
   it("rewinds without changing the canonical opening position", () => {

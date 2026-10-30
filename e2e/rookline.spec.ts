@@ -581,6 +581,37 @@ test("lesson practice preserves completed openings across page navigation", asyn
   await expect(page.getByText("Practice completed on this device")).toBeVisible();
 });
 
+test("new French defense and king-safety lesson are playable and retain separate mastery", async ({ page }) => {
+  await page.goto("/openings");
+  await page.getByRole("button", { name: /French Defense/ }).click();
+  await page.getByRole("button", { name: "Practice as Black" }).click();
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  for (const [move, ply] of [["e7e6", 3], ["d7d5", 5], ["g8f6", 6]] as const) {
+    await input.fill(move);
+    await input.press("Enter");
+    await expect(page.getByText(`Practice position ${ply} / 6`)).toBeVisible();
+  }
+  await expect(page.locator("p[role='status']")).toContainText("Line complete!");
+
+  await page.goto("/learn");
+  await page.getByRole("button", { name: /Castle before complications/ }).click();
+  await page.getByRole("button", { name: "Practice as White" }).click();
+  const lessonInput = page.getByRole("textbox", { name: /Keyboard move/ });
+  for (const [move, ply] of [["e2e4", 2], ["g1f3", 4], ["f1c4", 6], ["e1g1", 8], ["d2d3", 10]] as const) {
+    await lessonInput.fill(move);
+    await lessonInput.press("Enter");
+    await expect(page.getByText(`Practice position ${ply} / 10`)).toBeVisible();
+  }
+  await expect(page.locator("p[role='status']")).toContainText("Line complete!");
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("rookline-study-practice") || "[]")))
+    .toEqual(expect.arrayContaining(["french:b", "castle:w"]));
+  await page.reload();
+  await page.getByRole("button", { name: /Castle before complications/ }).click();
+  await expect(page.getByText("Practice completed on this device")).toBeVisible();
+  await page.getByRole("button", { name: "Practice as White" }).click();
+  await expect(page.getByText("This line is mastered.", { exact: false })).toBeVisible();
+});
+
 test("lesson explorer works on a small screen without horizontal overflow", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/learn");

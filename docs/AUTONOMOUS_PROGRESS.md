@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 42 — expanded original opening and lesson curriculum
+
+- Expanded CH-14 from five to **ten** legal, original opening lines (French Defense, Caro-Kann, Scandinavian Defense, London System and English Opening added) and from three to **five** original lessons (king safety through castling and central pawn breaks added). Existing IDs and per-color device-local mastery remain compatible. A new test exercises all 15 lines as White and Black using legal scripted moves.
+- Native `npm run check` **PASS, exit 0**: ESLint, strict TypeScript, **80/80 Vitest in 12 suites**, optimized Next.js Webpack build **17/17 generated pages**. Focused new French/castling practice Chromium **1 PASS**; complete native `npm run test:e2e -- --workers=1` **55 local/mock Chromium PASS / 1 guarded live staging SKIP, exit 0**. The first restricted Playwright web server could not be reached due to socket permissions; native rerun passed.
+- Checked `.env.local` plus process environment by presence-only probe: staging URL, publishable key, Supabase secret and legacy service-role key **all absent**. The nine remote staging migrations remain the latest previously confirmed set; the tenth rated-settlement SQL remains rollback-tested only. Hosted S0/S1/S2, ratings and community still unverified. CH-14 `LOCALLY_TESTED` with broader curriculum/hosted mastery pending; rated API OFF, **20 gates OPEN / IN_PROGRESS**. No main merge or production deployment.
+
 ## 2026-10-30, checkpoint 41 — doubled original tactical curriculum
 
 - Expanded CH-13 from ten to **20 original chess.js-validated positions**, with new Black-to-move mates, forks, captures and promotion exercises. Every entry now declares `goal: "mate" | "move"`; alternate legal checkmates are accepted on actual board state, independent of display text. The puzzle board turns Black-side-up for Black-to-move positions, with previously saved IDs and adaptive practice history preserved.
