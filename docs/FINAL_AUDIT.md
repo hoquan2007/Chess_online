@@ -2,6 +2,8 @@
 
 **Current decision: IN_PROGRESS.** None of the 20 project completion gates has full end-to-end evidence yet. A local board, ten original puzzles, successful unit tests, static routes or a compiled asset bundle cannot count as real multiplayer verification.
 
+**Checkpoint 32 evidence (2026-10-30):** Precise local clock persistence now reduces full-PGN saves to visible-second updates while charging actual elapsed time on each 250ms tick; focused Chromium verifies writes, fractional values and reload. Native `npm run check` PASS (**64 unit, 10 suites, 17 build pages**) and full Chromium **50 local/mock PASS, 1 actual hosted staging SKIP**. Four required Supabase runtime env keys are still absent. Full multiplayer/rated/server clock evidence is missing, **all 20 gates OPEN**.
+
 **Checkpoint 31 evidence (2026-10-30):** Candidate analysis search is a locally browser-tested, original depth-two material heuristic in a Worker with SAN-history-aware fivefold detection and stale request cancellation. `npm run check` PASS (**64 unit, 10 suites, 17 build pages**) and full Chromium **49 local/mock PASS, 1 hosted staging SKIP**. It does not satisfy the licensed engine or any real Supabase/online acceptance gate. All **20 final gates remain OPEN**.
 
 Track acceptance 1–20 exactly as specified in the owner's `/goal`:

@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 32 — precise local clock with reduced full-PGN saves
+
+- Clock precision remains in `clockRef` at every 250 ms timer tick; visible updates and full-session localStorage writes now occur when the shown second changes or a flag falls. Persisted snapshots preserve subsecond timing. New browser case verifies 2–5 writes across 2.8 s, fractional clock, persisted e4 and reload continuation.
+- **Native `npm run check` PASS:** lint/types, **64 unit in 10 suites**, **17/17 build pages**. Native focused browser **1 PASS**, full Chromium **50 local/mock PASS / 1 guarded staging SKIP**; `git diff --check` PASS. Previous restricted browser process had stalled and was interrupted; final native runs passed.
+- Presence-only probe again confirms all four required Supabase runtime vars absent. CH-03 locally tested, broader endurance still pending. S0–S2 `BLOCKED_EXTERNAL`, S3–S6 unfinished, all **20 completion gates OPEN**. Next secure S0 three-account hosted Auth/RLS/Realtime + independent two-connection clock protocol, followed by rated and other backlog milestones. No production deploy or `main` merge.
+
 ## 2026-10-30, checkpoint 31 — candidate move search with a dedicated Worker
 
 - Implemented original depth-two material search on the Analysis page. Candidate SAN, approximate white-relative score and terminal outcome are displayed; the UI warns that this is a limited heuristic. Reconstructed SAN history preserves repetition adjudication, and changing positions invalidates stale Worker answers.

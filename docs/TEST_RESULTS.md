@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 32: local clock persistence and long-session regression
+
+- Changed the running local/computer clock to advance its precise subsecond ref every 250 ms while re-rendering/persisting full PGN only when the displayed second changes or the clock flags. Stored clock values retain fractional seconds, and move/Undo paths still settle the current ref before changing a position.
+- Added a real Chromium regression: after `e4` in a 3+2 local game, observe only 2–5 complete game-save writes in 2.8 seconds, fractional Black clock, PGN persistence and resumed clock/position after reload. This is a sustained-tick **local** test, not a hosted or 26-day endurance test.
+- **Focused native Chromium PASS: 1/1 (exit 0)**. **Native `npm run check` PASS (exit 0):** ESLint, strict TypeScript, **64/64 Vitest across 10 suites**, Next.js Webpack **17/17** generated pages. **Full native Chromium PASS (exit 0): 50 local/mock scenarios, 1 opt-in real staging scenario SKIP**. An earlier restricted-sandbox browser startup stalled without test results and was interrupted; the native-permission focused and full runs supersede it. `git diff --check` PASS (only informational Windows line-ending warnings).
+- A fresh value-free runtime check found `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` **absent**. No authenticated hosted, two-session DB clock or rating tests ran. CH-03 remains `LOCALLY_TESTED` with broader endurance pending; S0–S2 `BLOCKED_EXTERNAL`, S3–S6 unfinished; **all 20 full-product gates OPEN**, `IN_PROGRESS`. No production deploy or main merge. Rollback: revert the checkpoint-32 source/test/documentation commit.
+
 ## 2026-10-30 — checkpoint 31: original candidate move search
 
 - Added an opt-in **Rookline quick search** to the analysis page: a two-ply material-only minimax heuristic computes a legal candidate on a dedicated browser Worker. The UI distinguishes this rough estimate from a licensed/strong engine, shows finished games without suggesting moves, and ignores or terminates out-of-date analysis when the user changes positions.

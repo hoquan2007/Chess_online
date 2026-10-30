@@ -160,7 +160,8 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   useEffect(() => {
     if (gameId === "local-0") return;
     try {
-      localStorage.setItem(`rookline-session-${mode}`, JSON.stringify({ pgn: engine.current.pgn(), control, seconds, undoClocks, manualResult, orientation, playingSide, gameId, running: running && !outcome, savedAt: Date.now() }));
+      // The clock ref contains precise subsecond time even between visible ticks.
+      localStorage.setItem(`rookline-session-${mode}`, JSON.stringify({ pgn: engine.current.pgn(), control, seconds: clockRef.current, undoClocks, manualResult, orientation, playingSide, gameId, running: running && !outcome, savedAt: Date.now() }));
     } catch { /* Game remains playable if browser storage is unavailable. */ }
   }, [fen, mode, control, seconds, undoClocks, manualResult, orientation, playingSide, gameId, running, outcome]);
 
@@ -170,11 +171,14 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     tickAt.current = now;
     if (!running || manualResult || !engine.current.history().length || gameResult(engine.current).finished) return true;
     const turn = engine.current.turn();
-    const updated = advanceLocalClock(clockRef.current, turn, elapsedMs);
-    if (updated !== clockRef.current) {
+    const previous = clockRef.current;
+    const updated = advanceLocalClock(previous, turn, elapsedMs);
+    if (updated !== previous) {
       // Update the ref now, so a move or Undo cannot race a queued React updater.
       clockRef.current = updated;
-      setSeconds(updated);
+      // Re-render/persist the full PGN only when the displayed clock changes
+      // or flags. The ref still charges every subsecond interval exactly.
+      if (Math.ceil(updated[turn]) !== Math.ceil(previous[turn])) setSeconds(updated);
     }
     return updated[turn] > 0;
   }, [running, manualResult]);

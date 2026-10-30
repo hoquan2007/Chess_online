@@ -900,6 +900,41 @@ test("undo restores the previous chess clock and survives reload", async ({ page
   await expect(page.getByLabel("White clock")).toHaveText("03:00");
 });
 
+test("a long-running local clock stores precise time without rewriting its PGN every 250 ms", async ({ page }) => {
+  await page.goto("/play/local");
+  await page.getByRole("button", { name: "3+2" }).click();
+  const entry = page.getByRole("textbox", { name: /Keyboard move/ });
+  await entry.fill("e2e4");
+  await entry.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect.poll(() => page.evaluate(() =>
+    JSON.parse(localStorage.getItem("rookline-session-local") ?? "{}").running)).toBe(true);
+
+  await page.evaluate(() => {
+    const original = Storage.prototype.setItem;
+    let writes = 0;
+    Object.assign(window, { __rooklineClockWrites: () => writes });
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key === "rookline-session-local") writes++;
+      return original.call(this, key, value);
+    };
+  });
+  await page.waitForTimeout(2800);
+  const counts = await page.evaluate(() => {
+    const writes = (window as typeof window & { __rooklineClockWrites: () => number }).__rooklineClockWrites();
+    const save = JSON.parse(localStorage.getItem("rookline-session-local")!);
+    return { writes, savedSeconds: save.seconds.b as number, savedPgn: save.pgn as string };
+  });
+  expect(counts.writes).toBeLessThanOrEqual(5);
+  expect(counts.writes).toBeGreaterThanOrEqual(2);
+  expect(counts.savedSeconds).toBeGreaterThan(176);
+  expect(counts.savedSeconds).toBeLessThan(179);
+  expect(counts.savedPgn).toContain("e4");
+  await page.reload();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(page.getByLabel("Black clock")).toContainText("02:5");
+});
+
 test("an active local clock charges elapsed time across reload and rejects an expired turn", async ({ page }) => {
   // Apply each simulated wall-clock jump before the app mounts on reload.
   // Editing the save on a live page races its 250 ms persistence interval.
