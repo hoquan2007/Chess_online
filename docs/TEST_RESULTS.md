@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 62: remote structural evidence and GitHub publication
+
+- **Published:** `c88473e` pushed on development branch. **Fresh:** `npm run lint` PASS; `npm run typecheck` PASS; `npm run test` PASS **165/165 across 24 files**; `git diff --cached --check` PASS before commit. Checkpoint 61 previously ran **67/67 local/mock Chromium**, 1 hosted SKIP, and a successful standalone native 17-page build (composite build separately encountered Windows EPERM); these were not rerun here.
+- **Remote read-only checks:** Supabase project `tyvczicinpjixmxgjhjn` ACTIVE_HEALTHY, nine prior remote migrations still present, all seven public tables RLS enabled. `anon` cannot write any of them; `authenticated` cannot directly write games, moves, profiles, ratings, rating_history or game_rate_limits. `preferences` has authenticated write grant subject to RLS. Policy count check found no `public`-role policy; `game_rate_limits` intentionally has zero policies (advisor INFO). Two indexes are reported unused at INFO severity; no schema writes.
+- **Vercel:** Current project environment listing `envs=[]`, hidden production env count 0. No preview for SHA `c88473e`; existing READY preview is SHA `890c782`. Explicit `target=preview` deployment API returned HTTP 400 (unsupported target); omitting target was rejected by automatic review as ambiguous production risk. No new deploy. Real hosted Auth/JWT, Origin, RLS identity checks, private Realtime, DB races and rating remain **UNTESTED**. **20 acceptance gates OPEN, rated OFF**.
+
 ## 2026-10-31 — checkpoint 61: online lobby account-isolation regression
 
 - **Code:** `src/lib/online/lobby-session.ts` uses an account epoch, an incrementing request ID and abort signals to prevent previous-account or out-of-order game responses from updating the lobby. `src/components/OnlineLobby.tsx` binds the verified Supabase identity, clears account data on auth change/sign-out, aborts stale challenge creation and disposes listeners and pending requests on unmount. The client additionally filters displayed games to the verified participant, as a defensive UI measure; server authorization and RLS remain authoritative.

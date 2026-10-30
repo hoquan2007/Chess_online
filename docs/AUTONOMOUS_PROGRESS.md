@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 62 — published lobby fix and refreshed hosted readiness
+
+- Development commit `c88473e` (`fix(online): isolate lobby across account switches`) successfully pushed to `origin/codex/chess-platform-foundation`; `main` untouched. Fresh local ESLint, strict TypeScript and 165/165 Vitest PASS; checkpoint 61's 67/67 local/mock Chromium PASS and separate native 17-page build were already recorded and were not rerun in this checkpoint.
+- Connected Supabase staging `tyvczicinpjixmxgjhjn` is ACTIVE_HEALTHY with the same nine installed migration names/remote versions. Read-only PostgreSQL queries confirm RLS on all seven public tables and deny direct `anon`/`authenticated` writes on games, moves and rating tables; authenticated preferences have write privilege subject to RLS. Supabase security advisor: one INFO for deliberately policy-free `game_rate_limits`; performance advisor: two unused-index INFO findings. These structural checks do not prove actual user authorization.
+- Vercel still lists **zero environment variables**. The latest READY preview remains at earlier SHA `890c782`; a deployment of `c88473e` was not created. A direct API attempt rejected `target=preview` (allowed targets were production/staging/custom); the default-target alternative was refused by automatic approval review because it could deploy to the wrong environment. No production deployment or permission workaround. S0 authentic HTTPS three-user test remains BLOCKED_EXTERNAL. **20 gates OPEN; rated OFF; IN_PROGRESS**.
+
 ## 2026-10-31, checkpoint 61 — account-scoped online lobby refresh
 
 - Added verified-identity lobby session coordination; an old account's game list cannot publish after identity switches, sign-out, out-of-order API responses, or component teardown. Pending create-challenge requests are aborted on account changes. Four new Vitest cases cover isolation, request ordering, failed verification and disposal.

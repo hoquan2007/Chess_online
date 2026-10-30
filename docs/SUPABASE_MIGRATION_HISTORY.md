@@ -1,5 +1,7 @@
 # Supabase migration history — chessonline staging
 
+**Revalidated 2026-10-31, checkpoint 62:** Connected `list_migrations` returned these same nine remote versions and names. Read-only queries confirmed all seven public tables have RLS enabled; games, moves, ratings, rating_history, profiles and game_rate_limits disallow direct authenticated writes, while preferences allows authenticated writes subject to RLS. Security advisor still reports one INFO for deliberately policy-free `game_rate_limits`, and performance advisor two unused-index INFO notices. The mapping remains a record of names/versions and **does not independently prove remote SQL text equals the local files**. No history or schema changes were made.
+
 Verified 2026-10-30 against the connected Supabase project `tyvczicinpjixmxgjhjn`. The table shows the **local filename** and the **remote version** recorded by Supabase when the MCP migration tool applied its SQL. Project identifiers and timestamps are not authentication secrets. No credentials belong in this document.
 
 | Local SQL file (under `supabase/migrations/`) | Remote version | Remote migration name |
