@@ -7,11 +7,11 @@ export function moveSoundsEnabled() {
   catch { return true; }
 }
 
-export function setMoveSoundsEnabled(enabled: boolean) {
+export function setMoveSoundsEnabled(enabled: boolean, preview = true) {
   try { localStorage.setItem(preferenceKey, enabled ? "on" : "off"); }
   catch { /* Private browsing may restrict storage. */ }
   window.dispatchEvent(new Event("rookline:preferences-changed"));
-  if (enabled) playMoveSound(); // Immediate preview also unlocks browser audio on this click.
+  if (enabled && preview) playMoveSound(); // Preview only on deliberate user action.
 }
 
 /** Call from user gestures to allow later opponent/computer move audio. */

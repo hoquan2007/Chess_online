@@ -139,6 +139,39 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     expect(canonicalProfile).toMatchObject({ username: editedUsername, display_name: "Verified profile" });
     if (unauthorizedEditError) expect(unauthorizedEditError.code).toBeTruthy();
 
+    // Real identity-scoped account settings persist across reload and UI entry points.
+    await whitePage.goto("/settings");
+    await expect(whitePage.getByRole("status").filter({ hasText: "Preferences synced" })).toBeVisible();
+    await whitePage.getByRole("button", { name: "Light theme", exact: true }).click();
+    await whitePage.getByRole("button", { name: "Off", exact: true }).click();
+    await expect.poll(async () => {
+      const response = await whiteContext.request.get("/api/preferences");
+      expect(response.status()).toBe(200);
+      return (await response.json()).preferences;
+    }).toEqual({ theme: "light", sounds_enabled: false });
+    await whitePage.reload();
+    await expect(whitePage.getByRole("button", { name: "Light theme" })).toHaveAttribute("aria-pressed", "true");
+    await expect(whitePage.getByRole("button", { name: "Off", exact: true })).toHaveAttribute("aria-pressed", "true");
+    const { data: outsiderPreferences, error: outsiderPrefError } = await outsider.from("preferences")
+      .select("user_id").eq("user_id", whiteId);
+    expect(outsiderPrefError).toBeNull();
+    expect(outsiderPreferences).toEqual([]);
+    const { error: outsiderPrefWriteError } = await outsider.from("preferences")
+      .update({ theme: "dark" }).eq("user_id", whiteId);
+    if (outsiderPrefWriteError) expect(outsiderPrefWriteError.code).toBeTruthy();
+    const { data: whitePreferences } = await admin.from("preferences").select("theme,sounds_enabled")
+      .eq("user_id", whiteId).single();
+    expect(whitePreferences).toEqual({ theme: "light", sounds_enabled: false });
+    await blackPage.goto("/settings");
+    await expect(blackPage.getByRole("button", { name: "Light theme" })).toHaveAttribute("aria-pressed", "false");
+    await whitePage.getByRole("button", { name: "Use dark theme" }).click();
+    await expect.poll(async () => (await (await whiteContext.request.get("/api/preferences")).json()).preferences.theme)
+      .toBe("dark");
+    // Restore the theme before continuing the multi-client game acceptance.
+    await whitePage.getByRole("button", { name: "Light theme", exact: true }).click();
+    await expect.poll(async () => (await (await whiteContext.request.get("/api/preferences")).json()).preferences.theme)
+      .toBe("light");
+
     // Only the creator may cancel a waiting challenge, including after a
     // reload. Direct authenticated RPC execution must remain prohibited.
     const pendingCreate = await postGame(whiteContext, "/api/games", { control: "5+0" });

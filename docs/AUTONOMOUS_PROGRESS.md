@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 55 — user-scoped settings persistence and session-switch safety
+
+- Integrated validated private/no-store account preferences into authenticated Settings, topbar theme and move sounds. `PATCH /api/preferences` checks verified JWT identity, same-origin, strict body and owner-only table RLS; `X-Rookline-Account` must match the authenticated user (409 on mismatch). Client aborts stale writes on account change, serializes rapid changes, discards old-account loads and retries after a failed read; status is accessible to users.
+- Post-hardening checks: targeted **25/25 Vitest PASS**; lint, strict TypeScript and **153/153 full Vitest PASS**; separate authorized native production build **PASS, 17 pages**; focused Chromium **2 PASS**, full Chromium **61 local/mock PASS / 1 guarded hosted SKIP**. Initial overlapping composite build failed `.next` `EPERM`, corrected with isolated native build. Hosted Auth/RLS and three-user preference reload checks are authored but unexecuted.
+- Four required Supabase runtime values absent by presence-only probe. S0 real HTTPS Auth/RLS and migration ID reconciliation still precede S1 Realtime, S2 dual-connection clocks, S3 rated ledger/matching, S4 engine/hosted learning, S5 community and S6 independent audit. **20 gates OPEN, rated OFF; no production deployment, schema push or main merge.**
+
 ## 2026-10-30, checkpoint 52 — authenticated profile editor and security regression
 
 - Implemented own-profile `username`/`display_name` editing through CSRF-guarded `PATCH /api/profile`, user-scoped Supabase UPDATE and an accessible owner-only form. Input validation rejects extra/privileged fields, bidi controls, invalid names and oversized JSON; collisions and absent service produce explicit responses. The existing SQL `profiles_update` policy and column grants are relied upon. Authenticated three-user browser/RLS assertions have been added to the opt-in staging suite but have **not run**.

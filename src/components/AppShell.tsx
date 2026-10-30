@@ -6,6 +6,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { BookOpen, Brain, Castle, Gamepad2, Home, LogIn, LogOut, Moon, Puzzle, Settings, Sun, Swords, Trophy, Users, ChartNoAxesCombined, UserRound } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { RooklineMark } from "@/components/RooklineMark";
+import { moveSoundsEnabled, setMoveSoundsEnabled } from "@/lib/chess/sound";
+import { createPreferenceSync } from "@/lib/profile/preference-sync";
 
 const navigation = [
   { href: "/", title: "Home", icon: Home },
@@ -37,6 +39,40 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
     return () => { alive = false; subscription.unsubscribe(); };
   }, []);
+  useEffect(() => {
+    const client = browserSupabase();
+    if (!client) return;
+    let applyingRemote = false;
+    const sync = createPreferenceSync({
+      request: fetch,
+      readLocal: () => ({
+        theme: localStorage.getItem("rookline-theme") === "light" ? "light" : "dark",
+        sounds_enabled: moveSoundsEnabled(),
+      }),
+      applyRemote: (preferences) => {
+        applyingRemote = true;
+        try {
+          localStorage.setItem("rookline-theme", preferences.theme);
+          setMoveSoundsEnabled(preferences.sounds_enabled, false);
+          window.dispatchEvent(new Event("rookline:preferences-changed"));
+        } finally { applyingRemote = false; }
+      },
+      onStatus: (status) => {
+        document.documentElement.dataset.rooklinePreferenceSync = status;
+        window.dispatchEvent(new Event("rookline:preferences-sync"));
+      },
+    });
+    const localChange = () => { if (!applyingRemote) sync.localChanged(); };
+    window.addEventListener("rookline:preferences-changed", localChange);
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      void sync.setAccount(session?.user.id ?? null);
+    });
+    return () => {
+      sync.dispose();
+      subscription.unsubscribe();
+      window.removeEventListener("rookline:preferences-changed", localChange);
+    };
+  }, []);
   async function signOut() {
     await browserSupabase()?.auth.signOut();
     setAccount(null);
@@ -62,6 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     localStorage.setItem("rookline-theme", next ? "light" : "dark");
     document.documentElement.classList.toggle("theme-light", next);
     setLight(next);
+    window.dispatchEvent(new Event("rookline:preferences-changed"));
   };
   const navLink = ({ href, title, icon: Icon }: (typeof navigation)[number]) => (
     <Link key={href} href={href} className={`nav-link ${pathname === href || (href !== "/" && pathname.startsWith(`${href}/`)) ? "active" : ""}`} aria-current={pathname === href ? "page" : undefined} title={title}>

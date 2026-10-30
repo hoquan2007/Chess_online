@@ -7,12 +7,21 @@ import { moveSoundsEnabled, setMoveSoundsEnabled } from "@/lib/chess/sound";
 export function SettingsPanel() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [sounds, setSounds] = useState(true);
+  const [syncStatus, setSyncStatus] = useState("local");
 
   useEffect(() => {
-    queueMicrotask(() => {
+    const refreshPreferences = () => {
       setTheme(localStorage.getItem("rookline-theme") === "light" ? "light" : "dark");
       setSounds(moveSoundsEnabled());
-    });
+    };
+    const refreshStatus = () => setSyncStatus(document.documentElement.dataset.rooklinePreferenceSync ?? "local");
+    queueMicrotask(() => { refreshPreferences(); refreshStatus(); });
+    window.addEventListener("rookline:preferences-changed", refreshPreferences);
+    window.addEventListener("rookline:preferences-sync", refreshStatus);
+    return () => {
+      window.removeEventListener("rookline:preferences-changed", refreshPreferences);
+      window.removeEventListener("rookline:preferences-sync", refreshStatus);
+    };
   }, []);
 
   function updateTheme(next: "dark" | "light") {
@@ -29,7 +38,7 @@ export function SettingsPanel() {
 
   return <div className="stack" style={{ maxWidth: 720 }}>
     <section className="text-panel stack" aria-labelledby="appearance-heading">
-      <div><h2 id="appearance-heading">Appearance</h2><p className="muted">Choose a theme for this browser.</p></div>
+      <div><h2 id="appearance-heading">Appearance</h2><p className="muted">Choose your preferred board theme.</p></div>
       <div className="game-actions" role="group" aria-label="Theme preference">
         <button type="button" className={`btn ${theme === "dark" ? "primary" : "ghost"}`}
           aria-pressed={theme === "dark"} onClick={() => updateTheme("dark")}>Dark theme</button>
@@ -46,7 +55,13 @@ export function SettingsPanel() {
           aria-pressed={!sounds} onClick={() => updateSounds(false)}>Off</button>
       </div>
     </section>
-    <p className="muted">These preferences are saved only in this browser. Account-wide preferences require a connected online account.</p>
+    <p className="muted" role="status" aria-live="polite">{
+      syncStatus === "saved" ? "Preferences synced to your account." :
+      syncStatus === "loading" ? "Loading your account preferences…" :
+      syncStatus === "saving" ? "Saving preferences to your account…" :
+      syncStatus === "error" ? "Account sync unavailable. Your preferences remain on this device; change a setting to retry saving." :
+      "Saved on this device. Sign in to sync preferences across devices."
+    }</p>
     <div className="game-actions"><Link href="/play/local" className="btn primary">Try a local game</Link><Link href="/" className="btn ghost">Back home</Link></div>
   </div>;
 }

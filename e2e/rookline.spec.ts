@@ -667,6 +667,20 @@ test("settings persist theme and move sounds across navigation", async ({ page }
   await expect(page.locator("html")).not.toHaveClass(/theme-light/);
 });
 
+test("topbar theme toggle and settings stay synchronized on the same page", async ({ page }) => {
+  await page.goto("/settings");
+  await page.getByRole("button", { name: "Use light theme" }).click();
+  await expect(page.getByRole("button", { name: "Light theme", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("html")).toHaveClass(/theme-light/);
+  await page.getByRole("button", { name: "Off", exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Light theme", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Off", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Use dark theme" }).click();
+  await expect(page.getByRole("button", { name: "Dark theme", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("html")).not.toHaveClass(/theme-light/);
+});
+
 test("move audio defaults on, plays from keyboard and persists mute across navigation", async ({ page }) => {
   await page.addInitScript(() => {
     const audioWindow = window as unknown as Window & { __rooklineAudioStarts: number };
