@@ -24,7 +24,7 @@ export function OnlineLobby({ friend = false }: { friend?: boolean }) {
     const { data: { user } } = await client.auth.getUser();
     setUserId(user?.id ?? null);
     setReady(true);
-    if (!user) return;
+    if (!user) { setGames([]); return; }
     try {
       const response = await fetch("/api/games", { cache: "no-store" });
       const json = await response.json();
@@ -65,6 +65,7 @@ export function OnlineLobby({ friend = false }: { friend?: boolean }) {
       </div>
       <div className="text-panel stack"><div className="game-actions" style={{ justifyContent: "space-between" }}><h2>Your games</h2><button className="btn ghost" type="button" onClick={() => void refresh()}>Refresh</button></div>
         {games.length ? games.map((game) => <Link className="status" href={`/game/${game.id}`} key={game.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, textDecoration: "none", flexWrap: "wrap" }}><span>{game.status === "waiting" ? "Waiting for opponent" : game.status === "active" ? "Game in progress" : game.status === "cancelled" ? "Challenge cancelled" : `Finished: ${game.result ?? game.status}`} · {game.white_id === userId ? "White" : "Black"}</span><span className="muted">{Math.round(game.base_ms / 60000)}+{Math.round(game.increment_ms / 1000)} · {game.ply} half-moves →</span></Link>) : <p className="muted">No online games yet. Create one above to get started.</p>}
+        <Link href="/games" className="btn ghost" style={{ alignSelf: "flex-start" }}>Browse full game history</Link>
       </div>
     </>}
     {message && <p role="alert" className="status">{message}</p>}

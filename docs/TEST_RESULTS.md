@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-30 — checkpoint 50: authenticated history read and pagination
+
+- Implemented GET `/api/games` with 50-result cursor pages, precise microsecond timestamp preservation and UUID tie-breaker, verified member-only predicates for both seats, input rejection, no-store response and generic database failure. Server-rendered `/games` and client pagination reuse the query; opt-in hosted E2E now includes white/black/outsider archive checks, **not executed on Supabase**.
+- **Observed local result:** ESLint PASS; strict TypeScript PASS; **104/104 Vitest across 15 files PASS**; focused native Chromium timeout regression **1/1 PASS** after a clock race assertion correction; full native Chromium **59 local/mock PASS / 1 genuine hosted SKIP** (exit 0); native Webpack production build **17/17 pages PASS** (exit 0) after this change. Hosted three-user archive assertions remain unexecuted.
+- No real three-user authentication, real RLS, public HTTPS reverse proxy, independent Realtime/DB lock tests or rated settlement is proven. All 20 full-product gates remain OPEN; rated creation OFF.
+
 ## 2026-10-30 — checkpoint 48: isolated HTTPS staging acceptance runner prepared
 
 - Added strict staging app-origin validation: explicit bare HTTPS origins (or HTTP loopback only); paths, embedded credentials, cleartext remote HTTP and malformed URLs rejected. Opt-in Playwright external mode runs only the real hosted spec and does not start a local dev server.

@@ -198,10 +198,25 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     expect(finalWhite.pgn).toContain("Qh4#");
     expect((await move(whiteContext, gameId, "e2", "e4", 4)).status()).toBe(409);
 
+    // Real authenticated archive reads must expose only the players' games.
+    const [whiteArchive, blackArchive, outsiderArchive] = await Promise.all([
+      whiteContext.request.get("/api/games"),
+      blackContext.request.get("/api/games"),
+      outsiderContext.request.get("/api/games"),
+    ]);
+    expect([whiteArchive.status(), blackArchive.status(), outsiderArchive.status()]).toEqual([200, 200, 200]);
+    const archiveFor = async (response: typeof whiteArchive) => (await response.json()).games as { id: string }[];
+    expect((await archiveFor(whiteArchive)).map((entry) => entry.id)).toContain(gameId);
+    expect((await archiveFor(blackArchive)).map((entry) => entry.id)).toContain(gameId);
+    expect((await archiveFor(outsiderArchive)).map((entry) => entry.id)).not.toContain(gameId);
+    expect((await outsiderContext.request.get("/api/games?cursor=invalid")).status()).toBe(400);
+
     // Both real browser contexts must read the persisted result after a reload.
     await Promise.all([whitePage.goto(`/game/${gameId}`), blackPage.goto(`/game/${gameId}`)]);
     await expect(whitePage.getByText("Game finished", { exact: false }).first()).toBeVisible();
     await expect(blackPage.getByText("Game finished", { exact: false }).first()).toBeVisible();
+    await whitePage.goto("/games");
+    await expect(whitePage.getByRole("region", { name: "Online game history" }).locator(`a[href="/game/${gameId}"]`)).toBeVisible();
 
     // Simultaneous legal requests must result in a single accepted ply.
     const raceCreate = await postGame(whiteContext, "/api/games", { control: "5+0" });

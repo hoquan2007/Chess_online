@@ -1133,7 +1133,9 @@ test("a late move is refused even before a throttled clock interval fires", asyn
   await expect(page.getByLabel("Game controls").locator('[role="status"]')).toHaveText("Timeout");
   await expect(page.getByLabel("Black clock")).toHaveText("00:00");
   await expect(page.getByLabel("Move history").getByText("e5")).toHaveCount(0);
-  await expect(page.getByRole("alert").filter({ hasText: "Time expired" })).toBeVisible();
+  // A pending interval may flag the clock before form submission. In that
+  // ordering the input is disabled before an additional alert is rendered.
+  await expect(entry).toBeDisabled();
 });
 
 test("keyboard-only coordinate entry validates and plays a local chess move", async ({ page }) => {

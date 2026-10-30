@@ -4,18 +4,21 @@ import { timeControls, type TimeControl } from "@/lib/online/games";
 import { readLimitedJson } from "@/lib/online/request-json";
 import { gameMutationLimit } from "@/lib/online/rate-limit";
 import { rejectCrossOrigin } from "@/lib/online/request-origin";
+import { decodeHistoryCursor } from "@/lib/online/history";
+import { loadGameHistory } from "@/lib/online/history-query";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   const context = await authenticatedGameContext();
   if (!context.user || !context.admin) return NextResponse.json({ error: context.error }, { status: context.status });
-  const { data, error } = await context.admin.from("games")
-    .select("id,white_id,black_id,status,created_at,base_ms,increment_ms,ply,result")
-    .or(`white_id.eq.${context.user.id},black_id.eq.${context.user.id}`)
-    .order("created_at", { ascending: false }).limit(50);
-  if (error) return NextResponse.json({ error: "Could not load games" }, { status: 503 });
-  return NextResponse.json({ games: data ?? [] }, { headers: { "Cache-Control": "private, no-store" } });
+  let cursor;
+  try { cursor = decodeHistoryCursor(new URL(request.url).searchParams.get("cursor")); }
+  catch { return NextResponse.json({ error: "Invalid history cursor" }, { status: 400 }); }
+  try {
+    const history = await loadGameHistory(context.admin, context.user.id, cursor);
+    return NextResponse.json(history, { headers: { "Cache-Control": "private, no-store" } });
+  } catch { return NextResponse.json({ error: "Could not load games" }, { status: 503 }); }
 }
 
 export async function POST(request: Request) {

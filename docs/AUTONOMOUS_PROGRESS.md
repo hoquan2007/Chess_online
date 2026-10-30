@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 50 — authenticated online archive pagination
+
+- Added a participant-restricted online archive with stable 50-game pages, a PostgreSQL microsecond-preserving cursor and a UUID tie-breaker. The server validates cursor input before a privileged query, enforces membership in both seat branches, returns private/no-store results and handles database failures without exposing internal details. `/games` now loads older records on demand, deduplicates entries and provides clear session/error feedback; the online lobby links to the complete archive.
+- Local verification: ESLint, strict TypeScript and **104/104 Vitest in 15 files PASS**. Six authenticated GET route cases and three cursor/filter cases pass. After correcting the timeout race assertion, focused real Chromium **1/1 PASS**, full native Chromium **59 local/mock PASS / 1 genuine hosted SKIP**, and native Webpack production build **17/17 pages PASS**. All commands exited 0.
+- Hosted three-identity archive authorization remains **UNTESTED**; the opt-in staging scenario now checks white/black inclusion and outsider exclusion, but has not run against real Auth. Four Supabase runtime settings were absent in the last verified probe. Priority S0→S6 unchanged; **20 acceptance gates OPEN / IN_PROGRESS**, rated OFF, no production deploy or `main` merge.
+
 ## 2026-10-30, checkpoint 48 — external HTTPS staging E2E readiness
 
 - Prepared strict public-origin Playwright targeting with hosted-only spec selection and no local dev server. The guarded three-disposable-user spec now exercises genuine browser-originated game create/cancel and rejects forged or downgraded Origins. The new hosted checks remain **unexecuted** until staging is available.
