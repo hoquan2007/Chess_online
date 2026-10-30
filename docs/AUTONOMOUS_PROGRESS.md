@@ -1,5 +1,16 @@
 # Autonomous progress ledger
 
+## 2026-10-30, checkpoint 37 — staging SQL and role-simulated RLS verified
+
+- Executed the new tenth rated completion migration and its negative/positive exactly-once fixture inside a transaction on the dedicated live staging Postgres; **PASS followed by ROLLBACK**, leaving only the original nine remote migrations. Added result/winner consistency guard and invalid-result tests. Independently executed a new three-identity `authenticated`-role RLS fixture with transaction-local JWT claims: **PASS followed by ROLLBACK**. Neither check proves real Auth/Realtime, cross-session locking or durable rated migration deployment.
+- Local lint/types/**76 Vitest** PASS. Restricted composite build hit Windows `EPERM`; separate native-permission Next build **PASS (17 generated pages)**. Existing checkpoint-36 Chromium **52 local/mock PASS / 1 live SKIP** remains the latest browser result. Rated API creation remains disabled; next S0 real Auth/RLS → S1 two-client online → S2 independent DB races → S3 install/reconcile rated migration and test settlement → S4–S6. **20 gates OPEN; IN_PROGRESS**.
+
+## 2026-10-30, checkpoint 36 — rated database groundwork and replay controls
+
+- Added deterministic Elo-style TypeScript rating module with 6 unit cases. Prepared a staging-only, **unapplied and unexecuted** transactional PostgreSQL completion trigger and rollback acceptance SQL; hardened completed-rated direct INSERT, result ownership, finality and `games_played` overflow. Fixed staging test instructions that previously tried to reopen a completed game, and specified a real two-session rating-lock test.
+- Verified native lint, strict typecheck, **76/76 Vitest / 12 suites**, **17/17 build pages**, and full Chromium **52 local/mock PASS / 1 real Supabase staging SKIP**. The project still forces `rated: false` in game creation; real settlement requires SQL/staging execution and authenticated concurrency verification.
+- Four Supabase process environment variables are absent by value-free probe, so real S0–S2 and S3 integration gates remain unverified. Ten local migrations now exist; only the prior nine are reported present remotely with divergent version IDs. **20 full gates OPEN**, `IN_PROGRESS`. Next: reconcile migration history and run isolated SQL fixture plus true Auth/RLS, clock and two-client flows before enabling rated gameplay. No production deploy/main merge.
+
 ## 2026-10-30, checkpoint 35 — online snapshot race locally verified
 
 - Reproduced stale `GET /api/games/[id]` after expiry RPC waited on a concurrent resignation or legal move: two RED tests, now GREEN after unconditional authoritative reload; third test denies outsider before privileged RPC. Canonical participant is rechecked after the new read. Unit route module alias added to Vitest.

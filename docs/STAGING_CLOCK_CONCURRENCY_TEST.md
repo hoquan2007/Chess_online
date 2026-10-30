@@ -3,8 +3,8 @@
 This test is **PENDING**, not a passing result. Run only against an isolated
 Rookline staging Supabase PostgreSQL database after applying migrations
 `20261029010000` through `20261029090000` in order. These nine migrations
-have now been applied to the dedicated project, but **the protocol below has
-not been executed**. Do not run on another
+have now been applied to the dedicated project; the proposed tenth rated
+settlement migration is **not applied**. **This protocol has not executed.** Do not run on another
 project's database. Use two distinct authorized test accounts, a disposable
 unrated active game between them, and two SQL connections to the same database.
 
@@ -25,18 +25,20 @@ converted milliseconds to `integer`, which overflows after ~24.85 days.
 2. Create a disposable unrated game through the normal API with two **real**
    authenticated users; join Black to make it active. Record its `game_id`
    and White's `user_id`. Replay and verify the initial FEN and ply=0.
+   **Create a fresh active game for EACH test case below.** The proposed rated
+   settlement migration makes completed/cancelled games immutable; do not
+   attempt to reset a finalized game to `active` for another scenario.
 3. Restrict the following direct SQL test to an authorized staging DB owner;
    direct RPC calls bypass the Next.js chess.js draw/move validation and do
    **not** by themselves verify the public API. Never expose `service_role`.
 
 ## Concurrent late move
 
-On a dedicated staging connection, first reset **only** the disposable game:
+On a dedicated staging connection, configure **only the new active** disposable game:
 
 ```sql
-update public.games set status='active', turn='w', ply=0,
-  white_ms=500, black_ms=180000, clock_anchor_at=clock_timestamp(),
-  result=null, winner_id=null, finished_at=null
+update public.games set turn='w', ply=0,
+  white_ms=500, black_ms=180000, clock_anchor_at=clock_timestamp()
 where id='<GAME_UUID>'::uuid;
 ```
 
@@ -70,8 +72,8 @@ two browser sessions to test replay legality, idempotency and race ordering.
 
 ## Concurrent late draw claim
 
-Reset only the disposable game to `active`, `turn='w'`, `ply=0`, White 500ms,
-and `clock_anchor_at=clock_timestamp()`; hold the same Session A row lock for
+Create a **new** disposable active game, configure `turn='w'`, `ply=0`, White
+500ms, and `clock_anchor_at=clock_timestamp()`; hold the Session A row lock for
 two seconds. While A is sleeping, call from Session B:
 
 ```sql
@@ -90,13 +92,12 @@ the chess rule or an authorization boundary.
 
 ## Abandoned-game overflow
 
-Reset the disposable game to `active` with White to play and nonzero White
+Create another new active disposable game with White to play and nonzero White
 remaining time, then set its anchor at least 26 days in the past:
 
 ```sql
-update public.games set status='active', turn='w', white_ms=500,
-  clock_anchor_at=clock_timestamp() - interval '26 days',
-  result=null, winner_id=null, finished_at=null
+update public.games set turn='w', white_ms=500,
+  clock_anchor_at=clock_timestamp() - interval '26 days'
 where id='<GAME_UUID>'::uuid;
 select public.rookline_expire_game('<GAME_UUID>'::uuid);
 ```
@@ -108,6 +109,39 @@ mating material, reconnect, and an out-of-turn client against real RPCs.
 Record database ID (nonsecret), timestamps, transaction results and two-client
 browser evidence in `TEST_RESULTS.md`. Keep all hosted acceptance gates open
 until the test has actually run and passed.
+
+## Rated settlement two-connection protocol (PENDING)
+
+Run only after an explicit review of `20261030120000_atomic_rated_settlement.sql`,
+reconciling remote migration history, and applying it to an authorized isolated
+staging database. First run `supabase/tests/rated-settlement-acceptance.sql`
+with a DB owner; its fixture rolls back. This is separate from the real Auth
+and public API checks required before enabling rated play.
+
+1. Create two **fresh** rated `active` games `G1` and `G2` between the same two
+   real disposable identities `W` and `B`. Swap colors in G2, use `3+2` and
+   `5+0` respectively (both map to blitz), and record ratings and games played
+   before either completes. Do not create completed rated games directly.
+2. **Session A:** `begin; update public.games set status='completed',
+   result='Checkmate', winner_id='<W>'::uuid,
+   finished_at=clock_timestamp(), clock_anchor_at=null where id='<G1>'::uuid;`
+   Keep the transaction open. Its AFTER UPDATE trigger must hold both rating
+   rows until commit.
+3. **Session B (concurrently):** execute the analogous final update on `G2`,
+   with `winner_id` set to the actual winning seat. It must wait for A's rating
+   locks. Commit A, then allow B to finish and commit. Repeat in an isolated
+   fixture with A rolled back instead; B must still settle correctly.
+4. Query both games and rating histories. Exactly **four** unique
+   `(game_id,user_id)` ledger rows must exist after two committed games, and
+   each player's `games_played` must increase by two. Every `old_rating` must
+   equal the rating from the immediately preceding committed game; compare
+   both deltas with `src/lib/online/rating.ts`. Retry each final update and
+   assert `game_already_finalized` with unchanged ratings and history.
+5. Verify `anon` and `authenticated` cannot invoke settlement helpers or
+   directly write `ratings`, `rating_history`, or completed games. Inspect
+   per-player RLS and run the external two-client flow before allowing rated
+   creation in the product. Report precise timings, isolation levels, any
+   deadlocks/timeouts and all failure cases; **no test is claimed as run here**.
 
 ## Installed ninth migration: invitation cancellation race still pending live validation
 
