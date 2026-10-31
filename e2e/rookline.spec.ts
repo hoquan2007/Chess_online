@@ -172,6 +172,48 @@ test("local archive ignores invalid storage and refuses corrupt replay PGN", asy
   await expect(page.getByText("0 / 0")).toBeVisible();
 });
 
+test("local archive backup restores replayable games, rejects tampering and confirms deletion", async ({ page }) => {
+  const chess = new Chess();
+  chess.move("d4");
+  const saved = { id: "local-backup-1", pgn: chess.pgn(), outcome: "White won", mode: "local", date: "2026-10-31T00:00:00.000Z" };
+  const corrupt = { ...saved, id: "local-backup-corrupt", pgn: "1. invalidSAN" };
+  await page.goto("/games");
+  await page.evaluate((entries) => localStorage.setItem("rookline-history", JSON.stringify(entries)), [saved, corrupt]);
+  await page.reload();
+  const archive = page.getByRole("region", { name: "Local game archive" });
+  await expect(archive.getByRole("link", { name: "Review game" })).toHaveCount(2);
+  const downloadPromise = page.waitForEvent("download");
+  await archive.getByRole("button", { name: "Back up games" }).click();
+  const file = await downloadPromise;
+  expect(file.suggestedFilename()).toBe("rookline-local-games.json");
+  const raw = await readFile(await file.path(), "utf8");
+  const backup = JSON.parse(raw);
+  expect(backup.games).toEqual([saved]);
+  await expect(archive.getByRole("status")).toContainText("1 corrupt games skipped");
+
+  await archive.getByRole("button", { name: /Delete local game saved/ }).first().click();
+  await archive.getByRole("button", { name: "Keep game" }).click();
+  await expect(archive.getByRole("link", { name: "Review game" })).toHaveCount(2);
+  await archive.getByRole("button", { name: /Delete local game saved/ }).first().click();
+  await archive.getByRole("button", { name: "Confirm delete" }).click();
+  await expect(archive.getByRole("link", { name: "Review game" })).toHaveCount(1);
+
+  const upload = archive.getByLabel("Restore Rookline backup file");
+  await upload.setInputFiles({ name: "bad.json", mimeType: "application/json", buffer: Buffer.from("{bad") });
+  await expect(archive.getByRole("status")).toContainText("Backup is not valid JSON");
+  await expect(archive.getByRole("link", { name: "Review game" })).toHaveCount(1);
+  await upload.setInputFiles({ name: "backup.json", mimeType: "application/json", buffer: Buffer.from(raw) });
+  await expect(archive.getByRole("status")).toContainText("1 game restored");
+  await expect(archive.getByRole("link", { name: "Review game" })).toHaveCount(2);
+  await upload.setInputFiles({ name: "backup.json", mimeType: "application/json", buffer: Buffer.from(raw) });
+  await expect(archive.getByRole("status")).toContainText("0 games restored");
+
+  await page.reload();
+  const link = archive.getByRole("link", { name: "Review game" });
+  await link.last().click();
+  await expect(page.getByLabel("Analysis moves").getByText("d4")).toBeVisible();
+});
+
 test("puzzle solution validates against board rules", async ({ page }) => {
   await page.goto("/puzzles");
   await expect(page.getByRole("heading", { name: "The queen finishes" })).toBeVisible();

@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 127 — back up and restore completed local chess games
+
+- CH-11: Added versioned JSON backup for device-only completed games. Export checks replayable PGN with chess.js and skips corrupt records; import rejects malformed, oversized, duplicate and illegal game entries and merges up to 80 records while preserving existing IDs. Added per-game delete/cancel confirmation and storage failure feedback.
+- New domain tests: **5/5 PASS**; real production Chromium verifies download payload, corrupt skip, cancellation and deletion, invalid JSON rejection, idempotent reimport and opening the restored move in Analysis.
+- Entire local verification: 9/9 pinned SQL source fingerprints (not a live DB check), lint/strict TypeScript, **200/200 Vitest** in 29 suites PASS; elevated Next production build PASS with 17 pages. Restricted `npm run check` completed earlier steps but failed generated `.next` directory creation with Windows `EPERM`; isolated elevated `npm run build` exited 0. Complete built-app Chromium **99 local/mock PASS / 2 conditional SKIP**; no true hosted Supabase acceptance ran.
+- Critical path still S0 isolated Preview secret and three genuine HTTPS identities → S1 dual-client private Realtime → S2 independent PG clocks/locks → S3 rated settlement → S4 licensed engine and hosted learning → S5 social/tournaments → S6 independent 20-gate audit. **All 20 OPEN, rated OFF; development branch only.**
+
 ## 2026-10-31, checkpoint 125 — share an Analysis position via URL
 
 - CH-12: Added Share position control that builds a same-origin `/analysis?fen=` link from the **currently selected** ply and copies it; if clipboard is denied, a readonly, selectable link field remains available for manual sharing.

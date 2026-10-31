@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 127: local game backup and restore
+
+- Added five domain tests for versioned backup, illegal/tampered PGN rejection, size/format/duplicate guards, merge capacity/conflicts and corrupt localStorage. **200/200 Vitest PASS in 29 suites** overall.
+- New production Chromium archive scenario **1/1 PASS**; full `ROOKLINE_E2E_PRODUCTION=1 npm run test:e2e -- --workers=1` finished **99 PASS / 2 conditional SKIP**, exit 0. Skips: public-auth return-path opt-in and real hosted Supabase two-user authoritative play; not counted as hosted acceptance.
+- `npm run check`: pinned SQL local snapshots **9/9 PASS** (remote not queried), lint PASS, TypeScript PASS, 200 Vitest PASS; generated `.next` prerender on Windows failed `EPERM` for `/_global-error`. Independently elevated `npm run build` **PASS**, 17 generated static pages, exit 0. No live RLS/Realtime/PG concurrency/rated test performed.
+
 ## 2026-10-31 — checkpoint 125: selected FEN deep link
 
 - New Chromium E2E imports `1. e4 e5 2. Nf3`, navigates to e4, copies `/analysis?fen=<e4 FEN>`, checks same-origin URL and readonly fallback field, opens a new tab and verifies exact FEN, then rejects malformed and 121-character FEN while keeping a standard board. **Focused 1/1 PASS** on compiled standalone build.
