@@ -422,6 +422,80 @@ test("analysis worker looks past an immediately recaptured queen", async ({ page
   await expect(candidate).not.toContainText("Candidate: Qxf5");
 });
 
+test("silent analysis worker times out, retries, and ignores stale replies after navigation", async ({ page }) => {
+  await page.clock.install();
+  await page.addInitScript(() => {
+    class ControlledWorker {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      onerror: ((event: Event) => void) | null = null;
+      request = 0;
+      key = "";
+      constructor() { workers.push(this); }
+      postMessage(data: { request: number; key: string }) {
+        this.request = data.request;
+        this.key = data.key;
+      }
+      terminate() { /* A previously queued reply may still arrive. */ }
+      emitCandidate(san: string) {
+        this.onmessage?.(new MessageEvent("message", {
+          data: { request: this.request, key: this.key,
+            result: { finished: false, bestMove: { san }, scoreCp: 0, depth: 2 } },
+        }));
+      }
+    }
+    const workers: ControlledWorker[] = [];
+    Object.assign(window, { Worker: ControlledWorker, __rooklineTestAnalysisWorkers: workers });
+  });
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/analysis");
+  const region = page.getByRole("region", { name: "Candidate move analysis" });
+  const button = region.getByRole("button", { name: "Find candidate move" });
+  const count = () => page.evaluate(() =>
+    (window as typeof window & { __rooklineTestAnalysisWorkers: unknown[] }).__rooklineTestAnalysisWorkers.length);
+
+  await button.click();
+  await expect.poll(count).toBe(1);
+  await expect(button).toBeDisabled();
+  await page.clock.fastForward(31_000);
+  await expect(region.getByText("Analysis timed out. Try again.")).toBeVisible();
+  await expect(button).toBeEnabled();
+
+  await button.click();
+  await expect.poll(count).toBe(2);
+  await page.evaluate(() => {
+    const workers = (window as typeof window & {
+      __rooklineTestAnalysisWorkers: { emitCandidate(san: string): void }[];
+    }).__rooklineTestAnalysisWorkers;
+    workers[0].emitCandidate("OLD");
+    workers[1].emitCandidate("e4");
+  });
+  await expect(region.getByText(/Candidate:/)).toContainText("Candidate: e4");
+  await expect(region.getByText(/Candidate:/)).not.toContainText("OLD");
+  await expect(region.getByText("Analysis timed out. Try again.")).toHaveCount(0);
+
+  await button.click();
+  await expect.poll(count).toBe(3);
+  await page.getByRole("textbox", { name: /Keyboard move/ }).fill("e2e4");
+  await page.getByRole("textbox", { name: /Keyboard move/ }).press("Enter");
+  await expect(region.getByText(/Candidate:/)).toHaveCount(0);
+  await page.clock.fastForward(31_000);
+  await expect(region.getByText("Analysis timed out. Try again.")).toHaveCount(0);
+  await expect(button).toBeEnabled();
+
+  await button.click();
+  await expect.poll(count).toBe(4);
+  await page.evaluate(() => {
+    const workers = (window as typeof window & {
+      __rooklineTestAnalysisWorkers: { emitCandidate(san: string): void }[];
+    }).__rooklineTestAnalysisWorkers;
+    workers[2].emitCandidate("OLD");
+    workers[3].emitCandidate("e5");
+  });
+  await expect(region.getByText(/Candidate:/)).toContainText("Candidate: e5");
+  expect(errors).toEqual([]);
+});
+
 test("analysis keyboard moves validate legality and offer underpromotion", async ({ page }) => {
   await page.goto("/analysis");
   const input = page.getByRole("textbox", { name: /Keyboard move/ });

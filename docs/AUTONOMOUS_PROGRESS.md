@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 100 — analysis Worker timeout/recovery
+
+- CH-12: Added a 30-second watchdog to original two-ply analysis Worker. An unresponsive Worker terminates with a recoverable error and enabled retry; successful/error replies clear timers. Replacing a search, changing position or unmounting cancels a pending watchdog and invalidates late messages. Browser regression drives a silent controlled Worker through timeout, retry, delayed replies and navigation; **1 focused Chromium PASS**.
+- On a production standalone build, **85/85 local/mock Chromium PASS**, one genuinely hosted Supabase scenario SKIPPED (86 discovered). Migration snapshot hashes **9/9**, ESLint, strict TypeScript, **181/181 Vitest**, and separately authorized production Webpack build **17/17 pages PASS**. The unprivileged composite build was interrupted at `EPERM mkdir .next/types/app/games`; the standalone elevated build exited 0. `git diff --check` reports no whitespace errors.
+- S0 isolated hosted Auth/RLS/Origin/Host still BLOCKED_EXTERNAL: Preview lacks a server-only Supabase credential; 9 migrated SQL bodies match but remote migration versions need backup/reconciliation. S1–S6 and **all 20 release gates OPEN**, rated mode OFF, production withheld.
+
 ## 2026-10-31, checkpoint 96 — exact-SHA Linux CI and isolated Vercel Preview
 
 - Confirmed clean development checkout `b17e315a57640a29717b077fc8fcc4221433d468` tracking `origin/codex/chess-platform-foundation`. GitHub Actions quality run `41168960921` on that exact SHA completed **SUCCESS** (2026-10-31 04:35:38 UTC). Prior checkpoint 95 local proof remains **181 Vitest**, 9 local migration hashes, lint/types, 17-page production build, **84 local/mock Chromium PASS / 1 real hosted SKIP**; no new local test suite was rerun in this deployment-only slice.

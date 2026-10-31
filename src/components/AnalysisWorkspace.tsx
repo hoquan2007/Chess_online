@@ -28,6 +28,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const [workingKey, setWorkingKey] = useState<string | null>(null);
   const [hintError, setHintError] = useState<{ key: string; text: string } | null>(null);
   const analysisWorker = useRef<Worker | null>(null);
+  const analysisTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const analysisRequest = useRef(0);
   const userEdited = useRef(false);
 
@@ -108,12 +109,18 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   // A new position invalidates both outstanding computation and prior suggestions.
   useEffect(() => () => {
     analysisRequest.current++;
+    if (analysisTimeout.current !== null) clearTimeout(analysisTimeout.current);
+    analysisTimeout.current = null;
     analysisWorker.current?.terminate();
     analysisWorker.current = null;
+    setWorkingKey(null);
   }, [positionKey]);
 
   const findCandidate = () => {
+    if (analysisTimeout.current !== null) clearTimeout(analysisTimeout.current);
+    analysisTimeout.current = null;
     analysisWorker.current?.terminate();
+    analysisWorker.current = null;
     const request = ++analysisRequest.current;
     setHint(null);
     setHintError(null);
@@ -121,23 +128,38 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     try {
       const worker = new Worker(new URL("../workers/analysis.worker.ts", import.meta.url));
       analysisWorker.current = worker;
+      const settle = () => {
+        if (request !== analysisRequest.current) return false;
+        // Invalidate even a queued reply from a worker that has been terminated.
+        analysisRequest.current++;
+        if (analysisTimeout.current !== null) clearTimeout(analysisTimeout.current);
+        analysisTimeout.current = null;
+        worker.terminate();
+        if (analysisWorker.current === worker) analysisWorker.current = null;
+        setWorkingKey(null);
+        return true;
+      };
       worker.onmessage = (event: MessageEvent<{ request: number; key: string; result?: AnalysisHint; error?: string }>) => {
         if (request !== analysisRequest.current || event.data.key !== positionKey || event.data.request !== request) return;
-        setWorkingKey(null);
+        if (!settle()) return;
         if (event.data.result) setHint({ key: positionKey, result: event.data.result });
         else setHintError({ key: positionKey, text: event.data.error ?? "No analysis result available." });
-        worker.terminate();
-        if (analysisWorker.current === worker) analysisWorker.current = null;
       };
       worker.onerror = () => {
-        if (request !== analysisRequest.current) return;
-        setWorkingKey(null);
+        if (!settle()) return;
         setHintError({ key: positionKey, text: "Analysis worker failed. Try again." });
-        worker.terminate();
-        if (analysisWorker.current === worker) analysisWorker.current = null;
       };
       worker.postMessage({ request, key: positionKey, fen: boardFen, start: analysis.start, san: analysis.san.slice(0, analysis.index) });
+      analysisTimeout.current = setTimeout(() => {
+        if (!settle()) return;
+        setHintError({ key: positionKey, text: "Analysis timed out. Try again." });
+      }, 30_000);
     } catch {
+      analysisRequest.current++;
+      if (analysisTimeout.current !== null) clearTimeout(analysisTimeout.current);
+      analysisTimeout.current = null;
+      analysisWorker.current?.terminate();
+      analysisWorker.current = null;
       setWorkingKey(null);
       setHintError({ key: positionKey, text: "Analysis is unavailable in this browser." });
     }

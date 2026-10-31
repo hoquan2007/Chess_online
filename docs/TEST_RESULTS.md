@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 100: analysis Worker watchdog
+
+- `npm run verify:migrations`: **PASS**, 9/9 pinned SQL hashes, no fresh remote database read; version IDs still differ. `npm run lint`, `npm run typecheck`, `npm run test`: **PASS**, 181 tests across 25 Vitest files. Full `npm run check` reached Webpack but its Windows sandbox `.next/types/app/games` mkdir failed `EPERM`. Separate approved `npm run build`: **PASS**, 17 static pages.
+- `ROOKLINE_E2E_PRODUCTION=1 npx playwright test e2e/rookline.spec.ts --grep 'silent analysis worker times out'`: **1/1 PASS** in real Chromium against prebuilt production. Full `ROOKLINE_E2E_PRODUCTION=1 npx playwright test --reporter=line`: **85 local/mock PASS / 1 real Supabase SKIP (86 discovered, exit 0)**. Browser verifies 30-second silent Worker failure, retry, late-message rejection, navigation cancellation and successful second result.
+- This is local/browser verification of CH-12 and does not establish hosted S0–S6, live multiplayer, database clock/race safety or all 20 gates. **Rated OFF; no production release.**
+
 ## 2026-10-31 — checkpoint 96: Linux CI and Vercel Preview verification
 
 - GitHub Actions `Rookline quality` run **41168960921** at pushed development SHA `b17e315a57640a29717b077fc8fcc4221433d468`: **completed/success**, Oct 31 04:35:38 UTC. Current checkout was clean before manual deployment. Checkpoint 95 suite is the latest local code test evidence: **181 Vitest**, 9 local SQL fingerprints, ESLint/typecheck, **17-page Webpack build**, **84 local/mock Chromium PASS / 1 genuinely hosted SKIP**.
