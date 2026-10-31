@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 96 — exact-SHA Linux CI and isolated Vercel Preview
+
+- Confirmed clean development checkout `b17e315a57640a29717b077fc8fcc4221433d468` tracking `origin/codex/chess-platform-foundation`. GitHub Actions quality run `41168960921` on that exact SHA completed **SUCCESS** (2026-10-31 04:35:38 UTC). Prior checkpoint 95 local proof remains **181 Vitest**, 9 local migration hashes, lint/types, 17-page production build, **84 local/mock Chromium PASS / 1 real hosted SKIP**; no new local test suite was rerun in this deployment-only slice.
+- Deployed nonproduction protected Preview `dpl_HCp9Rn2osiGHTbv3QHwKw8NeEivC` (`https://chessonline-2fqv1iisd-hnquan.vercel.app`) from that clean local checkout. Remote Next.js 16.4.3/Webpack build passed TypeScript and **17/17 static pages**; `vercel inspect` returned **target preview, READY**. CLI `vercel curl` returned Rookline HTML from `/` and HTTP **200** for `/play/local`, `/login`, `/analysis`, `/play/online`. `/api/preferences` unauthenticated returned **401**; `/api/games` returned **503**, body `Chess service is not configured.` Manual CLI metadata did not independently prove git source SHA.
+- Next acceptance blocker **S0**: dedicate a Preview-only server Supabase secret without logging it; execute three genuine HTTPS Auth identities/RLS/Origin/Host, safely reconcile remote nine migration version IDs after backup. S1 Realtime, S2 independent PostgreSQL transactions/clocks, S3 rated pairing/settlement, S4 engine/learning, S5 community/tournaments and S6 independent all-20-gate audit are unproven. **IN_PROGRESS, 20 OPEN, rated OFF.** No production deploy or `main` merge.
+
 ## 2026-10-31, checkpoint 95 — preserve verified online rooms across disconnects
 
 - Transport-only GET failures now retain the last accepted private board/PGN in a read-only disconnected state, freeze displayed clock estimates and prohibit moves, draw claims, resignations, challenge cancellation and repeat invitations. An offline event aborts in-flight room reads to prevent an obsolete response from re-enabling play. The invite acceptance button is disabled until an authoritative online refresh. Explicit denied/malformed HTTP responses still invalidate protected room state.

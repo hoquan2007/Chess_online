@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 96: Linux CI and Vercel Preview verification
+
+- GitHub Actions `Rookline quality` run **41168960921** at pushed development SHA `b17e315a57640a29717b077fc8fcc4221433d468`: **completed/success**, Oct 31 04:35:38 UTC. Current checkout was clean before manual deployment. Checkpoint 95 suite is the latest local code test evidence: **181 Vitest**, 9 local SQL fingerprints, ESLint/typecheck, **17-page Webpack build**, **84 local/mock Chromium PASS / 1 genuinely hosted SKIP**.
+- `vercel deploy --yes --scope team_dReTYXzGNLEbtzkPCKOnEKHI` exited 0; deployment `dpl_HCp9Rn2osiGHTbv3QHwKw8NeEivC`, Preview URL `https://chessonline-2fqv1iisd-hnquan.vercel.app`, **target=preview / READY** verified independently by `vercel inspect`. Remote build compiled, typechecked and generated **17/17** static pages.
+- Protected Vercel CLI HTTPS `curl` from this deployment: `/` served Rookline markup; `/play/local`, `/login`, `/analysis`, `/play/online` **200**; anonymous `/api/preferences` **401**; `/api/games` **503**, exact response `{"error":"Chess service is not configured."}`. CLI metadata does not independently record source commit SHA. No actual three-user authentication, hosted RLS, Realtime or database concurrency was exercised. **20 acceptance gates OPEN**, rated OFF; Preview secret + genuine integration evidence required before production.
+
 ## 2026-10-31 — checkpoint 95: dropped game sync and invite disconnect safety
 
 - Native `npm run verify:migrations` **PASS 9/9 pinned local SQL source hashes** (the live remote database was not queried), `npm run lint` **PASS**, `npm run typecheck` **PASS**, `npm run test` **181/181 PASS in 25 files**. `git diff --check` reports only Windows LF/CRLF conversion warnings and no whitespace errors.
