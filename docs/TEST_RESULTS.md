@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 81: preserve identities and time controls across transitions
+
+- **Remote previous SHA:** GitHub Actions `41148295733` completed **SUCCESS** for `67759355e39350cfe69bddfba80b4dcf9b1bf8c7`. Vercel non-production Preview `dpl_6Q2KGSJYRxhAmp9v5fy4QFAWSaaF` reported **READY** for that SHA; SSO protected, two public Supabase Preview env keys, no server secret. Restricted PowerShell DNS lookup failed; no claim of successful HTTP route smoke. New checkpoint must be verified against its own SHA after publication.
+- **RED/GREEN regression:** focused `npx vitest run src/lib/online/games.test.ts` initially failed 1/25 on a waiting-to-active response with a missing Black player; after repair **25/25 PASS**. Covered illegal identity/rated/creation/time-control rewrites during move and lifecycle advances, foreign Black replacement, outsider winner, and legitimate join/move/completion.
+- **Full local:** `npm run check` reached nine pinned migration SQL hashes PASS, ESLint PASS, strict TS PASS, **180/180 Vitest / 25 files PASS**, then exited 1 on Windows sandbox `EPERM` writing `.next/types/app/analysis`. Separate approved `npm run build` exit **0**, Webpack **17/17 prerendered pages**. Approved `ROOKLINE_E2E_PORT=3227 npx playwright test --workers=1`: exit **0**, **77 local/mock PASS / 1 opt-in real Supabase SKIP**; default 3100 `EADDRINUSE`, non-elevated alternate 3117 unable to start before cancellation.
+- **Limits:** No actual three-user HTTPS Auth/RLS/Origin, private Realtime, independent PostgreSQL clock/lock, rated settlement, or public Preview smoke validated. Nine migration version IDs still require reviewed reconciliation. All **20 full-product acceptance gates OPEN**, rated OFF.
+
 ## 2026-10-31 — checkpoint 80: reject forged future online snapshots
 
 - Focused `npx vitest run src/lib/online/games.test.ts`: **24/24 PASS**. New cases reject higher-ply FEN/PGN/turn contradictions and divergent valid games; only a replayable continuation is accepted.

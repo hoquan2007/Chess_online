@@ -35,6 +35,19 @@ export const validSquare = (value: unknown): value is string => typeof value ===
  */
 export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
   if (current.id !== incoming.id) return true;
+  // A move or lifecycle transition must preserve the game's original players,
+  // time control and rating classification. Only joining a waiting room can
+  // populate its Black seat; a finished game may have no winner on a draw.
+  if (current.white_id !== incoming.white_id ||
+      current.rated !== incoming.rated ||
+      current.created_at !== incoming.created_at ||
+      current.base_ms !== incoming.base_ms ||
+      current.increment_ms !== incoming.increment_ms ||
+      (current.status !== "waiting" && current.black_id !== incoming.black_id) ||
+      ((incoming.status === "active" || incoming.status === "completed") && !incoming.black_id) ||
+      (incoming.winner_id !== null && incoming.winner_id !== incoming.white_id && incoming.winner_id !== incoming.black_id)) {
+    return true;
+  }
   // A committed state at the same lifecycle phase and ply is immutable. SQL
   // mutations either advance the ply or transition the lifecycle phase.
   // Compare values by key so equivalent object key order remains valid.

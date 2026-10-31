@@ -232,6 +232,28 @@ describe("out-of-order authoritative snapshots", () => {
     expect(isOlderGameSnapshot(next, { ...next, status: "completed", result: "Resignation" })).toBe(false);
     expect(isOlderGameSnapshot(next, { ...next, status: "completed", fen: "invalid" })).toBe(true);
   });
+  it("rejects identity and time-control rewrites during a legitimate move or lifecycle transition", () => {
+    const waiting = snapshot({ status: "waiting", black_id: null, clock_anchor_at: null });
+    const active = snapshot();
+    const completed = { ...active, status: "completed" as const, result: "Resignation", winner_id: "black-id", clock_anchor_at: null };
+    expect(isOlderGameSnapshot(waiting, active)).toBe(false);
+    expect(isOlderGameSnapshot(active, completed)).toBe(false);
+    expect(isOlderGameSnapshot(active, played(["e4"]))).toBe(false);
+    expect(isOlderGameSnapshot(waiting, { ...active, black_id: null })).toBe(true);
+    for (const changed of [
+      { white_id: "other-white" },
+      { rated: true },
+      { created_at: "2026-10-30T00:00:00.000Z" },
+      { base_ms: 600000 },
+      { increment_ms: 1000 },
+    ]) {
+      expect(isOlderGameSnapshot(active, { ...completed, ...changed })).toBe(true);
+      expect(isOlderGameSnapshot(active, { ...played(["e4"]), ...changed })).toBe(true);
+      expect(isOlderGameSnapshot(waiting, { ...active, ...changed })).toBe(true);
+    }
+    expect(isOlderGameSnapshot(active, { ...completed, black_id: "other-black" })).toBe(true);
+    expect(isOlderGameSnapshot(active, { ...completed, winner_id: "outsider" })).toBe(true);
+  });
 });
 
 describe("auth redirects", () => {

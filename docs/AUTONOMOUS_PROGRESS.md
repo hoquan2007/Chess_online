@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 81 — immutable game metadata across online transitions
+
+- GitHub Actions run `41148295733` for prior published commit `67759355e39350cfe69bddfba80b4dcf9b1bf8c7` finished **SUCCESS**; protected non-production Vercel deployment `dpl_6Q2KGSJYRxhAmp9v5fy4QFAWSaaF` is **READY** and reports the exact same source SHA. Vercel project still has SSO enabled and only two Preview public Supabase settings; no server-only credential. Local HTTP smoke could not resolve the Vercel hostname in the restricted DNS environment, so READY is not treated as an HTTP smoke pass.
+- Found a further snapshot transition integrity gap: replayable online move/phase responses could rewrite White identity, rated classification, original time control or creation time; an active room could lose its Black participant, and a terminal response could name an unrelated winner. Added a failing regression, then rejected these changes while allowing a waiting room to acquire its Black seat, legal moves and terminal transitions. Existing malformed-ledger recovery is retained.
+- Focused regression **RED before fix**, then **25/25 Vitest PASS**. Nine pinned migration SQL hashes, ESLint, strict TypeScript and full **180/180 Vitest PASS**; the restricted composite `npm run check` hit Windows `.next` `EPERM` at build, followed by separate approved Webpack **17/17 page build PASS**. Full approved Chromium: **77 local/mock PASS, 1 real hosted Supabase SKIP** (exit 0) using port 3227; initial port 3100 was already occupied, and sandboxed port 3117 did not open before cancellation.
+- Real HTTPS multiuser Auth/RLS/Origin, private Realtime, independent Postgres locks/clocks, rated settlement and the full product acceptance gates are unverified. Nine remote migration version IDs still need backup and reconciliation before schema push. **20 OPEN, rated OFF, IN_PROGRESS; no `main` merge or production deploy.**
+
 ## 2026-10-31, checkpoint 80 — verify future game ledger before accepting a new ply
 
 - Previously, an HTTP reply with a larger ply or later lifecycle phase bypassed PGN/FEN/turn replay checks and could replace a valid online room with forged, inflated or divergent history. `isOlderGameSnapshot` now replays the incoming ledger and checks its SAN prefix against the accepted history; verified later records can still repair a previously malformed snapshot. Same-ply and terminal immutability checks remain intact.
