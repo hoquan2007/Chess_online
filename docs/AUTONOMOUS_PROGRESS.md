@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 87 — computer Worker recovery verified locally
+
+- Real Chromium regression was RED before repair when `new Worker()` threw a synchronous `SecurityError`. The computer board now catches constructor and initial-message exceptions and displays a recoverable engine error; starting a new game retries cleanly without stale replies. Added a second `postMessage()` rejection scenario. Focused production Chromium **2/2 PASS**; entire standalone suite **79 local/mock PASS, 1 real hosted Supabase SKIP**.
+- `npm run check` **PASS** (9 pinned SQL hashes, ESLint, strict TS, **181 Vitest**, 17-page Webpack build). Fixed an effect cleanup lint warning and rechecked ESLint/types/build with no warnings. Default localhost port 3100 was occupied, so authorized tests used port 3193.
+- **Next critical path:** S0 isolated Preview server-only Supabase credential, actual three-user HTTPS Auth/RLS/Host/Origin and backed-up migration history reconciliation; S1 independent two-browser Realtime; S2 two-connection PostgreSQL transaction/clock races; S3 rated matching/exactly-once settlement; S4 licensed analysis/learning; S5 community/tournaments; S6 independent acceptance of all 20 gates. **20 OPEN, rated OFF, IN_PROGRESS.** Push the development branch and verify exact-SHA CI and protected nonproduction Preview; production and `main` await full approval and evidence.
+
 ## 2026-10-31, checkpoint 84 — Linux CI green and protected Preview ready
 
 - Committed and pushed the standalone E2E CI repair as `0e942c9825b945dfbfc9b1ef4a6ee088eb650285` on `codex/chess-platform-foundation`, leaving `main` unchanged. GitHub Actions run `41160142549` at that exact SHA finished **SUCCESS**: the Linux Playwright job reports **77 passed / 1 hosted skipped**; all preceding workflow quality steps succeeded.

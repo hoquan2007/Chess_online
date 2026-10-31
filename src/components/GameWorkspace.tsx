@@ -229,8 +229,20 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
 
   useEffect(() => {
     if (mode !== "computer" || !botTurn || outcome || botError || gameId === "local-0") return;
-    const worker = new Worker(new URL("../workers/chess-bot.worker.ts", import.meta.url));
     const request = ++requestId.current;
+    const outstandingRequest = requestId;
+    const reportStartFailure = () => {
+      if (requestId.current === request) setBotError("Computer engine could not start. Reset to retry.");
+    };
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL("../workers/chess-bot.worker.ts", import.meta.url));
+    } catch {
+      // Some browsers block Worker construction synchronously (for example,
+      // a restrictive policy). Report the failure without crashing the board.
+      queueMicrotask(reportStartFailure);
+      return () => { outstandingRequest.current++; };
+    }
     worker.onmessage = (event: MessageEvent<{ request: number; move?: { from: Square; to: Square; promotion?: "q" | "r" | "b" | "n" }; error?: string }>) => {
       if (event.data.request !== request || requestId.current !== request) return;
       if (event.data.error) { setBotError(event.data.error); return; }
@@ -246,8 +258,13 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
       if (requestId.current !== request) return;
       setBotError("Computer engine could not start. Reset to retry.");
     };
-    worker.postMessage({ request, pgn: game.pgn(), level });
-    const outstandingRequest = requestId;
+    try {
+      worker.postMessage({ request, pgn: game.pgn(), level });
+    } catch {
+      // A transferred/disabled Worker may also refuse an initial message.
+      worker.terminate();
+      queueMicrotask(reportStartFailure);
+    }
     return () => { outstandingRequest.current++; worker.terminate(); };
   }, [fen, mode, botTurn, outcome, level, completeMove, botError, gameId, game]);
 

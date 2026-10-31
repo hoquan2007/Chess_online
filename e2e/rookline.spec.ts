@@ -1159,6 +1159,60 @@ test("an invalid computer worker move reports failure and can recover on reset",
   await expect(page.getByText("Black to move")).toBeVisible();
 });
 
+test("computer game recovers when the browser refuses to construct its worker", async ({ page }) => {
+  await page.addInitScript(() => {
+    const RealWorker = window.Worker;
+    let attempts = 0;
+    class InitiallyBlockedWorker extends RealWorker {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        attempts++;
+        if (attempts === 1) throw new DOMException("Worker blocked by policy", "SecurityError");
+        super(url, options);
+      }
+    }
+    Object.assign(window, { Worker: InitiallyBlockedWorker });
+  });
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.goto("/play/computer");
+  await page.getByRole("button", { name: "easy", exact: true }).click();
+  await page.getByRole("button", { name: "Black", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Computer engine could not start" })).toBeVisible();
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(0);
+  expect(pageErrors).toEqual([]);
+
+  await page.getByRole("button", { name: "New game" }).click();
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1, { timeout: 20_000 });
+  expect(pageErrors).toEqual([]);
+});
+
+test("computer game recovers when the worker refuses its initial message", async ({ page }) => {
+  await page.addInitScript(() => {
+    const RealWorker = window.Worker;
+    let attempts = 0;
+    class InitiallyRejectingWorkerMessage extends RealWorker {
+      postMessage(message: unknown, transfer?: StructuredSerializeOptions | Transferable[]) {
+        if (attempts++ === 0) throw new DOMException("Message rejected", "DataCloneError");
+        if (Array.isArray(transfer)) return super.postMessage(message, transfer);
+        return super.postMessage(message, transfer);
+      }
+    }
+    Object.assign(window, { Worker: InitiallyRejectingWorkerMessage });
+  });
+  const pageErrors: string[] = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.goto("/play/computer");
+  await page.getByRole("button", { name: "easy", exact: true }).click();
+  await page.getByRole("button", { name: "Black", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Computer engine could not start" })).toBeVisible();
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(0);
+  expect(pageErrors).toEqual([]);
+
+  await page.getByRole("button", { name: "New game" }).click();
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1, { timeout: 20_000 });
+  expect(pageErrors).toEqual([]);
+});
+
 test("resigning while the computer thinks resigns the human side", async ({ page }) => {
   await page.addInitScript(() => {
     class WaitingWorker {

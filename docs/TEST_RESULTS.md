@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 87: recover from synchronously blocked computer Workers
+
+- Added Chromium regressions for a browser refusing `new Worker()` with `SecurityError` and a constructed Worker refusing its initial `postMessage()` with `DataCloneError`. Before the fix, the constructor case was **RED**: the expected recoverable engine message never appeared. The first localhost attempt also encountered port 3100 in use; non-escalated alternate-port sessions could not expose the server, so the authoritative run used approved localhost access and port 3193.
+- `GameWorkspace` now catches both synchronous failures, reports a recoverable engine error, terminates an unusable Worker and preserves stale-request invalidation on reset. Both focused production Chromium tests **2/2 PASS**; the complete prebuilt-standalone Chromium suite **79 local/mock PASS, 1 genuinely hosted Supabase SKIP** (80 total, exit 0).
+- Full `npm run check` exited **0**: 9/9 pinned local SQL hashes (not a fresh remote database query), ESLint, strict TypeScript, **181 Vitest in 25 files**, and Next.js 16.4.3 Webpack production build **17/17 static pages**. An initial lint warning about the effect cleanup ref was corrected; a subsequent ESLint/typecheck/production build exited **0 without warnings**.
+- This validates the local computer experience but does not prove live three-user HTTPS Auth/RLS/Origin, private Realtime, independent PostgreSQL clocks/locks, rated settlement or final product acceptance. **All 20 gates OPEN, rated OFF**; staging Preview still requires a server-only secret and backed-up migration-version reconciliation before schema changes.
+
 ## 2026-10-31 — checkpoint 84: exact-SHA Linux CI and Vercel Preview
 
 - Development branch commit `0e942c9825b945dfbfc9b1ef4a6ee088eb650285`: GitHub Actions run `41160142549` completed **SUCCESS**. Ubuntu job completed migration parity 9/9, npm audit, lint, typecheck, 181 Vitest, Next Webpack production build, browser installation and `npm run test:e2e`; Linux Playwright log ends with **77 passed (1.1m), 1 skipped** (the real hosted Supabase case).
