@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 80 — verify future game ledger before accepting a new ply
+
+- Previously, an HTTP reply with a larger ply or later lifecycle phase bypassed PGN/FEN/turn replay checks and could replace a valid online room with forged, inflated or divergent history. `isOlderGameSnapshot` now replays the incoming ledger and checks its SAN prefix against the accepted history; verified later records can still repair a previously malformed snapshot. Same-ply and terminal immutability checks remain intact.
+- Added unit coverage for inflated ply, invalid PGN/FEN/turn, valid but divergent moves, legal continuation and completion; added a real Chromium mock-HTTP regression. Updated the existing sound regression to assert an invalid higher-ply response is silently rejected without changing history or playing audio. Full **elevated `npm run check` exit 0**: 9/9 pinned offline migration hashes, ESLint, strict TypeScript, **179/179 Vitest** in 25 files, Webpack **17/17 prerendered pages**. Full elevated Chromium **77 local/mock PASS / 1 guarded real hosted Supabase SKIP**, exit 0. Initial restricted build hit Windows `.next` `EPERM`; elevated rerun passed.
+- The HTTPS three-identity Supabase/Auth/RLS/Origin test was skipped, not passed. Remote migration version IDs still differ despite matching nine SQL source hashes; backup and reviewed reconciliation precede `db push`. S0 staging server-only credential, S1 real Realtime/reconnect, S2 independent PostgreSQL clock/lock races, S3 rated settlement, S4 engine/learning, S5 community and S6 independent full audit remain. **All 20 acceptance gates OPEN; rated OFF; IN_PROGRESS; no `main` merge or production deployment.**
+
 ## 2026-10-31, checkpoint 77 — consistent same-ply snapshots with replay recovery
 
 - Active/waiting game room rejects equal-phase/equal-ply contradictory clocks, FEN, PGN, clock anchors, participants and rated flags; an invalid ledger can recover when a later server record replays correctly. Previously committed terminal game snapshots remain immutable.

@@ -48,7 +48,22 @@ export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
   };
   if (phase[incoming.status] < phase[current.status]) return true;
   if (incoming.ply < current.ply) return true;
-  if (phase[incoming.status] !== phase[current.status] || incoming.ply !== current.ply) return false;
+  if (phase[incoming.status] !== phase[current.status] || incoming.ply !== current.ply) {
+    // A larger ply can be an invalid or different ledger. Accept only a fully
+    // replayable continuation of the previously verified history, including
+    // terminal transitions that do not play another move.
+    try {
+      const nextHistory = replayGame(incoming).history();
+      try {
+        const previousHistory = replayGame(current).history();
+        if (previousHistory.some((move, index) => nextHistory[index] !== move)) return true;
+      } catch {
+        // A previously displayed malformed record can be repaired by a
+        // verified later record; do not permanently strand the room.
+      }
+      return false;
+    } catch { return true; }
+  }
   if (sameSnapshot()) return false;
   // A malformed server ledger may have been rendered in a fail-closed state.
   // Let a later verified record repair it without permitting valid records

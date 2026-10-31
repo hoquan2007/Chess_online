@@ -954,7 +954,7 @@ test("online room rings once for each newly synchronized opponent move", async (
   expect(await played()).toBe(1);
 });
 
-test("online room does not sound an inconsistent server ledger before a valid move arrives", async ({ page }) => {
+test("online room rejects an inconsistent future ledger silently before a valid move arrives", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000098";
   const chess = new Chess();
   const initial = {
@@ -992,8 +992,11 @@ test("online room does not sound an inconsistent server ledger before a valid mo
   await page.goto(`/game/${id}`);
   await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
   snapshot = inconsistent;
+  const badReply = page.waitForResponse((response) => response.url().endsWith(`/api/games/${id}`) && response.status() === 200);
   await page.getByRole("button", { name: "Sync", exact: true }).click();
-  await expect(page.getByText("Server game ledger could not be verified. Stop play and contact support.")).toBeVisible();
+  await (await badReply).finished();
+  await expect(page.getByText("Server game ledger could not be verified. Stop play and contact support.")).toHaveCount(0);
+  await expect(page.getByLabel("Move history").getByText("e4")).toHaveCount(0);
   expect(await played()).toBe(0);
   snapshot = valid;
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
@@ -1477,6 +1480,44 @@ test("game room ignores an old HTTP snapshot arriving after a newer ply", async 
   await (await staleResponse).finished();
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+});
+
+test("game room rejects malformed future plies and divergent lines before accepting a valid move", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000084";
+  const chess = new Chess();
+  chess.move("e4");
+  const now = new Date().toISOString();
+  const accepted = { id, white_id: "white-id", black_id: "black-id", status: "active",
+    pgn: chess.pgn(), fen: chess.fen(), turn: chess.turn(), ply: 1,
+    base_ms: 300000, increment_ms: 0, white_ms: 300000, black_ms: 300000,
+    clock_anchor_at: now, result: null, winner_id: null, rated: false, created_at: now };
+  chess.move("e5");
+  const valid = { ...accepted, pgn: chess.pgn(), fen: chess.fen(), turn: chess.turn(), ply: 2, white_ms: 290000 };
+  const divergentChess = new Chess(); divergentChess.move("d4"); divergentChess.move("d5");
+  const divergent = { ...valid, pgn: divergentChess.pgn(), fen: divergentChess.fen() };
+  const replies = [accepted, { ...valid, ply: 42 }, divergent, valid];
+  let requests = 0;
+  await page.route(`**/api/games/${id}`, (route) => {
+    const game = replies[Math.min(requests++, replies.length - 1)];
+    return route.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify({ game, viewerColor: "w" }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  for (const count of [2, 3]) {
+    const response = page.waitForResponse((res) => res.url().endsWith(`/api/games/${id}`) && res.status() === 200);
+    await page.getByRole("button", { name: "Sync", exact: true }).click();
+    await (await response).finished();
+    await expect.poll(() => requests).toBeGreaterThanOrEqual(count);
+    await expect(page.getByLabel("Move history").getByText("e5")).toHaveCount(0);
+    await expect(page.getByLabel("Move history").getByText("d4")).toHaveCount(0);
+    await expect(page.getByLabel("White clock")).toHaveText("05:00");
+  }
+  await page.getByRole("button", { name: "Sync", exact: true }).click();
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
+  // White's clock starts ticking after ...e5, so avoid asserting frozen time.
+  await expect(page.getByLabel("White clock")).toHaveText(/^04:[0-5]\d$/);
+  await expect(page.getByText("Server game ledger could not be verified. Stop play and contact support.")).toHaveCount(0);
 });
 
 test("game room rejects a contradictory active clock at the same ply", async ({ page }) => {

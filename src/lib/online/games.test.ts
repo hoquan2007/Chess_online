@@ -13,6 +13,12 @@ function snapshot(override: Partial<OnlineGame> = {}): OnlineGame {
   };
 }
 
+function played(moves: string[], override: Partial<OnlineGame> = {}): OnlineGame {
+  const chess = new Chess();
+  for (const move of moves) chess.move(move);
+  return snapshot({ pgn: chess.pgn(), fen: chess.fen(), ply: moves.length, turn: chess.turn(), ...override });
+}
+
 describe("server snapshot replay", () => {
   it("replays the canonical PGN and retains move history", () => {
     const game = new Chess();
@@ -137,28 +143,28 @@ describe("clock rendering only", () => {
 
 describe("out-of-order authoritative snapshots", () => {
   it("rejects delayed responses that would rewind moves or a completed result", () => {
-    const active = snapshot({ ply: 4 });
-    expect(isOlderGameSnapshot(active, snapshot({ ply: 3 }))).toBe(true);
-    expect(isOlderGameSnapshot(active, snapshot({ ply: 5 }))).toBe(false);
-    const completed = snapshot({ ply: 4, status: "completed", result: "resignation" });
+    const active = played(["e4", "e5", "Nf3", "Nc6"]);
+    expect(isOlderGameSnapshot(active, played(["e4", "e5", "Nf3"]))).toBe(true);
+    expect(isOlderGameSnapshot(active, played(["e4", "e5", "Nf3", "Nc6", "Bc4"]))).toBe(false);
+    const completed = { ...active, status: "completed" as const, result: "resignation" };
     expect(isOlderGameSnapshot(completed, active)).toBe(true);
     expect(isOlderGameSnapshot(active, completed)).toBe(false);
     expect(isOlderGameSnapshot(snapshot({ status: "active" }), snapshot({ status: "waiting" }))).toBe(true);
     expect(isOlderGameSnapshot(completed, completed)).toBe(false);
   });
   it("never resurrects a completed or cancelled game despite a higher incoming ply", () => {
-    const completed = snapshot({ ply: 4, status: "completed", result: "resignation", winner_id: "black-id" });
-    expect(isOlderGameSnapshot(completed, snapshot({ ply: 5, status: "active" }))).toBe(true);
-    expect(isOlderGameSnapshot(completed, snapshot({ ply: 5, status: "completed" }))).toBe(true);
-    expect(isOlderGameSnapshot(completed, snapshot({ ply: 4, status: "cancelled" }))).toBe(true);
+    const completed = played(["e4", "e5", "Nf3", "Nc6"], { status: "completed", result: "resignation", winner_id: "black-id" });
+    expect(isOlderGameSnapshot(completed, played(["e4", "e5", "Nf3", "Nc6", "Bc4"]))).toBe(true);
+    expect(isOlderGameSnapshot(completed, played(["e4", "e5", "Nf3", "Nc6", "Bc4"], { status: "completed" }))).toBe(true);
+    expect(isOlderGameSnapshot(completed, played(["e4", "e5", "Nf3", "Nc6"], { status: "cancelled" }))).toBe(true);
 
     const cancelled = snapshot({ ply: 0, status: "cancelled" });
-    expect(isOlderGameSnapshot(cancelled, snapshot({ ply: 1, status: "active" }))).toBe(true);
+    expect(isOlderGameSnapshot(cancelled, played(["e4"]))).toBe(true);
     expect(isOlderGameSnapshot(cancelled, snapshot({ ply: 0, status: "completed" }))).toBe(true);
     expect(isOlderGameSnapshot(cancelled, cancelled)).toBe(false);
 
-    expect(isOlderGameSnapshot(snapshot({ ply: 2, status: "active" }), snapshot({ ply: 3, status: "waiting" }))).toBe(true);
-    expect(isOlderGameSnapshot(snapshot({ ply: 2, status: "active" }), snapshot({ ply: 3, status: "completed" }))).toBe(false);
+    expect(isOlderGameSnapshot(played(["e4", "e5"]), played(["e4", "e5", "Nf3"], { status: "waiting" }))).toBe(true);
+    expect(isOlderGameSnapshot(played(["e4", "e5"]), played(["e4", "e5", "Nf3"], { status: "completed" }))).toBe(false);
   });
   it("keeps the entire committed terminal record stable across repeated HTTP replies", () => {
     const completed = snapshot({ status: "completed", result: "Resignation", winner_id: "black-id", clock_anchor_at: null });
@@ -184,7 +190,7 @@ describe("out-of-order authoritative snapshots", () => {
     expect(isOlderGameSnapshot(snapshot(), snapshot({ id: "00000000-0000-4000-8000-000000000002" }))).toBe(true);
   });
   it("rejects contradictory waiting and active replies at the same ply", () => {
-    const active = snapshot({ ply: 4, white_ms: 211000, black_ms: 229000 });
+    const active = played(["e4", "e5", "Nf3", "Nc6"], { white_ms: 211000, black_ms: 229000 });
     const waiting = snapshot({ status: "waiting", black_id: null, clock_anchor_at: null });
     expect(isOlderGameSnapshot(active, { ...active })).toBe(false);
     expect(isOlderGameSnapshot(waiting, { ...waiting })).toBe(false);
@@ -200,13 +206,31 @@ describe("out-of-order authoritative snapshots", () => {
     expect(isOlderGameSnapshot(waiting, { ...waiting, white_ms: 0 })).toBe(true);
     expect(isOlderGameSnapshot(waiting, snapshot({ status: "active" }))).toBe(false);
     expect(isOlderGameSnapshot(active, { ...active, status: "completed", result: "Resignation", winner_id: "black-id" })).toBe(false);
-    expect(isOlderGameSnapshot(active, { ...active, ply: 5 })).toBe(false);
+    expect(isOlderGameSnapshot(active, played(["e4", "e5", "Nf3", "Nc6", "Bc4"]))).toBe(false);
     const chess = new Chess(); chess.move("e4");
     const valid = snapshot({ ply: 1, fen: chess.fen(), pgn: chess.pgn(), turn: "b" });
     const corrupt = { ...valid, pgn: "" };
     expect(isOlderGameSnapshot(valid, corrupt)).toBe(true);
     expect(isOlderGameSnapshot(corrupt, valid)).toBe(false);
     expect(isOlderGameSnapshot(corrupt, { ...valid, pgn: "1. f4" })).toBe(true);
+  });
+  it("rejects forged future plies and divergent valid histories, then accepts the real continuation", () => {
+    const accepted = played(["e4"]);
+    const next = played(["e4", "e5"]);
+    const forged = [
+      { ...next, ply: 90 },
+      { ...next, pgn: accepted.pgn },
+      { ...next, fen: accepted.fen },
+      { ...next, turn: "b" as const },
+      { ...next, pgn: "invalid PGN" },
+      { ...next, status: "completed" as const, ply: 90 },
+      played(["d4", "d5"]),
+    ];
+    for (const response of forged) expect(isOlderGameSnapshot(accepted, response)).toBe(true);
+    expect(isOlderGameSnapshot(accepted, next)).toBe(false);
+    expect(isOlderGameSnapshot(next, played(["e4", "e5", "Nf3"]))).toBe(false);
+    expect(isOlderGameSnapshot(next, { ...next, status: "completed", result: "Resignation" })).toBe(false);
+    expect(isOlderGameSnapshot(next, { ...next, status: "completed", fen: "invalid" })).toBe(true);
   });
 });
 

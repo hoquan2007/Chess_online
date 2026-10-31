@@ -1,5 +1,13 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 80: reject forged future online snapshots
+
+- Focused `npx vitest run src/lib/online/games.test.ts`: **24/24 PASS**. New cases reject higher-ply FEN/PGN/turn contradictions and divergent valid games; only a replayable continuation is accepted.
+- Targeted Chromium forged-future test: **1/1 PASS** after replacing an incorrect frozen-clock assertion with a running-clock range. Existing browser sound test needed its outdated expectation changed: invalid higher-ply data is now rejected before rendering an error or playing audio. Updated focused sound test **1/1 PASS**.
+- Elevated complete `npm run check`: **exit 0**; 9/9 local pinned migration SQL hash parity, lint, strict TypeScript, **179/179 Vitest / 25 files**, optimized Next.js 16.4.3 Webpack **17/17 static pages**. A sandboxed first run failed on `.next/server/app/analysis.segments/analysis` Windows `EPERM`, so the entire check was rerun with approved filesystem permissions and passed.
+- Elevated full `ROOKLINE_E2E_PORT=3218 npm run test:e2e -- --workers=1`: **exit 0**, **77 Chromium local/mock PASS, 1 guarded real hosted Supabase SKIP** (78 total). First full run had one failure from the old browser-error expectation; after the test adjustment the complete suite passed. Unprivileged localhost was denied by the sandbox; approved Chromium runs succeeded.
+- Limits: HTTP response mocks cannot verify live Supabase Auth/RLS/HTTPS Origin/Host, private Realtime delivery, independent PostgreSQL locks/clocks or durable rated settlement. No live migration push or production release was exercised. **20 acceptance gates OPEN, rated OFF.**
+
 ## 2026-10-31 — checkpoint 77: same-ply integrity and bad ledger recovery
 
 - `npx vitest run src/lib/online/games.test.ts`: exit 0, **23/23**; rejects contradictory waiting/active snapshots, accepts advancing phase/ply and allows repair of malformed PGN by a valid replay.
