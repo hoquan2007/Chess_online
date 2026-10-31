@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 101: exact-SHA CI and protected Preview
+
+- GitHub Actions run **41171634271** at `4f843739e06f2ccb56268772e7b61599d94b3d6b`: **completed/success**. Local 181 Vitest, 9 native SQL hashes, lint/types, separately privileged 17-page build and 85 local/mock Chromium PASS / 1 actual hosted SKIP were established in checkpoint 100.
+- Vercel Preview `dpl_6tu8eCbYNtjKE6JNPpiM3BcQnEfH`: `vercel inspect` **preview / Ready**; remote build **17/17 static pages**, `vercel curl` protected HTTP smoke five public pages **200**; anonymous `/api/preferences` **401**, `/api/games` **503** (missing server-only Supabase setting). Manual CLI deployment source SHA is not independently recorded in deployment metadata.
+- Read-only Vercel env list: exactly two public Supabase Preview variables; no server-only Supabase secret. **20 release gates OPEN**, rated OFF, true S0–S6 unverified.
+
 ## 2026-10-31 — checkpoint 100: analysis Worker watchdog
 
 - `npm run verify:migrations`: **PASS**, 9/9 pinned SQL hashes, no fresh remote database read; version IDs still differ. `npm run lint`, `npm run typecheck`, `npm run test`: **PASS**, 181 tests across 25 Vitest files. Full `npm run check` reached Webpack but its Windows sandbox `.next/types/app/games` mkdir failed `EPERM`. Separate approved `npm run build`: **PASS**, 17 static pages.

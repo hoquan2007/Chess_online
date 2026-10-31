@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 101 — verified Linux CI and protected Preview
+
+- CH-12 code, regression and evidence pushed to development SHA `4f843739e06f2ccb56268772e7b61599d94b3d6b`, confirmed identical `git ls-remote` and clean checkout. Exact-SHA Linux GitHub Actions **41171634271 completed/success** (2026-10-31 05:15:06 UTC). Locally previously verified 181 Vitest, 9 local SQL fingerprints, lint/types, 17-page production build and 85 local/mock Chromium PASS / 1 genuine hosted SKIP.
+- Clean-checkout manual Vercel CLI deployment `dpl_6tu8eCbYNtjKE6JNPpiM3BcQnEfH` (`https://chessonline-g0p2zudps-hnquan.vercel.app`) independently inspected as **target preview / READY**; Vercel remote Next.js Webpack build completed 17/17 static pages. Protected HTTPS `vercel curl` returned `/`, `/analysis`, `/play/local`, `/login`, `/play/online` all **200**; anonymous `/api/preferences` **401**, `/api/games` **503**. The CLI deployment metadata does not independently attest Git SHA.
+- Vercel environment metadata (without decrypting values) shows exactly `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for Preview; the required server-only Supabase key is absent. S0 actual three-user Auth/RLS/Origin/Host and backed-up migration-version reconciliation remain blocked; S1–S6 and **all 20 acceptance gates OPEN**, rated OFF; production/main withheld.
+
 ## 2026-10-31, checkpoint 100 — analysis Worker timeout/recovery
 
 - CH-12: Added a 30-second watchdog to original two-ply analysis Worker. An unresponsive Worker terminates with a recoverable error and enabled retry; successful/error replies clear timers. Replacing a search, changing position or unmounting cancels a pending watchdog and invalidates late messages. Browser regression drives a silent controlled Worker through timeout, retry, delayed replies and navigation; **1 focused Chromium PASS**.

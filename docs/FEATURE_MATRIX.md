@@ -1,5 +1,7 @@
 # Rookline feature matrix
 
+**Checkpoint 101 (2026-10-31):** CH-12 Worker watchdog pushed as `4f843739`, exact-SHA Linux CI `41171634271` **SUCCESS**; CH-19 protected Preview `dpl_6tu8eCbYNtjKE6JNPpiM3BcQnEfH` **READY**, five webpages 200, anonymous preferences 401, game API 503. Preview Supabase server-only credential absent. CH-12 stays PARTIAL; CH-19 remains unaccepted until full hosted tests. **20 gates OPEN, rated OFF.**
+
 **Checkpoint 100 (2026-10-31):** CH-12 original analysis Worker now times out safely after 30 seconds, cleans up on settled/aborted requests, enables retry and rejects expired responses even across position navigation. Real Chromium controlled Worker regression **1 PASS** and full production standalone **85 local/mock PASS / 1 genuine hosted SKIP**, 181 Vitest, lint/types, 9 local SQL hash checks and separately authorized 17-page build PASS. CH-12 remains **PARTIAL** until full licensed engine and actual authenticated hosted game replay; S0–S6 and **all 20 gates OPEN**, rated OFF.
 
 **Checkpoint 96 (2026-10-31):** CH-19 protected Vercel Preview `dpl_HCp9Rn2osiGHTbv3QHwKw8NeEivC` READY after a remote 17-page build. Linux CI run `41168960921` succeeded at exact development SHA `b17e315`; five public pages returned HTTP 200, protected anonymous preferences 401, game API 503 (server Supabase config absent). Real hosted multiplayer/Auth/RLS and S1–S6 remain unverified; **20 gates OPEN, rated OFF**, release withheld.
