@@ -1,5 +1,18 @@
 # Test evidence ledger
 
+## 2026-11-01 — checkpoint 136: CH-13 two-move puzzle
+
+- `npx vitest run src/lib/chess/puzzles.test.ts`: **14/14 PASS**. Full Vitest: **201/201 PASS in 29 files**; migration hashes **9/9**, ESLint and `tsc --noEmit` PASS. Next production Webpack build **17/17 static pages PASS** with approved elevated execution after restricted composite build hit Windows `.next` `EPERM`.
+- `ROOKLINE_E2E_PRODUCTION=1` local standalone built-app Chromium: new two-move test **1/1 PASS** and full Playwright suite **100 PASS / 2 SKIP, exit 0** (102 cases). The genuine hosted two-user Supabase scenario remained skipped; browser mock scenarios cannot establish real hosted multiplayer.
+- The unprivileged Playwright server startup stalled without test output, so it was interrupted. The approved elevated run launched the same build and both focused/full browser suites passed. No evidence of an app regression from the initial stall.
+- Previous pushed SHA `ede8909` had GitHub Linux CI success and protected nonproduction Preview READY; checkpoint 136 branch publication and independent exact-SHA verification follow this evidence update.
+
+## 2026-10-31 — checkpoint 132: external checks at published `ede8909`
+
+- GitHub Linux workflow `41221587352` on SHA `ede890940e6082b875f9b151208ab8830a4e7239` **completed SUCCESS**. Job `124597083153`: checkout, npm ci, nine local migration hashes, npm audit high-level, lint, TypeScript, Vitest, Webpack production build, Chromium install and Playwright all passed.
+- Git-linked Vercel Preview `dpl_6XvvfiWwYH8gwvHJHJ4J4vZ9ZKut` is **READY** at the identical SHA, project `chessonline`, target `null` (nonproduction), SSO Preview protection on. Earlier authenticated Preview smoke found public pages 200 and unconfigured `/api/games` 503; hosted success is **not** established.
+- Vercel Preview env-variable names (decryption disabled): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Private server secret missing, so the real three-identity HTTPS Auth/RLS acceptance suite was not run. Supabase advisories: 1 informational security lint (`rls_enabled_no_policy`) and 1 informational performance lint (`unused_index`); not evidence of exploitable vulnerability.
+
 ## 2026-10-31 — checkpoint 131: CH-12 selective three-ply continuation
 
 - After final assertion edits, `npx vitest run src/lib/chess/bot.test.ts` **7/7 PASS** and `ROOKLINE_E2E_PRODUCTION=1 npx playwright test -g 'analysis explores'` **1/1 real Chromium PASS** (three plies, move navigation).

@@ -28,6 +28,7 @@ function storedPractice(): PuzzlePractice | null {
 export function PuzzleTrainer() {
   const [active, setActive] = useState(0);
   const [fen, setFen] = useState<string>(puzzles[0].fen);
+  const [step, setStep] = useState(0);
   const [selected, setSelected] = useState<Square | null>(null);
   const [solved, setSolved] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -87,6 +88,7 @@ export function PuzzleTrainer() {
     setPendingPromotion(null);
     setActive(index);
     setFen(puzzles[index].fen);
+    setStep(0);
     setSolved(false);
     setSelected(null);
     setFeedback("");
@@ -95,13 +97,21 @@ export function PuzzleTrainer() {
 
   const attempt = (from: Square, to: Square, promotion?: "q" | "r" | "b" | "n") => {
     if (solved) return false;
-    if (!promotion && selectPromotion(new Chess(current.fen), from, to)) {
+    if (!promotion && selectPromotion(new Chess(fen), from, to)) {
       setPendingPromotion({ from, to });
       setSelected(null);
       return false;
     }
     setPendingPromotion(null);
-    const result = evaluatePuzzleMove(current.id, from, to, promotion);
+    const result = evaluatePuzzleMove(current.id, from, to, promotion, step);
+    if (result.status === "continue") {
+      setFen(result.fen);
+      setStep(step + 1);
+      setSelected(null);
+      setKeyboardMove("");
+      setFeedback(`Correct! ${result.san}. Black replies ${result.replySan}. Find the finish.`);
+      return true;
+    }
     if (result.status !== "correct") {
       record("error");
       setFeedback(result.status === "illegal"
@@ -191,7 +201,7 @@ export function PuzzleTrainer() {
   return <div className="game-grid">
     <section className="board-shell"><div className="board-wrap"><Chessboard options={{ id: "rookline-puzzle", position: fen, boardOrientation: current.fen.split(" ")[1] === "b" ? "black" : "white", lightSquareStyle: { backgroundColor: "var(--board-light)" }, darkSquareStyle: { backgroundColor: "var(--board-dark)" },
       onPieceDrop: ({ sourceSquare, targetSquare }) => !!targetSquare && attempt(sourceSquare as Square, targetSquare as Square),
-      onSquareClick: ({ square }) => { const target = square as Square; if (selected && selected !== target && attempt(selected, target)) return; const game = new Chess(current.fen); setSelected(game.get(target)?.color === game.turn() ? target : null); },
+      onSquareClick: ({ square }) => { const target = square as Square; if (selected && selected !== target && attempt(selected, target)) return; const game = new Chess(fen); setSelected(game.get(target)?.color === game.turn() ? target : null); },
       squareStyles: selected ? { [selected]: { boxShadow: "inset 0 0 0 3px var(--color-focus)" } } : {},
     }} /></div></section>
     <aside className="game-panel">

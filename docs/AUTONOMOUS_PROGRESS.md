@@ -1,5 +1,18 @@
 # Autonomous progress ledger
 
+## 2026-11-01, checkpoint 136 — CH-13 two-move tactical puzzle
+
+- Added original `mate-022` (Qf8+, forced Kh7, Qg7#), chess.js-authenticated authored continuation, and a two-step trainer. A correct initial check advances the board without counting a solve; only an actual final mate records completion. Wrong first/second moves, resetting, mouse squares and keyboard coordinates have unit and real-browser coverage. Existing one-move puzzles retain their behavior.
+- Local verification: 9/9 pinned SQL migration fingerprints, ESLint, strict TypeScript, **201/201 Vitest (29 files)** and separately approved Next.js production build **17/17 pages PASS**. The restricted `npm run check` composite hit Windows `.next` `EPERM` during build; the same build run with approved elevated filesystem access passed. Focused built-app Chromium **1/1 PASS**, complete built-app Chromium **100 PASS / 2 conditional SKIP** (one logged-out hosted redirect and one genuine two-user Supabase flow).
+- **Release status:** CH-13 local slice verified, branch publish and exact-SHA remote CI/Preview checks next. S0 is still blocked by missing private Preview Supabase server key; HTTPS Auth/JWT/RLS/Origin/Host with three real users is unverified. S1–S6 and all twenty independent gates remain OPEN. Rated OFF; no merge to `main` or production deployment.
+
+## 2026-10-31, checkpoint 132 — exact-SHA CI, protected Preview and S0 environment audit
+
+- Development branch `codex/chess-platform-foundation` published commit `ede890940e6082b875f9b151208ab8830a4e7239`. Exact-SHA GitHub Actions run `41221587352` **SUCCESS**: migration fingerprints, dependency audit, ESLint, strict TypeScript, Vitest, production build and Chromium E2E all completed successfully.
+- Git-linked **nonproduction** Vercel Preview `dpl_6XvvfiWwYH8gwvHJHJ4J4vZ9ZKut` is **READY**, reports the identical commit SHA and branch, with SSO Preview protection enabled and no production target. Previously observed HTTP smoke: `/`, `/analysis`, `/play` returned 200; `/api/games` returned 503 because hosted chess backend configuration was missing. This does not prove authenticated gameplay.
+- Live Vercel environment metadata inspection with decrypt disabled found exactly `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for Preview. Neither `SUPABASE_SECRET_KEY` nor `SUPABASE_SERVICE_ROLE_KEY` is configured. `src/lib/supabase/server.ts` requires one of those private server-only variables for hosted game access. Supabase management security and performance advisors returned one INFO notice each (`rls_enabled_no_policy`, `unused_index`); investigate object-specific context before changing SQL.
+- **S0 BLOCKED_EXTERNAL** until a dedicated secret is safely provisioned for protected nonproduction Preview and three genuine HTTPS users can exercise Auth/RLS/Origin/Host. S1 independent Realtime/reconnect, S2 two-session PostgreSQL clock/lock contention, S3 rated once-only settlement, S4 full licensed engine/hosted study, S5 community/tournaments and S6 independent 20-gate acceptance remain OPEN. **20 OPEN, rated OFF; no main merge or production.**
+
 ## 2026-10-31, checkpoint 131 — selective three-ply Analysis exploration
 
 - CH-12 searches every legal root move two plies, then extends the three leading candidates to a third ply. Its UI exposes the reply and legal follow-up; chess.js independently revalidates each SAN before adding the navigable line. This is an original selective heuristic, not a full chess engine.

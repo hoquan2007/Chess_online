@@ -22,6 +22,7 @@ export const puzzles = [
   { id: "promotion-019", theme: "Promotion", goal: "move", level: 2, title: "Queen on the eighth", description: "White to move. Promote to a queen with check.", fen: "k7/6P1/8/8/8/8/8/7K w - - 0 1", solution: "g8=Q+", hint: "The new queen will attack across the eighth rank." },
   { id: "mate-020", theme: "Checkmate", goal: "mate", level: 3, title: "The defended sacrifice", description: "White to move. Checkmate in one using bishop and rook support.", fen: "6k1/6pp/8/7Q/8/3B4/8/5RK1 w - - 0 1", solution: "Qxh7#", hint: "The bishop guards h7, while the rook takes away f8." },
   { id: "promotion-021", theme: "Promotion", goal: "move", level: 3, title: "A knight from nowhere", description: "White to move. Underpromote to fork the king on e7 and queen on f6.", fen: "8/4k1P1/5q2/8/8/8/K7/8 w - - 0 1", solution: "g8=N+", hint: "A knight on g8 checks the king on e7 and attacks the queen on f6. Choose the promotion piece carefully." },
+  { id: "mate-022", theme: "Checkmate", goal: "mate", level: 3, title: "Finish the net", description: "White to move. Give check, meet Black's forced king reply, then checkmate on your second move.", fen: "7k/8/5K2/8/8/Q7/8/8 w - - 0 1", solution: "Qf8+", continuation: ["Kh7", "Qg7#"], hint: "Use the queen to check along the eighth rank, then coordinate with your king on f6 to cover g7." },
 ] as const;
 
 export const puzzleThemes = ["All", "Checkmate", "Fork", "Pin", "Capture", "Promotion"] as const;
@@ -94,20 +95,31 @@ export function nextAdaptivePuzzleIndex(
   return candidates.reduce((best, index) => score(index) > score(best) ? index : best, candidates[0]);
 }
 
-export function evaluatePuzzleMove(id: string, from: string, to: string, promotion: "q" | "r" | "b" | "n" = "q") {
+/** Multi-step tactics replay the authored line from the beginning for each
+ * attempt. The browser's displayed FEN cannot change the expected answer. */
+export function evaluatePuzzleMove(id: string, from: string, to: string, promotion: "q" | "r" | "b" | "n" = "q", step = 0) {
   const puzzle = puzzles.find((item) => item.id === id);
   if (!puzzle) return { status: "illegal" as const };
+  const continuation = "continuation" in puzzle ? puzzle.continuation : null;
+  if (step !== 0 && (step !== 1 || !continuation)) return { status: "illegal" as const };
   const game = new Chess(puzzle.fen);
   try {
+    if (step === 1 && continuation) {
+      game.move(puzzle.solution);
+      game.move(continuation[0]);
+    }
     const played = game.move({ from, to, promotion });
-    // Mate objectives accept every genuine mate, independent of translated
-    // presentation copy. Other tactics check the authored SAN solution.
-    const solved = puzzle.goal === "mate"
+    // The first move in a scripted tactic must be the authored move. The
+    // final mate is evaluated on the replayed board with the reply applied.
+    const solved = continuation && step === 0 ? played.san === puzzle.solution : puzzle.goal === "mate"
       ? game.isCheckmate()
       : played.san === puzzle.solution;
-    return solved
-      ? { status: "correct" as const, fen: game.fen(), san: played.san }
-      : { status: "incorrect" as const };
+    if (!solved) return { status: "incorrect" as const };
+    if (continuation && step === 0) {
+      const reply = game.move(continuation[0]);
+      return { status: "continue" as const, fen: game.fen(), san: played.san, replySan: reply.san };
+    }
+    return { status: "correct" as const, fen: game.fen(), san: played.san };
   } catch {
     return { status: "illegal" as const };
   }
