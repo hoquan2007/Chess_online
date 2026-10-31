@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 116: ranked candidate moves in Analysis
+
+- `npm run check`: nine migration SQL fingerprint checks, ESLint, strict TypeScript, **194/194 Vitest (28 files)** and Webpack compilation/17 static pages all PASS. The last restricted standalone trace-copy step failed `EPERM` (overall exit 1).
+- Separate native authorized `npm run build`: **PASS**, all 17 static pages, exit 0. `ROOKLINE_E2E_PRODUCTION=1 npx playwright test --grep "analysis candidate search uses a real worker"`: **1/1 PASS** in Chromium.
+- Full native authorized `ROOKLINE_E2E_PRODUCTION=1 npx playwright test`: **95 local/mock real-Chromium PASS, 1 hosted Supabase test SKIP**, exit 0. Earlier restricted browser server launch stalled without opening loopback port and was stopped; native authorized run worked.
+- Ranked moves and Try UI are locally browser-verified. No authentic three-user HTTPS Auth/RLS/Realtime, independent PostgreSQL clock/lock or rated acceptance was executed.
+
 ## 2026-10-31 — checkpoint 114: Analysis FEN-relative move labels
 
 - `npm run check`: migration-source parity **9/9**, ESLint PASS, TypeScript PASS, **194 Vitest tests PASS**, Webpack compile/types/17 static pages PASS; initial standalone file copy failed with Windows `EPERM` in the restricted sandbox (exit 1).

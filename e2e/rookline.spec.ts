@@ -546,6 +546,12 @@ test("analysis candidate search uses a real worker, follows positions, and handl
   const region = page.getByRole("region", { name: "Candidate move analysis" });
   await region.getByRole("button", { name: "Find candidate move" }).click();
   await expect(region.getByText(/Candidate:/)).toContainText(/Heuristic estimate: .*depth 2 plies/, { timeout: 20_000 });
+  const candidates = region.getByRole("list", { name: "Ranked candidate moves" });
+  await expect(candidates.getByRole("listitem")).toHaveCount(3);
+  await candidates.getByRole("listitem").first().getByRole("button", { name: /^Try / }).click();
+  await expect(page.getByLabel("Analysis moves").locator(".move-row")).toHaveCount(1);
+  await expect(candidates).toHaveCount(0);
+  await page.getByRole("button", { name: "Reset" }).click();
   await page.getByRole("textbox", { name: /Keyboard move/ }).fill("e2e4");
   await page.getByRole("textbox", { name: /Keyboard move/ }).press("Enter");
   await expect(region.getByText(/Candidate:/)).toHaveCount(0);

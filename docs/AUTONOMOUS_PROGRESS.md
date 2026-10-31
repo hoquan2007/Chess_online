@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 116 — three ranked Analysis candidates
+
+- Enhanced the original two-ply Analysis worker to return up to three legal root moves ranked by the existing heuristic, with stable tie ordering and individual White-relative centipawn estimates. Existing best-move output stays compatible; finished games produce no candidates.
+- Analysis presents SAN and evaluation for each candidate with a keyboard-accessible Try action. Choosing a candidate makes a legal move and clears stale suggestions after the position changes. Text explicitly identifies this as a shallow heuristic rather than a strong engine.
+- Evidence: pinned migration hashes **9/9**, ESLint, strict TypeScript and **194/194 Vitest PASS**. `npm run check` failed only during restricted Windows standalone file copying (`EPERM`); separately approved production `npm run build` **PASS**, generating 17 static pages. Focused real-worker Chromium **1/1 PASS**; entire local/mock production Chromium **95/95 PASS**, one opt-in genuine hosted Supabase test **SKIP**.
+- CH-12 analysis remains partial. Preview-only server Supabase secret and genuine HTTPS Auth/RLS/Realtime remain unverified; independent PostgreSQL clocks/concurrency, rated settlement, full engine/learning, community and 20 release gates remain open. Rated OFF; development branch only pending verified release readiness.
+
 ## 2026-10-31, checkpoint 114 — Analysis move numbering from arbitrary FEN
 
 - Corrected Analysis history for imported/setup positions starting with Black to move or with a non-1 fullmove number. The move ledger now groups SAN by the FEN's actual turn and fullmove counter, keeps White/Black columns aligned, and navigates to the exact underlying ply. Standard starting positions retain their normal labels.

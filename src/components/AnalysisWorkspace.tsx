@@ -318,7 +318,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       </section>
       <section aria-label="Candidate move analysis" className="stack" style={{ gap: 8 }}>
         <h3 className="panel-sub">Rookline quick search</h3>
-        <p className="panel-sub">An original two-ply material and piece-position heuristic. It can miss tactics and does not represent a strong chess engine or a computer rating.</p>
+        <p className="panel-sub">Compare up to three legal moves using an original two-ply material and piece-position heuristic. It can miss tactics and does not represent a strong chess engine or a computer rating.</p>
         <button type="button" className="btn ghost" disabled={workingKey === positionKey} onClick={findCandidate}>Find candidate move</button>
         <div aria-live="polite" aria-atomic="true">
           {workingKey === positionKey && <p className="status">Analyzing position…</p>}
@@ -329,6 +329,15 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
               ? `${(hint.result.scoreCp ?? 0) > 0 ? "White" : "Black"} can force mate within the search horizon`
               : hint.result.scoreCp === 0 ? "Even" : `${(hint.result.scoreCp ?? 0) > 0 ? "White" : "Black"} +${(Math.abs(hint.result.scoreCp ?? 0) / 100).toFixed(2)}`} (depth {hint.result.depth} plies).</p>)}
         </div>
+        {hint?.key === positionKey && !hint.result.finished && !!hint.result.candidates?.length &&
+          <ol aria-label="Ranked candidate moves" className="stack" style={{ gap: 6, paddingLeft: 24 }}>
+            {hint.result.candidates.map((move) => <li key={`${move.from}-${move.to}-${move.promotion ?? ""}`}>
+              <span>{move.san} · {move.scoreCp === 0 ? "Even" : Math.abs(move.scoreCp) >= 100000
+                ? `${move.scoreCp > 0 ? "White" : "Black"} mate`
+                : `${move.scoreCp > 0 ? "White" : "Black"} +${(Math.abs(move.scoreCp) / 100).toFixed(2)}`}</span>{" "}
+              <button type="button" className="btn ghost" aria-label={`Try ${move.san}`} onClick={() => makeMove(move.from as Square, move.to as Square, move.promotion as "q" | "r" | "b" | "n" | undefined)}>Try</button>
+            </li>)}
+          </ol>}
       </section>
       <label className="label">PGN game<textarea className="field" rows={4} value={pgn} onChange={(event) => { userEdited.current = true; pendingPgnFile.current++; setPgn(event.target.value); }} placeholder="1. e4 e5 2. Nf3 Nc6" /></label>
       <button type="button" className="btn primary" onClick={importPgn}>Import PGN</button>

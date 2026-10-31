@@ -42,6 +42,12 @@ describe("original analysis hint", () => {
     expect(hint.finished).toBe(false);
     expect(hint.depth).toBe(2);
     expect(hint.bestMove).not.toBeNull();
+    expect(hint.candidates).toHaveLength(3);
+    expect(hint.candidates[0]).toMatchObject({ ...hint.bestMove, scoreCp: hint.scoreCp });
+    for (const candidate of hint.candidates) expect(game.moves()).toContain(candidate.san);
+    expect(hint.candidates.every((candidate) => Number.isFinite(candidate.scoreCp))).toBe(true);
+    expect(hint.candidates.slice(1).every((candidate) =>
+      game.turn() === "w" ? candidate.scoreCp <= hint.candidates[0].scoreCp : candidate.scoreCp >= hint.candidates[0].scoreCp)).toBe(true);
     expect(game.moves()).toContain(hint.bestMove?.san);
     expect(game.fen()).toBe(fen);
     expect(game.history()).toEqual(history);
@@ -62,7 +68,7 @@ describe("original analysis hint", () => {
   it("reports a finished position without recommending a move", () => {
     const game = new Chess();
     for (const san of ["f3", "e5", "g4", "Qh4#"]) game.move(san);
-    expect(analyzeBotPosition(game)).toMatchObject({ finished: true, bestMove: null, scoreCp: null });
+    expect(analyzeBotPosition(game)).toMatchObject({ finished: true, bestMove: null, scoreCp: null, candidates: [] });
     expect(game.history()).toHaveLength(4);
     const repetition = new Chess();
     for (let i = 0; i < 4; i++) {

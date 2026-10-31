@@ -114,27 +114,31 @@ export function analyzeBotPosition(game: Chess): {
   bestMove: { san: string; from: string; to: string; promotion?: string } | null;
   scoreCp: number | null;
   depth: number;
+  candidates: { san: string; from: string; to: string; promotion?: string; scoreCp: number }[];
 } {
   const depth = 2;
-  if (gameResult(game).finished) return { finished: true, bestMove: null, scoreCp: null, depth };
+  if (gameResult(game).finished) return { finished: true, bestMove: null, scoreCp: null, depth, candidates: [] };
   const legal = game.moves({ verbose: true });
-  if (legal.length === 0) return { finished: true, bestMove: null, scoreCp: null, depth };
+  if (legal.length === 0) return { finished: true, bestMove: null, scoreCp: null, depth, candidates: [] };
   const perspective = game.turn();
-  let bestScore = -Infinity;
-  let bestMove = legal[0];
+  const ranked: { san: string; from: string; to: string; promotion?: string; score: number }[] = [];
   for (const move of legal) {
     game.move(move);
     const score = search(game, depth - 1, -Infinity, Infinity, perspective, 1);
     game.undo();
-    if (score > bestScore) {
-      bestScore = score;
-      bestMove = move;
-    }
+    ranked.push({ san: move.san, from: move.from, to: move.to, promotion: move.promotion, score });
   }
+  // Reuse the already searched root moves. Sorting is stable, so equal scores
+  // keep chess.js legal-move ordering and repeated requests remain predictable.
+  ranked.sort((a, b) => b.score - a.score);
+  const candidates = ranked.slice(0, 3).map(({ score, ...move }) => ({
+    ...move, scoreCp: perspective === "w" ? score : -score,
+  }));
   return {
     finished: false,
-    bestMove: { san: bestMove.san, from: bestMove.from, to: bestMove.to, promotion: bestMove.promotion },
-    scoreCp: perspective === "w" ? bestScore : -bestScore,
+    bestMove: { san: candidates[0].san, from: candidates[0].from, to: candidates[0].to, promotion: candidates[0].promotion },
+    scoreCp: candidates[0].scoreCp,
     depth,
+    candidates,
   };
 }
