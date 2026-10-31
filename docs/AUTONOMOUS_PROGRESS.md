@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 83 — test the built standalone product in CI
+
+- The pushed `471eae2` Linux Actions run `41158246211` **FAILED**: 76 browser cases passed, one real hosted case skipped, and the initial Analysis Web Worker test timed out. Playwright trace records its on-demand `next dev` worker-chunk request still pending with no response after the 20-second assertion window. The same commit's protected Preview `dpl_DYrNBjNUMN3y7w7q78z4MRVuqGSN` is READY; authenticated smoke returns `/`, `/play/local`, `/login` HTTP 200, anonymous `/api/games` 503 and `/api/preferences` 401.
+- Next.js 16.4.3 documentation requires running the standalone `server.js` with public/static assets copied in. Playwright now runs this **already-built production artifact in CI** (also opt-in locally with `ROOKLINE_E2E_PRODUCTION=1`), leaving local dev-server tests available. This avoids worker recompilation during acceptance testing and exercises the exact production bundle.
+- Verified against the existing unchanged 17-page production build: focused Analysis Worker Chromium **3/3 PASS**, full standalone browser **77/77 local/mock PASS / 1 actual hosted Supabase SKIP**. ESLint, strict TypeScript, **181/181 Vitest**, and nine pinned migration hashes PASS; diff checked. New commit's Linux run and deployment SHA verification still pending.
+- Real three-user HTTPS Supabase Auth/RLS, private Realtime, independent Postgres clock/race tests, rated settlement, remaining learning/community features and independent 20-gate acceptance are still outstanding. Preview lacks a server-only Supabase secret; remote migration version IDs require backup and reconciliation. **20 gates OPEN, rated OFF, IN_PROGRESS; no production or main merge.**
+
 ## 2026-10-31, checkpoint 82 — reject impossible invitation cancellation snapshots
 
 - Prior published `a5fae1b9c156bb8d303045414ce4d26460125087` passed Linux GitHub Actions run `41149734462`; protected non-production Vercel Preview `dpl_9BKDPUxLFYBHUPMyTRgsC8LmUfGj` was READY at the same SHA. These checks precede the new cancellation fix.

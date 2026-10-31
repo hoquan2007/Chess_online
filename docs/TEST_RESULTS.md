@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 83: standalone production E2E regression
+
+- Prior Linux Actions run `41158246211` (SHA `471eae2`) FAILED only at Playwright Analysis Worker initialization: 76 local/mock passed, 1 failed, 1 hosted skipped. Saved trace shows `_app-pages-browser_src_workers_analysis_worker_ts.js` requested by `next dev` and never responding during the 20-second expectation; the UI remained "Analyzing position…".
+- Updated Playwright CI web server to launch `.next/standalone/server.js` with bundled public/static assets; Next.js 16.4.3 standalone output does not support the normal `next start` path. Local opt-in `ROOKLINE_E2E_PRODUCTION=1` launches the same server without changing the browser channel.
+- Focused standalone Analysis Worker repeated **3/3 PASS**; full production standalone Chromium suite **77/77 local/mock PASS, 1 genuinely hosted Supabase SKIP** (exit 0). `npm run lint`, `npm run typecheck`, `npm run test` **181/181 / 25 suites**, and `npm run verify:migrations` **9/9 pinned source SQL hashes** all PASS. Existing 17-page production build used for these browser tests; the application sources were not changed in this slice.
+- Genuine three-user HTTPS Auth/RLS/Origin, Realtime, Postgres transaction clock races and rated settlement remain unverified. No complete production release claim.
+
 ## 2026-10-31 — checkpoint 82: enforce cancellation lifecycle and clock immutability
 
 - RED/GREEN `npx vitest run src/lib/online/games.test.ts`: failed on active-to-cancelled before repair; after the final fix **26/26 PASS**, including normal waiting invitation cancellation, identical cancelled snapshot, a played-game cancellation rejection, and six fields that cannot be changed by cancellation. The first proposed guard also caused an existing terminal-fixture test failure; it was constrained to transitions from non-cancelled state and the full focused suite passed.
