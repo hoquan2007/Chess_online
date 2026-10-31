@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 102: puzzle progress backup
+
+- `npm run check`: native SQL hash verification **9/9 PASS**, `npm run lint` PASS, `npm run typecheck` PASS, `vitest run` **185/185 PASS across 26 files**. Next Webpack compiled and generated **17/17 pages**, but Windows sandbox `EPERM` prevented writing `.next/standalone/node_modules/@next/env`; composite exit 1. Separate approved `npm run build` exited **0**, complete standalone production bundle.
+- Real production standalone Chromium: `ROOKLINE_E2E_PRODUCTION=1 npx playwright test --workers=1 --reporter=line` **86 local/mock PASS / 1 guarded real hosted Supabase SKIP**, exit 0. The puzzle import/export browser case downloaded and parsed the real backup, merged distinct per-device scores, survived refresh and preserved old data after an invalid-version import.
+- Source tests do not validate hosted credentials, genuine RLS/Realtime, Postgres clock races, rated settlement or completed 20-gate launch audit. Remote migration versions remain divergent despite matching nine SQL fingerprints.
+
 ## 2026-10-31 — checkpoint 101: exact-SHA CI and protected Preview
 
 - GitHub Actions run **41171634271** at `4f843739e06f2ccb56268772e7b61599d94b3d6b`: **completed/success**. Local 181 Vitest, 9 native SQL hashes, lint/types, separately privileged 17-page build and 85 local/mock Chromium PASS / 1 actual hosted SKIP were established in checkpoint 100.

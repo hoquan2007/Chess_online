@@ -214,6 +214,41 @@ test("puzzle keyboard input validates moves, records new tactics, and restores p
   await expect(page.getByText("Solved 2 / 21 positions on this device.")).toBeVisible();
 });
 
+test("puzzle progress can be backed up, merged on another device, and restored after reload", async ({ page }) => {
+  await page.goto("/puzzles");
+  await page.evaluate(() => {
+    localStorage.setItem("rookline-puzzles", JSON.stringify(["mate-001"]));
+    localStorage.setItem("rookline-puzzle-practice", JSON.stringify({ "mate-001": { errors: 2, hints: 1, solves: 1 } }));
+  });
+  await page.reload();
+  await expect(page.getByText("Solved 1 / 21 positions on this device.")).toBeVisible();
+
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export progress" }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe("rookline-puzzle-progress.json");
+  const exported = JSON.parse(await readFile((await download.path())!, "utf8"));
+  expect(exported).toMatchObject({ kind: "rookline-puzzles", version: 1,
+    completed: ["mate-001"], practice: { "mate-001": { errors: 2, hints: 1, solves: 1 } } });
+
+  const chooser = page.getByLabel("Choose puzzle backup file");
+  await chooser.setInputFiles({ name: "other-device.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({
+    kind: "rookline-puzzles", version: 1, completed: ["fork-005", "mate-001", "unknown"],
+    practice: { "mate-001": { errors: 1, hints: 3, solves: 4 }, "fork-005": { errors: 6, hints: 0, solves: 2 } },
+  })) });
+  await expect(page.getByRole("status").filter({ hasText: "Imported puzzle progress: 2 solved" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText("Solved 2 / 21 positions on this device.")).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-puzzle-practice") ?? "{}")))
+    .toEqual({ "mate-001": { errors: 2, hints: 3, solves: 4 }, "fork-005": { errors: 6, hints: 0, solves: 2 } });
+
+  await chooser.setInputFiles({ name: "invalid.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({
+    kind: "rookline-puzzles", version: 999, completed: [], practice: {},
+  })) });
+  await expect(page.getByRole("status").filter({ hasText: "not a supported Rookline puzzle backup" })).toBeVisible();
+  await expect(page.getByText("Solved 2 / 21 positions on this device.")).toBeVisible();
+});
+
 test("two open puzzle tabs preserve each other's completions and adaptive practice", async ({ page, context }) => {
   await page.goto("/puzzles");
   const second = await context.newPage();

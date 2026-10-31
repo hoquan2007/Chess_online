@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
-import { ArrowRight, Lightbulb, RotateCcw } from "lucide-react";
+import { ArrowRight, Download, Lightbulb, RotateCcw, Upload } from "lucide-react";
 import { evaluatePuzzleMove, nextAdaptivePuzzleIndex, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, readPuzzleCompletions, readPuzzlePractice, recordPuzzlePractice, type PuzzlePractice, type PuzzlePracticeEvent, type PuzzleTheme } from "@/lib/chess/puzzles";
+import { exportPuzzleProgress, maxPuzzleBackupBytes, mergePuzzleProgress, parsePuzzleProgress } from "@/lib/chess/puzzle-backup";
 import { parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
 
@@ -36,8 +37,11 @@ export function PuzzleTrainer() {
   const [adaptive, setAdaptive] = useState(false);
   const [ready, setReady] = useState(false);
   const [practice, setPractice] = useState<PuzzlePractice>({});
+  const [backupMessage, setBackupMessage] = useState("");
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const retryButtonRef = useRef<HTMLButtonElement>(null);
+  const backupFileRef = useRef<HTMLInputElement>(null);
+  const completeRef = useRef<string[]>([]);
   const practiceRef = useRef<PuzzlePractice>({});
   const current = puzzles[active];
   const visible = puzzleIndicesForTheme(theme);
@@ -47,7 +51,9 @@ export function PuzzleTrainer() {
       // Re-read the current value rather than trusting a queued storage event:
       // another tab may have completed a newer puzzle since it was dispatched.
       if (key === undefined || key === null || key === completedKey) {
-        setComplete(storedCompletions() ?? []);
+        const latest = storedCompletions() ?? [];
+        completeRef.current = latest;
+        setComplete(latest);
       }
       if (key === undefined || key === null || key === practiceKey) {
         const latest = storedPractice() ?? {};
@@ -111,7 +117,8 @@ export function PuzzleTrainer() {
     setKeyboardMove("");
     setFeedback(`Correct! ${result.san} is the answer.`);
     // A second tab can solve a different puzzle while this tab remains open.
-    const next = Array.from(new Set([...complete, ...(storedCompletions() ?? []), current.id]));
+    const next = readPuzzleCompletions([...completeRef.current, ...(storedCompletions() ?? []), current.id]);
+    completeRef.current = next;
     setComplete(next);
     try { localStorage.setItem(completedKey, JSON.stringify(next)); }
     catch { /* Private browsing or quota restrictions must not block practice. */ }
@@ -135,6 +142,51 @@ export function PuzzleTrainer() {
   const nextPuzzle = () => open(adaptive
     ? nextAdaptivePuzzleIndex(active, theme, complete, practice)
     : nextPracticePuzzleIndex(active, theme, complete));
+
+  const downloadProgress = () => {
+    const payload = exportPuzzleProgress({
+      completed: readPuzzleCompletions([...completeRef.current, ...(storedCompletions() ?? [])]),
+      practice: mergePuzzleProgress({ completed: [], practice: practiceRef.current }, { completed: [], practice: storedPractice() ?? {} }).practice,
+    });
+    const url = URL.createObjectURL(new Blob([payload], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "rookline-puzzle-progress.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    setBackupMessage("Puzzle progress backup downloaded.");
+  };
+
+  const importProgress = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    // Allow choosing the same file again after an invalid import.
+    event.currentTarget.value = "";
+    if (!file) return;
+    try {
+      if (file.size > maxPuzzleBackupBytes) throw new Error("Backup is larger than 64 KB.");
+      const imported = parsePuzzleProgress(await file.text());
+      const merged = mergePuzzleProgress({
+        // Re-read refs and device storage after the async file read: playing
+        // another puzzle during import must not lose its latest progress.
+        completed: readPuzzleCompletions([...completeRef.current, ...(storedCompletions() ?? [])]),
+        practice: mergePuzzleProgress({ completed: [], practice: practiceRef.current }, { completed: [], practice: storedPractice() ?? {} }).practice,
+      }, imported);
+      completeRef.current = merged.completed;
+      setComplete(merged.completed);
+      practiceRef.current = merged.practice;
+      setPractice(merged.practice);
+      let persisted = true;
+      try {
+        localStorage.setItem(completedKey, JSON.stringify(merged.completed));
+        localStorage.setItem(practiceKey, JSON.stringify(merged.practice));
+      } catch { persisted = false; }
+      setBackupMessage(persisted
+        ? `Imported puzzle progress: ${merged.completed.length} solved. Existing progress kept.`
+        : "Imported into this tab, but device storage is unavailable. Export a backup before closing.");
+    } catch (error) {
+      setBackupMessage(error instanceof Error ? error.message : "Could not read puzzle backup.");
+    }
+  };
 
   return <div className="game-grid">
     <section className="board-shell"><div className="board-wrap"><Chessboard options={{ id: "rookline-puzzle", position: fen, boardOrientation: current.fen.split(" ")[1] === "b" ? "black" : "white", lightSquareStyle: { backgroundColor: "var(--board-light)" }, darkSquareStyle: { backgroundColor: "var(--board-dark)" },
@@ -172,6 +224,15 @@ export function PuzzleTrainer() {
       <div className="pill-group">{visible.map((index) => <button key={puzzles[index].id} type="button" aria-label={`Puzzle ${index + 1}`} aria-pressed={active === index} disabled={!ready} className={`pill ${active === index ? "active" : ""}`} onClick={() => open(index)}>{index + 1}{complete.includes(puzzles[index].id) ? " ✓" : ""}</button>)}</div>
       <p className="muted">Solved {complete.length} / {puzzles.length} positions on this device.</p>
       <p className="panel-sub">{theme === "All" ? "All topics" : theme}: {visible.filter((index) => complete.includes(puzzles[index].id)).length} / {visible.length} solved.</p>
+      <div className="stack" style={{ gap: 7 }}>
+        <p className="panel-sub">Move puzzle completions and adaptive practice scores between devices with a JSON backup. Import merges with existing progress.</p>
+        <div className="game-actions">
+          <button type="button" className="btn ghost" disabled={!ready} onClick={downloadProgress}><Download size={16} /> Export progress</button>
+          <button type="button" className="btn ghost" disabled={!ready} onClick={() => backupFileRef.current?.click()}><Upload size={16} /> Import progress</button>
+        </div>
+        <input ref={backupFileRef} type="file" accept=".json,application/json" hidden aria-label="Choose puzzle backup file" onChange={importProgress} />
+        {backupMessage && <p className="panel-sub" role="status">{backupMessage}</p>}
+      </div>
       <div className="game-actions" style={{ marginTop: "auto" }}>
         <button type="button" className="btn ghost" disabled={!ready} onClick={() => { if (!solved) record("hint"); setFeedback(current.hint); }}><Lightbulb size={16} /> Hint</button>
         <button ref={retryButtonRef} type="button" className="btn ghost" disabled={!ready} onClick={() => open(active)}><RotateCcw size={16} /> Retry</button>

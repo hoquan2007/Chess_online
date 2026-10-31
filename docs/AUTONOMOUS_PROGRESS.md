@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 102 — portable puzzle-progress backup
+
+- CH-13 now exports a versioned JSON file containing known puzzle completions and bounded adaptive practice counts; import rejects malformed, oversized, unrelated and future versions, merges existing progress using maximum per-counter values and preserves in-memory updates during asynchronous file reading. Uses original local-only catalog; no hosted account synchronization is claimed.
+- Local validation: nine pinned migration source hashes PASS (remote not re-queried), lint/typecheck PASS, **185 Vitest in 26 files PASS**, independently approved 17-page Next production Webpack build PASS, **86 local/mock Chromium PASS / 1 actual hosted Supabase test SKIP**. Composite `npm run check` completed all prebuild checks and generated 17 pages but failed `EPERM` copying standalone files in Windows sandbox; standalone elevated build exited 0.
+- GitHub exact-SHA Linux CI and protected Preview for this slice are pending. **S0 blocked by missing secure Preview server secret and unreconciled nine remote migration version IDs**; S1–S6 and **20 gates OPEN**, rated OFF. No production deployment or main merge.
+
 ## 2026-10-31, checkpoint 101 — verified Linux CI and protected Preview
 
 - CH-12 code, regression and evidence pushed to development SHA `4f843739e06f2ccb56268772e7b61599d94b3d6b`, confirmed identical `git ls-remote` and clean checkout. Exact-SHA Linux GitHub Actions **41171634271 completed/success** (2026-10-31 05:15:06 UTC). Locally previously verified 181 Vitest, 9 local SQL fingerprints, lint/types, 17-page production build and 85 local/mock Chromium PASS / 1 genuine hosted SKIP.
