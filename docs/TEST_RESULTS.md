@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 107: computer difficulty reload
+
+- `npm run check`: 9 pinned SQL source hashes, ESLint, strict TypeScript, **192/192 Vitest in 28 suites PASS**. Windows sandbox generated output failed at `.next/types/app/play/local` with `EPERM`; a separate `npm run build` with native approved permissions **PASS**, building all **17 static pages**.
+- Compiled-standalone Chromium targeted strength persistence/legacy saves **2/2 PASS**. Complete `ROOKLINE_E2E_PRODUCTION=1 npx playwright test`: **92/92 local/mock PASS; 1 hosted-Supabase case SKIP**. Distinguishes browser tests from true hosted Auth/RLS/Realtime/PostgreSQL evidence; 20 gates remain OPEN.
+- The unprivileged Chromium launch stalled before opening its local server; stopped it and reran with native approved localhost/server permission successfully. Historical `aaf2057` verified in Linux Actions run `41193754781` and protected Preview; checkpoint 107 requires separate exact-SHA verification.
+
 ## 2026-10-31 — checkpoint 106: branched PGN metadata and result
 
 - Chromium RED on original version: imported completed PGN then alternate Nf3 led to `Event "?"` on export; after fix, production Chromium reconstructs and reparses exported PGN with original Event/White/Black, `Result "*"`, correct SAN, and no stale event following Reset.

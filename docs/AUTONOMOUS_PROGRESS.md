@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 107 — persistent computer strength
+
+- Found that computer difficulty selection reverted to medium after reload, even though the PGN and clocks survived. GameWorkspace now saves `level` only for computer mode, restores easy/medium/hard/advanced, defaults to medium for absent/unknown legacy values without destroying the saved match, and retains selected difficulty on New game.
+- Real production Chromium regressions: strength persists across midgame reload and reset; legacy and invalid strength snapshots retain saved PGN. **2/2 focused PASS; 92/92 full local/mock Chromium PASS / 1 actual hosted Supabase SKIP.**
+- **9/9 pinned SQL source hashes, lint, strict TS, 192/192 Vitest in 28 suites PASS.** Composite `npm run check` hit Windows sandbox `EPERM` during `.next/types` mkdir; separately authorized `npm run build` PASS with 17/17 static pages. Prior `aaf2057` CI `41193754781` SUCCESS, Preview `dpl_6sZz7LJMZhT1cu1q1MQgSkiPmX3g` READY. New-SHA publication and independent CI/Preview verification pending. Genuine three-user Supabase staging/rated verification remains blocked; all 20 acceptance gates OPEN.
+
 ## 2026-10-31, checkpoint 106 — branched Analysis PGN metadata
 
 - Real Chromium RED test reproduced lost Event/White/Black tags when continuing a different line after importing a completed PGN. The export reconstructs changed lines with validated PGN headers, `Result "*"`, custom start FEN and no stale tags after Reset. Added dedicated unit coverage and Chrome end-to-end export/download/reparse verification.

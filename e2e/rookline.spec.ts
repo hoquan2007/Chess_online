@@ -1288,6 +1288,45 @@ test("computer worker plays a legal first move when player chooses Black", async
   await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
 });
 
+test("computer strength survives reload and a new game without losing the saved board", async ({ page }) => {
+  await page.goto("/play/computer");
+  await page.getByRole("button", { name: "advanced", exact: true }).click();
+  const move = page.getByRole("textbox", { name: /Keyboard move/ });
+  await move.fill("e2e4");
+  await move.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem("rookline-session-computer") ?? "{}").level)).toBe("advanced");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "advanced", exact: true })).toHaveClass(/active/);
+  await expect(page.getByText("Computer (advanced)")).toBeVisible();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await page.getByRole("button", { name: "New game" }).click();
+  await expect(page.getByRole("button", { name: "advanced", exact: true })).toHaveClass(/active/);
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(0);
+});
+
+test("legacy and unknown computer strength snapshots restore the game with medium difficulty", async ({ page }) => {
+  await page.addInitScript(() => {
+    const snapshot = {
+      pgn: "1. e4 e5", control: "5+0", seconds: { w: 300, b: 300 },
+      manualResult: null, orientation: "white", playingSide: "w", gameId: "local-legacy-computer",
+      undoClocks: [{ w: 300, b: 300 }, { w: 300, b: 300 }],
+    };
+    localStorage.setItem("rookline-session-computer", JSON.stringify(snapshot));
+  });
+  await page.goto("/play/computer");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(page.getByRole("button", { name: "medium", exact: true })).toHaveClass(/active/);
+  await page.evaluate(() => {
+    const snapshot = JSON.parse(localStorage.getItem("rookline-session-computer")!);
+    snapshot.level = "unrecognized";
+    localStorage.setItem("rookline-session-computer", JSON.stringify(snapshot));
+  });
+  await page.reload();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(page.getByRole("button", { name: "medium", exact: true })).toHaveClass(/active/);
+});
+
 test("real medium computer worker chooses a developing opening and accepts the reply", async ({ page }) => {
   await page.goto("/play/computer");
   await page.getByRole("button", { name: "Black", exact: true }).click();

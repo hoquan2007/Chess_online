@@ -107,7 +107,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
       try {
         const value = localStorage.getItem(`rookline-session-${mode}`);
         if (value) {
-          const snapshot = JSON.parse(value) as { pgn: string; control: Control; seconds: Clocks; manualResult: string | null; orientation: "white" | "black"; playingSide: Side; gameId: string; undoClocks?: Clocks[]; running?: boolean; savedAt?: number };
+          const snapshot = JSON.parse(value) as { pgn: string; control: Control; seconds: Clocks; manualResult: string | null; orientation: "white" | "black"; playingSide: Side; gameId: string; undoClocks?: Clocks[]; running?: boolean; savedAt?: number; level?: Difficulty };
           if (!snapshot || typeof snapshot.pgn !== "string" || snapshot.pgn.length > 100000 ||
               typeof snapshot.control !== "string" || !Object.hasOwn(controlValues, snapshot.control) || !snapshot.seconds ||
               !["w", "b"].every((side) => Number.isFinite(snapshot.seconds[side as Side]) && snapshot.seconds[side as Side] >= 0 && snapshot.seconds[side as Side] <= 36000) ||
@@ -142,6 +142,11 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
           setManualResult(snapshot.manualResult);
           setOrientation(snapshot.orientation);
           setPlayingSide(snapshot.playingSide);
+          // Older sessions did not save computer strength. Unknown values
+          // should not cause the player to lose a valid saved game.
+          if (mode === "computer") {
+            setLevel(snapshot.level && (["easy", "medium", "hard", "advanced"] as string[]).includes(snapshot.level) ? snapshot.level : "medium");
+          }
           setGameId(snapshot.gameId);
           setRunning(resume && restoredSeconds[restored.turn()] > 0);
           sync();
@@ -165,9 +170,9 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     if (gameId === "local-0") return;
     try {
       // The clock ref contains precise subsecond time even between visible ticks.
-      localStorage.setItem(`rookline-session-${mode}`, JSON.stringify({ pgn: engine.current.pgn(), control, seconds: clockRef.current, undoClocks, manualResult, orientation, playingSide, gameId, running: running && !outcome, savedAt: Date.now() }));
+      localStorage.setItem(`rookline-session-${mode}`, JSON.stringify({ pgn: engine.current.pgn(), control, seconds: clockRef.current, undoClocks, manualResult, orientation, playingSide, gameId, running: running && !outcome, savedAt: Date.now(), ...(mode === "computer" ? { level } : {}) }));
     } catch { /* Game remains playable if browser storage is unavailable. */ }
-  }, [fen, mode, control, seconds, undoClocks, manualResult, orientation, playingSide, gameId, running, outcome]);
+  }, [fen, mode, control, seconds, undoClocks, manualResult, orientation, playingSide, level, gameId, running, outcome]);
 
   const settleClock = useCallback(() => {
     const now = performance.now();
