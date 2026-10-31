@@ -65,6 +65,28 @@ describe("original analysis hint", () => {
     expect(blackHint.scoreCp).toBeLessThan(0);
   });
 
+  it("provides legal opponent replies to explored candidates and omits replies to checkmate", () => {
+    const position = new Chess();
+    const before = position.fen();
+    const hint = analyzeBotPosition(position);
+    expect(hint.candidates).toHaveLength(3);
+    for (const candidate of hint.candidates) {
+      const continuation = new Chess(before);
+      continuation.move(candidate.san);
+      expect(candidate.replySan).not.toBeNull();
+      expect(continuation.moves()).toContain(candidate.replySan);
+      continuation.move(candidate.replySan!);
+    }
+    expect(analyzeBotPosition(position)).toEqual(hint);
+    expect(position.fen()).toBe(before);
+
+    const mateInOne = new Chess("7k/5Q2/6K1/8/8/8/8/8 w - - 0 1");
+    const mateHint = analyzeBotPosition(mateInOne);
+    expect(mateHint.bestMove?.san).toMatch(/#$/);
+    expect(mateHint.candidates[0].replySan).toBeNull();
+    expect(mateInOne.fen()).toBe("7k/5Q2/6K1/8/8/8/8/8 w - - 0 1");
+  });
+
   it("reports a finished position without recommending a move", () => {
     const game = new Chess();
     for (const san of ["f3", "e5", "g4", "Qh4#"]) game.move(san);

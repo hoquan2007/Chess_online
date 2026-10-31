@@ -254,6 +254,31 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     return true;
   };
 
+  const exploreLine = (candidate: AnalysisHint["candidates"][number]) => {
+    if (!candidate.replySan || hint?.key !== positionKey) return;
+    // Recheck both SAN moves against the currently displayed position before
+    // replacing the continuation. Worker output is only a suggestion.
+    const copy = new Chess(analysis.start);
+    for (const san of analysis.san.slice(0, analysis.index)) copy.move(san);
+    const first = applyLegalMove(copy, {
+      from: candidate.from as Square,
+      to: candidate.to as Square,
+      promotion: candidate.promotion as "q" | "r" | "b" | "n" | undefined,
+    });
+    if (!first) return;
+    let reply;
+    try { reply = copy.move(candidate.replySan); } catch { return; }
+    if (!reply) return;
+    userEdited.current = true;
+    pendingPgnFile.current++;
+    const next = [...analysis.san.slice(0, analysis.index), first.san, reply.san];
+    setAnalysis({ ...analysis, san: next, index: next.length });
+    setImportedPgn(null);
+    setSelected(null);
+    setPromotion(null);
+    setMessage(`Exploring ${first.san} ${reply.san}.`);
+  };
+
   const submitKeyboardMove = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const input = parseKeyboardMove(board, keyboardMove);
@@ -318,7 +343,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       </section>
       <section aria-label="Candidate move analysis" className="stack" style={{ gap: 8 }}>
         <h3 className="panel-sub">Rookline quick search</h3>
-        <p className="panel-sub">Compare up to three legal moves using an original two-ply material and piece-position heuristic. It can miss tactics and does not represent a strong chess engine or a computer rating.</p>
+        <p className="panel-sub">Compare up to three legal moves and their estimated replies using an original two-ply material and piece-position heuristic. It can miss tactics and does not represent a strong chess engine or a computer rating.</p>
         <button type="button" className="btn ghost" disabled={workingKey === positionKey} onClick={findCandidate}>Find candidate move</button>
         <div aria-live="polite" aria-atomic="true">
           {workingKey === positionKey && <p className="status">Analyzing position…</p>}
@@ -336,6 +361,10 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
                 ? `${move.scoreCp > 0 ? "White" : "Black"} mate`
                 : `${move.scoreCp > 0 ? "White" : "Black"} +${(Math.abs(move.scoreCp) / 100).toFixed(2)}`}</span>{" "}
               <button type="button" className="btn ghost" aria-label={`Try ${move.san}`} onClick={() => makeMove(move.from as Square, move.to as Square, move.promotion as "q" | "r" | "b" | "n" | undefined)}>Try</button>
+              {move.replySan && <>
+                {" "}<span className="muted">Likely reply: {move.replySan}</span>{" "}
+                <button type="button" className="btn ghost" aria-label={`Explore ${move.san} ${move.replySan}`} onClick={() => exploreLine(move)}>Explore line</button>
+              </>}
             </li>)}
           </ol>}
       </section>

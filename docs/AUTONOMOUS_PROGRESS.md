@@ -1,5 +1,13 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 118 — Analysis reply and two-ply exploration
+
+- CH-12's Worker now retains the opponent's strongest searched SAN reply for each of three ranked legal moves; checkmating moves have no reply. Determinism, reply legality and unchanged input board have unit coverage.
+- Analysis presents reply SAN and a keyboard-accessible Explore action. Both moves are revalidated by chess.js at the displayed ply before replacing the continuation; users can navigate the new two-ply line, and previous suggestions are invalidated.
+- Evidence: pinned local migration hashes **9/9 PASS**, ESLint/strict TypeScript PASS, **195/195 Vitest PASS**, separately authorized Next production `npm run build` **PASS (17 pages)** after restricted Windows `EPERM`; focused real Worker Chromium **2/2 PASS** and full production Chromium **96 local/mock PASS / 1 real hosted Supabase SKIP** (exit 0). Local migration verification is not a remote DB audit.
+- Prior SHA `957d596` passed exact-SHA Linux Actions run `41205863679`; the new SHA needs fresh CI and Preview proof. No current-SHA protected Preview confirmed. Preview has only public Supabase URL and publishable key, without a confirmed server-only staging credential. Nine remote migration history IDs were reconciled at checkpoint 111; rated migration ten remains unapplied.
+- **IN_PROGRESS, all 20 gates OPEN, rated OFF.** S0 genuine three-identity HTTPS Auth/RLS/Origin/Host blocked by protected Preview secret and live acceptance setup; S1 two-client private Realtime, S2 independent PG locks/clocks, S3 rated settlement, S4 complete engine/hosted learning/profiles, S5 community/tournaments, S6 independent audit outstanding. No main merge/production deployment.
+
 ## 2026-10-31, checkpoint 116 — three ranked Analysis candidates
 
 - Enhanced the original two-ply Analysis worker to return up to three legal root moves ranked by the existing heuristic, with stable tie ordering and individual White-relative centipawn estimates. Existing best-move output stays compatible; finished games produce no candidates.

@@ -66,7 +66,7 @@ function quietSearch(game: Chess, alpha: number, beta: number, perspective: "w" 
   return best;
 }
 
-function search(game: Chess, depth: number, alpha: number, beta: number, perspective: "w" | "b", ply: number): number {
+function search(game: Chess, depth: number, alpha: number, beta: number, perspective: "w" | "b", ply: number, principalReply?: { san: string | null }): number {
   if (gameResult(game).finished) return evaluate(game, perspective, ply);
   if (depth === 0) return quietSearch(game, alpha, beta, perspective, ply, 2);
   const maximizing = game.turn() === perspective;
@@ -76,10 +76,16 @@ function search(game: Chess, depth: number, alpha: number, beta: number, perspec
     const score = search(game, depth - 1, alpha, beta, perspective, ply + 1);
     game.undo();
     if (maximizing) {
-      best = Math.max(best, score);
+      if (score > best) {
+        best = score;
+        if (principalReply) principalReply.san = move.san;
+      }
       alpha = Math.max(alpha, best);
     } else {
-      best = Math.min(best, score);
+      if (score < best) {
+        best = score;
+        if (principalReply) principalReply.san = move.san;
+      }
       beta = Math.min(beta, best);
     }
     if (beta <= alpha) break;
@@ -114,19 +120,22 @@ export function analyzeBotPosition(game: Chess): {
   bestMove: { san: string; from: string; to: string; promotion?: string } | null;
   scoreCp: number | null;
   depth: number;
-  candidates: { san: string; from: string; to: string; promotion?: string; scoreCp: number }[];
+  candidates: { san: string; from: string; to: string; promotion?: string; scoreCp: number; replySan: string | null }[];
 } {
   const depth = 2;
   if (gameResult(game).finished) return { finished: true, bestMove: null, scoreCp: null, depth, candidates: [] };
   const legal = game.moves({ verbose: true });
   if (legal.length === 0) return { finished: true, bestMove: null, scoreCp: null, depth, candidates: [] };
   const perspective = game.turn();
-  const ranked: { san: string; from: string; to: string; promotion?: string; score: number }[] = [];
+  const ranked: { san: string; from: string; to: string; promotion?: string; score: number; replySan: string | null }[] = [];
   for (const move of legal) {
     game.move(move);
-    const score = search(game, depth - 1, -Infinity, Infinity, perspective, 1);
+    // Retain the opponent's strongest reply from the same minimax pass as the
+    // candidate score; do not suggest a reply to an already finished game.
+    const reply = { san: null as string | null };
+    const score = search(game, depth - 1, -Infinity, Infinity, perspective, 1, reply);
     game.undo();
-    ranked.push({ san: move.san, from: move.from, to: move.to, promotion: move.promotion, score });
+    ranked.push({ san: move.san, from: move.from, to: move.to, promotion: move.promotion, score, replySan: reply.san });
   }
   // Reuse the already searched root moves. Sorting is stable, so equal scores
   // keep chess.js legal-move ordering and repeated requests remain predictable.

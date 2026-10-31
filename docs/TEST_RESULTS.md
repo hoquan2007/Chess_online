@@ -1,5 +1,13 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 118: candidate reply and navigable variation
+
+- Added legal reply/determinism/checkmate/immutability unit assertions and a real Worker Chromium regression for exploring and navigating two legal plies.
+- `npm run verify:migrations`: **9/9 pinned local hashes PASS**, no remote query; lint/typecheck PASS; `npm run test -- --run`: **195/195 Vitest PASS** in 28 suites.
+- Restricted Windows build failed at `.next` with `EPERM`; separate authorized `npm run build` **PASS**, 17 generated pages, exit 0.
+- Focused production Chromium Worker **2 PASS**; full `ROOKLINE_E2E_PRODUCTION=1 npm run test:e2e`: **96 local/mock PASS, one real hosted Supabase SKIP**, exit 0, 59.5s. No live three-identity Auth/RLS, Realtime, independent PG clock/race or rated acceptance executed.
+- Preceding `957d596` Linux Actions `41205863679` SUCCESS; new SHA's CI and protected Preview remain to be checked. Preview lacks confirmed server-only Supabase secret.
+
 ## 2026-10-31 — checkpoint 116: ranked candidate moves in Analysis
 
 - `npm run check`: nine migration SQL fingerprint checks, ESLint, strict TypeScript, **194/194 Vitest (28 files)** and Webpack compilation/17 static pages all PASS. The last restricted standalone trace-copy step failed `EPERM` (overall exit 1).
