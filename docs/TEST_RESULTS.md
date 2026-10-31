@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 111: live migration history repair
+
+- Supabase migration history queried directly (nine names, versions and MD5s); all nine MD5s matched the corresponding pinned local SQL. Pre-repair version mapping retained in JSON snapshot.
+- Fingerprint-guarded metadata-only UPDATE returned nine rows. Independent post-query **total 9, local IDs 9, old IDs 0, SQL statement arrays 9**; `list_migrations` confirmed all current local versions. Tenth rated migration remains unapplied.
+- Exact SHA `e0186b8` Linux CI `41199930822` SUCCESS; current-SHA Vercel Preview missing and explicit CLI Preview attempt failed before upload on npm/auth network fetch. Genuine hosted Auth/RLS/Realtime test has not run; last 193 unit and 94 local/mock Chromium tests remain the latest browser evidence.
+- `npm run verify:migrations` independently rechecked after the metadata repair: **9/9 local SQL fingerprints PASS**. Production Chromium run finished with **94 passed, 1 skipped** (real hosted Supabase test requiring opt-in credentials). Native Linux CI and Next production build outcomes above do not substitute for a real HTTPS staging acceptance run.
+
 ## 2026-10-31 — checkpoint 110: private Postgres Realtime acceptance harness
 
 - Enhanced opt-in `e2e/staging-online.spec.ts`: creates three independent signed-in Supabase Realtime subscribers with the browser-safe publishable key, requires `SUBSCRIBED`, observes the committed one-ply update for white and black, and asserts no delivery to the outsider. Explicit cleanup removes all channels. Real hosted test **NOT EXECUTED**; staging case **SKIPPED** without opt-in credentials.

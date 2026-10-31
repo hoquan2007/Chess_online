@@ -1,5 +1,13 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 111 — backed-up Supabase migration reconciliation
+
+- GitHub Actions run `41199930822` succeeded on pushed SHA `e0186b8`; latest listed Vercel Preview remained older SHA `26812565`. Explicit Preview-only CLI attempt failed fetching npm metadata/auth before deployment.
+- Direct Supabase SQL confirmed all nine remote migration SQL MD5s match local sources. Saved the nine original remote version IDs, names and hashes in `docs/agent-state/STAGING_MIGRATION_HISTORY_SNAPSHOT_2026-10-31.json`, verifying 9/9 source hashes and unique IDs.
+- A single guarded UPDATE changed only the nine migration-history `version` values; the database independently returned **9/9 local versions, 0 old versions and 9 intact statement arrays**. No app tables or rated SQL migration changed. Snapshot enables reversal.
+- Post-reconciliation validation: `npm run verify:migrations` **9/9 PASS**; completed production Chromium suite **94 local/mock PASS, one actual hosted Supabase E2E SKIP** (process exit 0). Earlier in this checkpoint: 193 Vitest, lint, strict TS, and separately authorized 17-page Next production build PASS; composite restricted Windows build hit `EPERM`.
+- Remaining S0: confidential Preview-only Supabase server key and genuine three-user HTTPS Auth/RLS/Origin/Host. S1-S6 and all 20 release gates remain OPEN; rated OFF.
+
 ## 2026-10-31, checkpoint 110 — live Realtime acceptance instrumentation
 
 - Extended the opt-in **real Supabase** staging browser test: three separately authenticated publishable-key clients subscribe to the same private game; after two concurrent legal move requests yield exactly one accepted ply, both participants must receive that committed ply through actual Postgres change sockets, while the unrelated third identity must receive no event. Channel subscriptions, timeout/error detection and cleanup are explicit.

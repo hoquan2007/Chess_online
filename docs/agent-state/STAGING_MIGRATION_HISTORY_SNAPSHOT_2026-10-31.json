@@ -1,0 +1,17 @@
+{
+  "project_ref": "tyvczicinpjixmxgjhjn",
+  "captured_date": "2026-10-31",
+  "source": "Supabase read-only supabase_migrations.schema_migrations query",
+  "note": "Each remote migration holds one SQL statement; each md5 matches the local SQL with one final LF removed. This snapshot preserves the original remote version IDs for reversing a metadata-only reconciliation. No database objects or migration SQL were changed while collecting it.",
+  "migrations": [
+    {"remote_version":"20261029164050","local_version":"20261029010000","name":"foundation","sql_md5":"b5d6b3e742ee2534f49d058dcf369524"},
+    {"remote_version":"20261029164242","local_version":"20261029020000","name":"game_rate_limits","sql_md5":"0dfc11a03a976913da862d126866d3ab"},
+    {"remote_version":"20261029164303","local_version":"20261029030000","name":"draw_claims","sql_md5":"f029025cc771bb5be8dc9c30dd034717"},
+    {"remote_version":"20261029164333","local_version":"20261029040000","name":"resignation_clock_authority","sql_md5":"bb9f1f617d07713405b98bf3a20eac2b"},
+    {"remote_version":"20261029164420","local_version":"20261029050000","name":"mating_potential_adjudication","sql_md5":"66d04564039890fd6f1da31c43fefd59"},
+    {"remote_version":"20261029164501","local_version":"20261029060000","name":"locked_move_and_claim_clocks","sql_md5":"47e557c2d9a017b259314fafc310c904"},
+    {"remote_version":"20261029165046","local_version":"20261029070000","name":"profile_privilege_hardening","sql_md5":"70da3a8df910427b4ea0d4e10ebb330e"},
+    {"remote_version":"20261029172009","local_version":"20261029080000","name":"event_trigger_and_fk_indexes","sql_md5":"f0c2f56df7bac6f00f8f84c6d614305f"},
+    {"remote_version":"20261030003110","local_version":"20261029090000","name":"cancel_waiting_challenge","sql_md5":"f349f5fd616880c0800892e106e8399f"}
+  ]
+}
