@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 88 — silent computer Worker timeout regression
+
+- Added RED/GREEN real Chromium coverage for a Worker that never replies: fast-forward 31 seconds, observe the recoverable error, reset, reject the expired worker's stale move and accept the new worker's legal move. `GameWorkspace` now limits outstanding computer requests to 30 seconds and cleans up its timer after any reply/error/reset. **1 focused PASS, 80 full local/mock Chromium PASS / 1 genuine hosted SKIP**.
+- **181 Vitest / 25 files**, ESLint, strict TypeScript and **nine pinned local SQL hashes** passed; the composite build hit Windows `.next` `EPERM`, but a separately authorized Next Webpack build passed **17 pages**. The prior development SHA `d014ba2` passed GitHub Linux Actions run `41162482779`, and its matching protected nonproduction Vercel Preview is READY (`dpl_CBwr35UWtmyHTy4uwhMYtjbzWGSi`); the new changes have not yet been published.
+- **Critical path:** S0 Preview-only Supabase server secret, three genuine HTTPS Auth/RLS/Origin/Host users and backed-up reconciliation of nine migration version IDs; S1 true two-browser Realtime/reconnect; S2 separate PostgreSQL clock/row-lock races; S3 rated atomic settlement/matching; S4 licensed engine and learning; S5 community/tournaments; S6 independent 20-gate release audit. **All 20 gates OPEN, rated OFF**. Commit and push the verified development slice, verify Linux CI and protected Preview at the new SHA; retain `main` and production until release gates pass.
+
 ## 2026-10-31, checkpoint 87 — computer Worker recovery verified locally
 
 - Real Chromium regression was RED before repair when `new Worker()` threw a synchronous `SecurityError`. The computer board now catches constructor and initial-message exceptions and displays a recoverable engine error; starting a new game retries cleanly without stale replies. Added a second `postMessage()` rejection scenario. Focused production Chromium **2/2 PASS**; entire standalone suite **79 local/mock PASS, 1 real hosted Supabase SKIP**.

@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 88: bound a silent computer Worker
+
+- Added an actual browser regression with a Worker that accepts a request but never answers. Before the fix the test was **RED** after 31 seconds of mocked clock time: no engine timeout appeared. The test also sends a delayed result from the expired worker, starts a fresh game and verifies that only the new worker's legal move is played.
+- `GameWorkspace` now stops a silent computer Worker after 30 seconds, presents a recoverable error, and clears its watchdog on replies, errors, shutdown and game reset. RED/GREEN focused production Chromium **1 PASS**; full prebuilt-standalone Chromium suite **80 local/mock PASS, 1 real hosted Supabase SKIP** (81 total, exit 0).
+- `npm run check` passed 9 pinned local migration hashes, ESLint, strict TypeScript and **181 Vitest across 25 files**. The composite command then hit a Windows sandbox `EPERM` creating `.next/types/app/api`; a separately authorized `npm run build` exited **0**, producing **17/17 static pages**. The initial sandboxed browser launch also could not bind localhost; elevated localhost execution completed the regression.
+- Prior development commit `d014ba2` had a **SUCCESS** Linux Actions run `41162482779` and a **READY**, protected nonproduction Preview `dpl_CBwr35UWtmyHTy4uwhMYtjbzWGSi` with matching Git SHA. This checkpoint's new code still requires its own push and remote CI/Preview verification. Only two public Supabase Preview variables were confirmed; no server-only credential or real three-user HTTPS acceptance exists. **All 20 acceptance gates OPEN, rated OFF; production withheld.**
+
 ## 2026-10-31 — checkpoint 87: recover from synchronously blocked computer Workers
 
 - Added Chromium regressions for a browser refusing `new Worker()` with `SecurityError` and a constructed Worker refusing its initial `postMessage()` with `DataCloneError`. Before the fix, the constructor case was **RED**: the expected recoverable engine message never appeared. The first localhost attempt also encountered port 3100 in use; non-escalated alternate-port sessions could not expose the server, so the authoritative run used approved localhost access and port 3193.

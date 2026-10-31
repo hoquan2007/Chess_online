@@ -1213,6 +1213,46 @@ test("computer game recovers when the worker refuses its initial message", async
   expect(pageErrors).toEqual([]);
 });
 
+test("silent computer worker times out and the next game can recover", async ({ page }) => {
+  await page.clock.install();
+  await page.addInitScript(() => {
+    class ControlledWorker {
+      onmessage: ((event: MessageEvent) => void) | null = null;
+      request = 0;
+      constructor() { workers.push(this); }
+      postMessage(data: { request: number }) { this.request = data.request; }
+      terminate() { /* Keep the first stalled request observable. */ }
+      emitMove() {
+        this.onmessage?.(new MessageEvent("message", {
+          data: { request: this.request, move: { from: "e2", to: "e4" } },
+        }));
+      }
+    }
+    const workers: ControlledWorker[] = [];
+    Object.assign(window, { Worker: ControlledWorker, __rooklineTestWorkers: workers });
+  });
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/play/computer");
+  await page.getByRole("button", { name: "Black", exact: true }).click();
+  const count = () => page.evaluate(() =>
+    (window as typeof window & { __rooklineTestWorkers: unknown[] }).__rooklineTestWorkers.length);
+  await expect.poll(count).toBe(1);
+  await page.clock.fastForward(31_000);
+  await expect(page.getByRole("alert").filter({ hasText: "Computer engine timed out" })).toBeVisible();
+  await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(0);
+  await page.getByRole("button", { name: "New game" }).click();
+  await expect.poll(count).toBe(2);
+  await page.evaluate(() => {
+    const workers = (window as typeof window & { __rooklineTestWorkers: { emitMove(): void }[] }).__rooklineTestWorkers;
+    workers[0].emitMove(); // A delayed reply from the expired request must be ignored.
+    workers[1].emitMove();
+  });
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Computer engine timed out" })).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
 test("resigning while the computer thinks resigns the human side", async ({ page }) => {
   await page.addInitScript(() => {
     class WaitingWorker {

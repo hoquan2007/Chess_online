@@ -21,6 +21,7 @@ const controlValues: Record<Control, { base: number; increment: number }> = {
   "5+0": { base: 300, increment: 0 },
   "10+0": { base: 600, increment: 0 },
 };
+const COMPUTER_RESPONSE_TIMEOUT_MS = 30_000;
 
 function clockText(value: number) {
   const safe = Math.max(0, Math.ceil(value));
@@ -243,8 +244,14 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
       queueMicrotask(reportStartFailure);
       return () => { outstandingRequest.current++; };
     }
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    const stopWatchdog = () => {
+      if (watchdog !== undefined) clearTimeout(watchdog);
+      watchdog = undefined;
+    };
     worker.onmessage = (event: MessageEvent<{ request: number; move?: { from: Square; to: Square; promotion?: "q" | "r" | "b" | "n" }; error?: string }>) => {
       if (event.data.request !== request || requestId.current !== request) return;
+      stopWatchdog();
       if (event.data.error) { setBotError(event.data.error); return; }
       const move = event.data.move;
       if (move && completeMove(move.from, move.to, move.promotion, true)) return;
@@ -256,16 +263,25 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     };
     worker.onerror = () => {
       if (requestId.current !== request) return;
+      stopWatchdog();
       setBotError("Computer engine could not start. Reset to retry.");
     };
     try {
       worker.postMessage({ request, pgn: game.pgn(), level });
+      watchdog = setTimeout(() => {
+        if (requestId.current !== request) return;
+        // The local clock and game outcome take precedence over an engine error.
+        if (clockRef.current[engine.current.turn()] <= 0 || gameResult(engine.current).finished) return;
+        worker.terminate();
+        setBotError("Computer engine timed out. Start a new game to retry.");
+      }, COMPUTER_RESPONSE_TIMEOUT_MS);
     } catch {
       // A transferred/disabled Worker may also refuse an initial message.
+      stopWatchdog();
       worker.terminate();
       queueMicrotask(reportStartFailure);
     }
-    return () => { outstandingRequest.current++; worker.terminate(); };
+    return () => { outstandingRequest.current++; stopWatchdog(); worker.terminate(); };
   }, [fen, mode, botTurn, outcome, level, completeMove, botError, gameId, game]);
 
   const trySquare = (square: string) => {
