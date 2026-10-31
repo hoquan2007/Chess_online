@@ -22,6 +22,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const [importedHeaders, setImportedHeaders] = useState<Record<string, string>>({});
   const [fenText, setFenText] = useState("");
   const [message, setMessage] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
   const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [keyboardMove, setKeyboardMove] = useState("");
   const [keyboardError, setKeyboardError] = useState("");
@@ -80,7 +81,27 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
         return;
       }
       const id = params.get("localGame");
-      if (!id) return;
+      if (!id) {
+        // Finished online games and local archive links take precedence over shared FENs.
+        if (id !== null) return;
+        const sharedFen = params.get("fen");
+        if (sharedFen === null) return;
+        try {
+          if (sharedFen.length > 120) throw new Error("FEN too long");
+          const shared = new Chess(sharedFen);
+          if (!mounted || userEdited.current) return;
+          setAnalysis({ start: shared.fen(), san: [], index: 0 });
+          setPgn("");
+          setImportedPgn(null);
+          setImportedHeaders({});
+          setSelected(null);
+          setPromotion(null);
+          setMessage("Shared position loaded.");
+        } catch {
+          if (mounted && !userEdited.current) setMessage("Invalid shared position link.");
+        }
+        return;
+      }
       try {
         if (!id.startsWith("local-") || id.length > 80) throw new Error("Invalid archive id");
         const raw = localStorage.getItem("rookline-history") || "[]";
@@ -313,6 +334,18 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     }
   };
 
+  const sharePosition = async () => {
+    const url = new URL("/analysis", window.location.origin);
+    url.searchParams.set("fen", boardFen);
+    setShareUrl(url.toString());
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      setMessage("Shareable position link copied to clipboard.");
+    } catch {
+      setMessage("Automatic link copy failed. Select the share link field to copy it manually.");
+    }
+  };
+
   const lastMove = board.history({ verbose: true }).at(-1);
   const insight = positionInsight(board);
   const styles: Record<string, React.CSSProperties> = {};
@@ -384,6 +417,8 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       <button type="button" className="btn ghost" onClick={loadFen}>Load FEN</button>
       <label className="label">Current FEN<input className="field" value={boardFen} readOnly onFocus={(event) => event.currentTarget.select()} /></label>
       <button type="button" className="btn ghost" onClick={() => void copyFen()}>Copy FEN</button>
+      <button type="button" className="btn ghost" onClick={() => void sharePosition()}>Share position</button>
+      {shareUrl && <label className="label">Share link<input className="field" value={shareUrl} readOnly onFocus={(event) => event.currentTarget.select()} /></label>}
       <div className="moves" aria-label="Analysis moves">
         {moveRows.length === 0 ? <p className="panel-sub">Move a piece to start a variation.</p> : moveRows.map((row) => <div className="move-row" key={row.number}>
           <span>{row.number}{row.white ? "." : "..."}</span>

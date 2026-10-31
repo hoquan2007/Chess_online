@@ -438,6 +438,37 @@ test("analysis shares the currently selected FEN rather than the end of the impo
   await expect(page.getByRole("textbox", { name: "Current FEN" })).toHaveValue(new Chess().fen());
 });
 
+test("analysis opens a shared selected position and safely rejects invalid shared FEN", async ({ page }) => {
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/analysis");
+  await page.getByRole("textbox", { name: "PGN game" }).fill("1. e4 e5 2. Nf3");
+  await page.getByRole("button", { name: "Import PGN" }).click();
+  await page.getByRole("button", { name: "First move" }).click();
+  await page.getByRole("button", { name: "Next move" }).click();
+  const expected = new Chess();
+  expected.move("e4");
+  await page.getByRole("button", { name: "Share position" }).click();
+  const link = await page.evaluate(() => navigator.clipboard.readText());
+  const parsed = new URL(link);
+  expect(parsed.origin).toBe(new URL(page.url()).origin);
+  expect(parsed.pathname).toBe("/analysis");
+  expect(parsed.searchParams.get("fen")).toBe(expected.fen());
+  await expect(page.getByRole("textbox", { name: "Share link" })).toHaveValue(link);
+
+  const destination = await page.context().newPage();
+  await destination.goto(link);
+  await expect(destination.getByRole("status").filter({ hasText: "Shared position loaded." })).toBeVisible();
+  await expect(destination.getByRole("textbox", { name: "Current FEN" })).toHaveValue(expected.fen());
+  await expect(destination.getByRole("textbox", { name: "PGN game" })).toBeEmpty();
+  await destination.goto("/analysis?fen=not-a-fen");
+  await expect(destination.getByRole("status").filter({ hasText: "Invalid shared position link." })).toBeVisible();
+  await expect(destination.getByRole("textbox", { name: "Current FEN" })).toHaveValue(new Chess().fen());
+  await destination.goto(`/analysis?fen=${"x".repeat(121)}`);
+  await expect(destination.getByRole("status").filter({ hasText: "Invalid shared position link." })).toBeVisible();
+  await expect(destination.getByRole("textbox", { name: "Current FEN" })).toHaveValue(new Chess().fen());
+  await destination.close();
+});
+
 test("analysis displays and navigates move numbers from a black-to-move setup PGN", async ({ page }) => {
   await page.goto("/analysis");
   await page.getByRole("textbox", { name: "PGN game" }).fill('[SetUp "1"]\n[FEN "4k3/8/8/8/8/8/8/4K3 b - - 0 8"]\n\n8... Kd7 9. Ke2 Ke6 10. Ke3 *');

@@ -1,5 +1,14 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 125 — share an Analysis position via URL
+
+- CH-12: Added Share position control that builds a same-origin `/analysis?fen=` link from the **currently selected** ply and copies it; if clipboard is denied, a readonly, selectable link field remains available for manual sharing.
+- On direct visit, chess.js verifies a bounded FEN, starts a fresh analysis at that position, drops stale PGN/header metadata and explains invalid links. Existing online/local archive links retain precedence.
+- Focused real production Chromium regression **PASS**; full Chromium **98 local/mock PASS, 2 conditional SKIP**. The skipped public-auth test was independently passed with dummy public-only configuration at the previous checkpoint; the actual Supabase three-identity hosted test has not run.
+- 9/9 pinned local migration hashes, ESLint, strict TypeScript, **195/195 Vitest (28 suites)** PASS. Windows sandbox `npm run check` failed only on build packaging with `.next` `EPERM`; separately elevated `npm run build` exited **0**, 17 static pages. No remote SQL check this turn.
+- Previous `3b74011` Linux Actions run `41210454005` SUCCESS, nonproduction protected staging `dpl_7khbGzvAFHZT2PKqykeN3X7xJEa5` READY from same Git SHA; direct HTTPS reachability could not be verified because DNS failed before the HTTP request. Current slice requires new exact-SHA checks.
+- **IN_PROGRESS:** S0 private Preview Supabase server key and real 3-user HTTPS Auth/RLS/Origin/Host; S1 genuine private Realtime/reconnect; S2 independent PG contention/clock; S3 rated settlement; S4 full engine/hosted learning/profiles; S5 community/tournaments; S6 independent all-20 acceptance. **20 OPEN, rated OFF.**
+
 ## 2026-10-31, checkpoint 121 — navigated FEN sharing and friend login destination
 
 - Analysis displays the FEN of the currently selected move and lets users copy it with clipboard failure guidance. A Chromium regression imports a three-ply PGN, rewinds to the first move, reads/copies the exact FEN, then verifies Reset restores starting FEN.

@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 125: selected FEN deep link
+
+- New Chromium E2E imports `1. e4 e5 2. Nf3`, navigates to e4, copies `/analysis?fen=<e4 FEN>`, checks same-origin URL and readonly fallback field, opens a new tab and verifies exact FEN, then rejects malformed and 121-character FEN while keeping a standard board. **Focused 1/1 PASS** on compiled standalone build.
+- **Local static/unit:** 9/9 pinned migration SQL source hashes (no remote query), ESLint PASS, strict TS PASS, **195/195 Vitest PASS in 28 files**.
+- `npm run check` exited 1 during Next build on Windows sandbox `EPERM mkdir .next/static/chunks/app/api/games`; a separate authorized `npm run build` succeeded with 17 static pages and full standalone server. `ROOKLINE_E2E_PRODUCTION=1 npx playwright test --workers=1` in authorized environment: **98 PASS, 2 SKIP**, exit 0, 100 discovered. One skipped suite requires public-auth opt-in; the second requires real hosted Supabase identities/config. No real hosted Auth/RLS/Realtime/clock or rated acceptance was run.
+- Prior source SHA `3b74011` GitHub Actions `41210454005` SUCCESS; staging deployment `dpl_7khbGzvAFHZT2PKqykeN3X7xJEa5` READY, live HTTP smoke unverified. New SHA checks pending publication.
+
 ## 2026-10-31 — checkpoint 121: current-position FEN and friend authentication routing
 
 - Analysis currently navigated FEN real Chromium regression **PASS**. Dummy public-only Supabase local Chromium checks of friend and online return links **PASS**. The latter runs only with `ROOKLINE_E2E_MOCK_PUBLIC_AUTH=1` and isolated nonsecret public test variables.
