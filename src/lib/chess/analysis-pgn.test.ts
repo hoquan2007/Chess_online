@@ -1,8 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { parseAnalysisPgn, maxAnalysisPgnBytes, exportAnalysisVariation } from "./analysis-pgn";
+import { analysisMoveRows, parseAnalysisPgn, maxAnalysisPgnBytes, exportAnalysisVariation } from "./analysis-pgn";
 
 describe("analysis PGN file input", () => {
+  it("numbers and groups SAN using the actual starting side and fullmove", () => {
+    const standard = new Chess().fen();
+    expect(analysisMoveRows(standard, ["e4", "e5", "Nf3"])).toEqual([
+      { number: 1, white: { san: "e4", ply: 1 }, black: { san: "e5", ply: 2 } },
+      { number: 2, white: { san: "Nf3", ply: 3 } },
+    ]);
+    const blackStart = "4k3/8/8/8/8/8/8/4K3 b - - 0 8";
+    expect(analysisMoveRows(blackStart, ["Kd7", "Ke2", "Ke6", "Ke3"])).toEqual([
+      { number: 8, black: { san: "Kd7", ply: 1 } },
+      { number: 9, white: { san: "Ke2", ply: 2 }, black: { san: "Ke6", ply: 3 } },
+      { number: 10, white: { san: "Ke3", ply: 4 } },
+    ]);
+    expect(analysisMoveRows(blackStart, [])).toEqual([]);
+    expect(analysisMoveRows("4k3/8/8/8/8/8/8/4K3 w - - 0 42", ["Ke2"])).toEqual([
+      { number: 42, white: { san: "Ke2", ply: 1 } },
+    ]);
+  });
   it("imports standard and setup positions with move history and headers", () => {
     const game = parseAnalysisPgn("\uFEFF[Event \"Practice\"]\n\n1. e4 e5 2. Nf3 *");
     expect(game.san).toEqual(["e4", "e5", "Nf3"]);

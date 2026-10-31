@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 114: Analysis FEN-relative move labels
+
+- `npm run check`: migration-source parity **9/9**, ESLint PASS, TypeScript PASS, **194 Vitest tests PASS**, Webpack compile/types/17 static pages PASS; initial standalone file copy failed with Windows `EPERM` in the restricted sandbox (exit 1).
+- Separate native authorized `npm run build`: **PASS**, all 17 static pages and standalone bundle (exit 0).
+- `ROOKLINE_E2E_PRODUCTION=1 npx playwright test --workers=1`: **95 local/mock production Chromium PASS**, **one actual hosted Supabase E2E SKIP**, exit 0. New custom-FEN PGN move-label + navigation case PASS. No hosted two-client acceptance was executed.
+- Vercel Git deployment context confirms that `chessonline` is absent from the team's Git-linked project list. There is no verified exact-SHA Preview for this change yet.
+
 ## 2026-10-31 — checkpoint 111: live migration history repair
 
 - Supabase migration history queried directly (nine names, versions and MD5s); all nine MD5s matched the corresponding pinned local SQL. Pre-repair version mapping retained in JSON snapshot.

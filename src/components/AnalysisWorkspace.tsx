@@ -6,7 +6,7 @@ import { Chessboard } from "react-chessboard";
 import { ArrowLeft, ArrowRight, Download, RotateCcw } from "lucide-react";
 import { applyLegalMove, parseKeyboardMove, selectPromotion } from "@/lib/chess/rules";
 import { positionInsight } from "@/lib/chess/insights";
-import { maxAnalysisPgnBytes, parseAnalysisPgn, exportAnalysisVariation } from "@/lib/chess/analysis-pgn";
+import { analysisMoveRows, maxAnalysisPgnBytes, parseAnalysisPgn, exportAnalysisVariation } from "@/lib/chess/analysis-pgn";
 import type { analyzeBotPosition } from "@/lib/chess/bot";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { completedGameAnalysis, validUuid } from "@/lib/online/games";
@@ -109,6 +109,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     for (const san of analysis.san.slice(0, analysis.index)) reconstructed.move(san);
     return reconstructed;
   }, [analysis]);
+  const moveRows = useMemo(() => analysisMoveRows(analysis.start, analysis.san), [analysis.start, analysis.san]);
 
   const boardFen = board.fen();
   // Equal FENs can have different repetition histories and therefore outcomes.
@@ -335,7 +336,12 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       <label className="label">FEN position<input className="field" value={fenText} onChange={(event) => { userEdited.current = true; pendingPgnFile.current++; setFenText(event.target.value); }} placeholder="Paste FEN here" /></label>
       <button type="button" className="btn ghost" onClick={loadFen}>Load FEN</button>
       <div className="moves" aria-label="Analysis moves">
-        {analysis.san.length === 0 ? <p className="panel-sub">Move a piece to start a variation.</p> : Array.from({ length: Math.ceil(analysis.san.length / 2) }, (_, i) => <div className="move-row" key={i}><span>{i + 1}.</span>{[0, 1].map((offset) => <button type="button" key={offset} disabled={!analysis.san[i * 2 + offset]} onClick={() => seek(i * 2 + offset + 1)} style={{ textAlign: "left", textDecoration: analysis.index === i * 2 + offset + 1 ? "underline" : "none" }}>{analysis.san[i * 2 + offset] || ""}</button>)}</div>)}
+        {moveRows.length === 0 ? <p className="panel-sub">Move a piece to start a variation.</p> : moveRows.map((row) => <div className="move-row" key={row.number}>
+          <span>{row.number}{row.white ? "." : "..."}</span>
+          {([row.white, row.black] as const).map((move, side) => move
+            ? <button type="button" key={side} onClick={() => seek(move.ply)} style={{ textAlign: "left", textDecoration: analysis.index === move.ply ? "underline" : "none" }}>{move.san}</button>
+            : <span key={side} aria-hidden="true" />)}
+        </div>)}
       </div>
       <form className="keyboard-move-form" onSubmit={submitKeyboardMove}>
         <label className="panel-sub" htmlFor="analysis-keyboard-move">Keyboard move · e2e4, Nf3, or O-O</label>

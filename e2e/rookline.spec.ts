@@ -422,6 +422,22 @@ test("analysis imports PGN and navigates positions", async ({ page }) => {
   expect(savedPgn).toContain("Nf3 Nc6");
 });
 
+test("analysis displays and navigates move numbers from a black-to-move setup PGN", async ({ page }) => {
+  await page.goto("/analysis");
+  await page.getByRole("textbox", { name: "PGN game" }).fill('[SetUp "1"]\n[FEN "4k3/8/8/8/8/8/8/4K3 b - - 0 8"]\n\n8... Kd7 9. Ke2 Ke6 10. Ke3 *');
+  await page.getByRole("button", { name: "Import PGN" }).click();
+  await expect(page.getByText("4 plies imported successfully.")).toBeVisible();
+  const rows = page.getByLabel("Analysis moves").locator(".move-row");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText("8...Kd7");
+  await expect(rows.nth(1)).toContainText("9.Ke2Ke6");
+  await expect(rows.nth(2)).toContainText("10.Ke3");
+  await rows.nth(0).getByRole("button", { name: "Kd7" }).click();
+  await expect(page.getByText("1 / 4")).toBeVisible();
+  await rows.nth(1).getByRole("button", { name: "Ke6" }).click();
+  await expect(page.getByText("3 / 4")).toBeVisible();
+});
+
 test("analysis imports a portable PGN file, preserves headers, and rejects bad uploads without losing the board", async ({ page }) => {
   await page.goto("/analysis");
   const input = page.getByLabel("Choose PGN file (up to 32 KB)");

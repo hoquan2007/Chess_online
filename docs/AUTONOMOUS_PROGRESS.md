@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 114 — Analysis move numbering from arbitrary FEN
+
+- Corrected Analysis history for imported/setup positions starting with Black to move or with a non-1 fullmove number. The move ledger now groups SAN by the FEN's actual turn and fullmove counter, keeps White/Black columns aligned, and navigates to the exact underlying ply. Standard starting positions retain their normal labels.
+- Added a focused unit case for standard, Black-at-move-8, White-at-move-42 and empty histories; real production Chromium imports `8... Kd7 9. Ke2 Ke6 10. Ke3`, checks correct `8...`/`9.`/`10.` labels and navigates by click.
+- Evidence: SQL migration snapshot/source parity **9/9**, lint PASS, strict TypeScript PASS, **194/194 Vitest**, separately authorized Next Webpack production build **17/17 static pages**, **95/95 local/mock production Chromium PASS** with **one real hosted Supabase E2E SKIP**. The composite build first encountered Windows sandbox `EPERM` while copying `.next/standalone`; separately approved full build succeeded, exit 0.
+- Git-linked project audit: `chessonline` does not appear among Vercel's linked Git projects; the existing Preview remains for an older commit. Current SHA needs Linux CI after push and a safely scoped exact-SHA Preview. The dedicated staging server-only Supabase secret is still unverified in Preview; genuine HTTPS three-user Auth/RLS/Realtime, database clock/race tests, rated settlement, engine/learning and community remain open. **20/20 release gates OPEN, rated OFF; no production or main release.**
+
 ## 2026-10-31, checkpoint 111 — backed-up Supabase migration reconciliation
 
 - GitHub Actions run `41199930822` succeeded on pushed SHA `e0186b8`; latest listed Vercel Preview remained older SHA `26812565`. Explicit Preview-only CLI attempt failed fetching npm metadata/auth before deployment.
