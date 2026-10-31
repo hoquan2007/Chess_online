@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 110: private Postgres Realtime acceptance harness
+
+- Enhanced opt-in `e2e/staging-online.spec.ts`: creates three independent signed-in Supabase Realtime subscribers with the browser-safe publishable key, requires `SUBSCRIBED`, observes the committed one-ply update for white and black, and asserts no delivery to the outsider. Explicit cleanup removes all channels. Real hosted test **NOT EXECUTED**; staging case **SKIPPED** without opt-in credentials.
+- `npm run verify:migrations` **PASS** (nine pinned source SQL fingerprints, no current remote query); `npm run lint` **PASS**; `npm run typecheck` **PASS**; `npm run test` **193/193 PASS (28 files)**. `npx playwright test e2e/staging-online.spec.ts --list` identifies one opt-in test.
+- Composite `npm run check` build step **FAILED** due Windows sandbox `EPERM` at `.next/server/app/play.segments/play`. Re-execution of `npm run build` with native authorized access **PASS**, 17 prerendered pages. Initial restricted Playwright attempt stalled starting localhost server and was stopped; native authorized `ROOKLINE_E2E_PRODUCTION=1 npx playwright test --workers=1` **PASS, 94 local/mock Chromium / one hosted SKIP**, exit 0.
+- These results validate local production build and regression behavior, not hosted Auth/JWT/RLS, private realtime transport, Postgres contention or rated settlement. S0 secure Preview secret and backed-up nine migration-version-ID reconciliation remain prerequisites.
+
 ## 2026-10-31 — checkpoint 109: position-aware SAN keyboard entry
 
 - Before fix, new parser unit test failed because `parseKeyboardMove` did not exist; after fix, 193/193 Vitest across 28 files PASS. Test covers SAN/coordinate, illegal notation, immutable FEN, castling and underpromotion.

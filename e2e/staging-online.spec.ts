@@ -13,7 +13,7 @@ const appOrigin = enabled ? resolveStagingAppOrigin(process.env.ROOKLINE_STAGING
 
 test("two real Supabase users play an authoritative private game", async ({ browser }) => {
   test.skip(!enabled, "Opt in with ROOKLINE_STAGING_E2E=1 and dedicated staging credentials.");
-  test.setTimeout(180_000);
+  test.setTimeout(220_000);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -26,6 +26,7 @@ test("two real Supabase users play an authoritative private game", async ({ brow
   const createdUsers: string[] = [];
   const createdGames: string[] = [];
   const contexts: BrowserContext[] = [];
+  const realtimeClients: Array<{ removeAllChannels: () => Promise<unknown> }> = [];
   const nonce = randomBytes(9).toString("hex");
   const password = randomBytes(25).toString("base64url") + "A1!";
   const emails = ["white", "black", "outsider"].map((role) => `rookline-${nonce}-${role}@example.com`);
@@ -65,6 +66,35 @@ test("two real Supabase users play an authoritative private game", async ({ brow
 
   async function move(context: BrowserContext, gameId: string, from: string, to: string, expectedPly: number, requestId = randomUUID()) {
     return postGame(context, `/api/games/${gameId}/move`, { from, to, expectedPly, requestId });
+  }
+
+  // This deliberately observes real Postgres change delivery, independently
+  // from GameRoom's three-second polling fallback. An unrelated account must
+  // never receive a private game's change event through the public key.
+  async function observeGameChanges(email: string, role: string, gameId: string, onChange: (ply: number | null) => void) {
+    const client = createClient(url!, publishable!, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    realtimeClients.push(client);
+    const { error } = await client.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(`Realtime ${role} authentication failed: ${error.message}`);
+    const channel = client.channel(`rookline-staging-${nonce}-${role}`).on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${gameId}`,
+    }, (payload) => {
+      // Record even incomplete payloads: any callback delivered to the third
+      // identity is a privacy failure, regardless of visible columns.
+      onChange(typeof payload.new.ply === "number" ? payload.new.ply : null);
+    });
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error(`Realtime ${role} subscription timed out`)), 15_000);
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED") { clearTimeout(timeout); resolve(); }
+        else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          clearTimeout(timeout);
+          reject(new Error(`Realtime ${role} subscription: ${status}`));
+        }
+      });
+    });
   }
 
   try {
@@ -286,12 +316,28 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     expect((await postGame(blackContext, `/api/games/${raceId}/join`)).status()).toBe(200);
     await Promise.all([whitePage.goto(`/game/${raceId}`), blackPage.goto(`/game/${raceId}`)]);
     await expect(blackPage.getByText("Your game room")).toBeVisible();
+    const delivered: Record<"white" | "black" | "outsider", Array<number | null>> = {
+      white: [], black: [], outsider: [],
+    };
+    await Promise.all([
+      observeGameChanges(emails[0], "white", raceId, (ply) => delivered.white.push(ply)),
+      observeGameChanges(emails[1], "black", raceId, (ply) => delivered.black.push(ply)),
+      observeGameChanges(emails[2], "outsider", raceId, (ply) => delivered.outsider.push(ply)),
+    ]);
     const [raceA, raceB] = await Promise.all([
       move(whiteContext, raceId, "e2", "e4", 0),
       move(whiteContext, raceId, "d2", "d4", 0),
     ]);
     expect([raceA.status(), raceB.status()].sort()).toEqual([200, 409]);
     expect((await gameState(whiteContext, raceId)).ply).toBe(1);
+
+    // A passing poll of the UI alone is insufficient to accept Realtime.
+    // Both participants must receive the same committed ply through sockets.
+    await expect.poll(() => delivered.white.includes(1) && delivered.black.includes(1), {
+      timeout: 15_000,
+    }).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    expect(delivered.outsider).toEqual([]);
 
     // The opponent must converge through live hints or polling without a reload.
     await expect.poll(async () => (
@@ -319,6 +365,7 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     expect(whiteId).not.toBe(blackId);
   } finally {
     await Promise.allSettled(contexts.map((context) => context.close()));
+    await Promise.allSettled(realtimeClients.map((client) => client.removeAllChannels()));
     // Delete dependent game rows before users (games references auth.users).
     const errors: string[] = [];
     for (const gameId of createdGames) {

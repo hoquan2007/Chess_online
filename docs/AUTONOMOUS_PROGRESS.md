@@ -1,5 +1,13 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 110 — live Realtime acceptance instrumentation
+
+- Extended the opt-in **real Supabase** staging browser test: three separately authenticated publishable-key clients subscribe to the same private game; after two concurrent legal move requests yield exactly one accepted ply, both participants must receive that committed ply through actual Postgres change sockets, while the unrelated third identity must receive no event. Channel subscriptions, timeout/error detection and cleanup are explicit.
+- This is **test coverage awaiting hosted execution**, not a passing Realtime acceptance result. Staging still lacks a confidential Preview server-only Supabase credential and approved, backed-up migration-version reconciliation; do not enable the opt-in test against a mock or count the SKIP as a pass.
+- Verified SQL snapshot hashes **9/9**, lint, strict TypeScript and **193/193 Vitest** in the composite check. The sandboxed Next build failed with Windows `EPERM` at `.next/server/app/play.segments/play`; independently authorized `npm run build` exited **0**, producing all 17 static pages. Authorized production Chromium: **94 PASS / 1 actual hosted staging SKIP** (exit 0). An initial restricted browser-server launch hung without listening and was stopped.
+- Checkpoint 109 development SHA `7e9bfd9cdf46a6cfbcd0e0649ebe9ac95ce5d0d7` was pushed and independently passed Linux Actions `41197431747`; the previous protected Preview `dpl_32fNgF6dVJGE6qQEc9ZdfbzRW1kV` READY applies to an earlier SHA. This checkpoint's new SHA needs independent CI/Preview verification after publish.
+- **S0 BLOCKED_EXTERNAL; S1-S6 pending; all 20 release gates OPEN; rated OFF.** Neither merge to `main` nor production deployment is permitted at this readiness level.
+
 ## 2026-10-31, checkpoint 109 — SAN keyboard moves
 
 - Added position-aware, read-only SAN conversion for local/computer, Analysis and online room keyboard entry, retaining coordinate/UCI notation; accepts legal moves such as `Nf3`, `O-O`, `0-0-0` and promotions with SAN check suffix. Illegal/out-of-turn SAN remains rejected by chess.js.
