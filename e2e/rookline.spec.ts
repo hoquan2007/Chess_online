@@ -407,6 +407,61 @@ test("analysis imports PGN and navigates positions", async ({ page }) => {
   expect(savedPgn).toContain("Nf3 Nc6");
 });
 
+test("analysis imports a portable PGN file, preserves headers, and rejects bad uploads without losing the board", async ({ page }) => {
+  await page.goto("/analysis");
+  const input = page.getByLabel("Choose PGN file (up to 32 KB)");
+  await input.setInputFiles({
+    name: "practice.pgn", mimeType: "application/x-chess-pgn",
+    buffer: Buffer.from('[Event "Over the board"]\n\n1. d4 d5 2. c4 *'),
+  });
+  await expect(page.getByRole("status").filter({ hasText: "3 plies imported successfully." })).toBeVisible();
+  await expect(page.getByLabel("Analysis moves").getByText("c4")).toBeVisible();
+  const saved = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PGN" }).click();
+  const parsed = new Chess();
+  parsed.loadPgn(await readFile(await (await saved).path(), "utf8"));
+  expect(parsed.getHeaders().Event).toBe("Over the board");
+  expect(parsed.history()).toEqual(["d4", "d5", "c4"]);
+
+  await input.setInputFiles({ name: "broken.pgn", mimeType: "text/plain", buffer: Buffer.from("1. e4 e5 2. illegal") });
+  await expect(page.getByRole("status").filter({ hasText: "Invalid PGN." })).toBeVisible();
+  await expect(page.getByText("3 / 3")).toBeVisible();
+  await expect(page.getByLabel("Analysis moves").getByText("c4")).toBeVisible();
+
+  await input.setInputFiles({ name: "huge.pgn", mimeType: "text/plain", buffer: Buffer.alloc(33 * 1024, 32) });
+  await expect(page.getByRole("status").filter({ hasText: "PGN is larger than 32 KB" })).toBeVisible();
+  await expect(page.getByLabel("Analysis moves").getByText("c4")).toBeVisible();
+
+  // Choosing the same file again works after a previous failed import.
+  await input.setInputFiles({ name: "practice.pgn", mimeType: "text/plain", buffer: Buffer.from("1. e4 *") });
+  await expect(page.getByRole("status").filter({ hasText: "1 ply imported successfully." })).toBeVisible();
+  await expect(page.getByLabel("Analysis moves").getByText("e4")).toBeVisible();
+});
+
+test("analysis ignores a delayed PGN file read after the player imports newer move text", async ({ page }) => {
+  await page.addInitScript(() => {
+    const originalText = File.prototype.text;
+    File.prototype.text = function () {
+      if (this.name !== "slow.pgn") return originalText.call(this);
+      return new Promise<string>((resolve) => {
+        (window as Window & { releaseSlowPgn?: () => void }).releaseSlowPgn = () => resolve("1. d4 d5 *");
+      });
+    };
+  });
+  await page.goto("/analysis");
+  await page.getByLabel("Choose PGN file (up to 32 KB)").setInputFiles({
+    name: "slow.pgn", mimeType: "application/x-chess-pgn", buffer: Buffer.from("1. d4 d5 *"),
+  });
+  await expect.poll(() => page.evaluate(() => typeof (window as Window & { releaseSlowPgn?: () => void }).releaseSlowPgn)).toBe("function");
+  await page.getByLabel("PGN game").fill("1. e4 e5 2. Nf3 *");
+  await page.getByRole("button", { name: "Import PGN" }).click();
+  await expect(page.getByLabel("Analysis moves").getByText("Nf3")).toBeVisible();
+  await page.evaluate(() => (window as Window & { releaseSlowPgn?: () => void }).releaseSlowPgn?.());
+  await expect(page.getByLabel("Analysis moves").getByText("Nf3")).toBeVisible();
+  await expect(page.getByLabel("Analysis moves").getByText("d4")).toHaveCount(0);
+  await expect(page.getByLabel("PGN game")).toHaveValue("1. e4 e5 2. Nf3 *");
+});
+
 test("analysis position snapshot follows move navigation and detects mate", async ({ page }) => {
   await page.goto("/analysis");
   const insight = page.getByRole("region", { name: "Position insight" });

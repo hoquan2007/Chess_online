@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 105 — portable Analysis PGN file import
+
+- Added 32-KiB UTF-8 bounded `.pgn` upload alongside paste, parsing via chess.js with headers, BOM and custom starting FEN; validation preserves the current board on invalid/oversized files. Same-file retries work; late file reads cannot overwrite newer manual PGN, FEN, navigation, moves or resets. Fixed singular `1 ply` status.
+- Unit tests validate syntax, headers/setup and byte limits. Real Chromium tests cover file round-trip, preserved headers, invalid/oversize inputs, retry and the controlled slow-read race.
+- Native `npm run check` **PASS**: 9/9 pinned local SQL source hashes, ESLint, TypeScript, 191 unit cases / 28 files, 17/17 production static pages. Full pre-final-text-fix standalone Chromium **89 local/mock PASS / one genuine hosted SKIP**; two impacted scenarios rerun after final change **2/2 PASS**. Initial restricted build hit Windows `EPERM`; approved native check passed.
+- CH-12 remains PARTIAL; release needs real S0 three-identity HTTPS hosted Auth/RLS and migration reconciliation, followed by S1-S6. All 20 gates OPEN, rated OFF. Development SHA publish/CI and protected Preview follow.
+
 ## 2026-10-31, checkpoint 104 — portable opening and lesson mastery
 
 - Added typed, validated, capped study backup format (`rookline-study`, v1) and per-page export/import buttons. Both opening and lesson completions move between devices; import unions only known line/side IDs with the latest in-memory and storage state, keeping progress earned during async file reads. Unwritable localStorage leaves imported mastery available in memory with a warning.

@@ -6,6 +6,7 @@ import { Chessboard } from "react-chessboard";
 import { ArrowLeft, ArrowRight, Download, RotateCcw } from "lucide-react";
 import { applyLegalMove, parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
 import { positionInsight } from "@/lib/chess/insights";
+import { maxAnalysisPgnBytes, parseAnalysisPgn } from "@/lib/chess/analysis-pgn";
 import type { analyzeBotPosition } from "@/lib/chess/bot";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { completedGameAnalysis, validUuid } from "@/lib/online/games";
@@ -31,6 +32,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const analysisTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const analysisRequest = useRef(0);
   const userEdited = useRef(false);
+  const pendingPgnFile = useRef(0);
 
   useEffect(() => {
     let mounted = true;
@@ -167,27 +169,52 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
 
   const seek = (step: number) => {
     userEdited.current = true;
+    pendingPgnFile.current++;
     setAnalysis((prev) => ({ ...prev, index: Math.max(0, Math.min(step, prev.san.length)) }));
     setSelected(null);
     setPromotion(null);
   };
 
-  const importPgn = () => {
-    userEdited.current = true;
+  const applyPgn = (source: string) => {
     try {
-      const parsed = new Chess();
-      parsed.loadPgn(pgn);
-      const history = parsed.history();
-      setAnalysis({ start: parsed.header().FEN || new Chess().fen(), san: history, index: history.length });
-      setImportedPgn(parsed.pgn());
+      const parsed = parseAnalysisPgn(source);
+      setAnalysis({ start: parsed.start, san: parsed.san, index: parsed.san.length });
+      setImportedPgn(parsed.pgn);
       setSelected(null);
       setPromotion(null);
-      setMessage(`${history.length} plies imported successfully.`);
-    } catch { setMessage("Invalid PGN. Check the move text and try again."); }
+      setMessage(`${parsed.san.length} ${parsed.san.length === 1 ? "ply" : "plies"} imported successfully.`);
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not read PGN.");
+      return false;
+    }
+  };
+
+  const importPgn = () => {
+    userEdited.current = true;
+    pendingPgnFile.current++;
+    applyPgn(pgn);
+  };
+
+  const importPgnFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+    userEdited.current = true;
+    const request = ++pendingPgnFile.current;
+    try {
+      if (file.size > maxAnalysisPgnBytes) throw new Error("PGN is larger than 32 KB. Choose a shorter game.");
+      const text = await file.text();
+      if (request !== pendingPgnFile.current) return;
+      if (applyPgn(text)) setPgn(text);
+    } catch (error) {
+      if (request === pendingPgnFile.current) setMessage(error instanceof Error ? error.message : "Could not read PGN file.");
+    }
   };
 
   const loadFen = () => {
     userEdited.current = true;
+    pendingPgnFile.current++;
     try {
       const parsed = new Chess(fenText.trim());
       setAnalysis({ start: parsed.fen(), san: [], index: 0 });
@@ -200,6 +227,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
 
   const makeMove = (from: Square, to: Square, piece?: "q" | "r" | "b" | "n") => {
     userEdited.current = true;
+    pendingPgnFile.current++;
     if (!piece && selectPromotion(board, from, to)) {
       setPromotion({ from, to });
       setSelected(null);
@@ -296,9 +324,10 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
               : hint.result.scoreCp === 0 ? "Even" : `${(hint.result.scoreCp ?? 0) > 0 ? "White" : "Black"} +${(Math.abs(hint.result.scoreCp ?? 0) / 100).toFixed(2)}`} (depth {hint.result.depth} plies).</p>)}
         </div>
       </section>
-      <label className="label">PGN game<textarea className="field" rows={4} value={pgn} onChange={(event) => { userEdited.current = true; setPgn(event.target.value); }} placeholder="1. e4 e5 2. Nf3 Nc6" /></label>
+      <label className="label">PGN game<textarea className="field" rows={4} value={pgn} onChange={(event) => { userEdited.current = true; pendingPgnFile.current++; setPgn(event.target.value); }} placeholder="1. e4 e5 2. Nf3 Nc6" /></label>
       <button type="button" className="btn primary" onClick={importPgn}>Import PGN</button>
-      <label className="label">FEN position<input className="field" value={fenText} onChange={(event) => { userEdited.current = true; setFenText(event.target.value); }} placeholder="Paste FEN here" /></label>
+      <label className="label">Choose PGN file (up to 32 KB)<input className="field" type="file" accept=".pgn,application/x-chess-pgn,text/plain" onChange={(event) => { void importPgnFile(event); }} /></label>
+      <label className="label">FEN position<input className="field" value={fenText} onChange={(event) => { userEdited.current = true; pendingPgnFile.current++; setFenText(event.target.value); }} placeholder="Paste FEN here" /></label>
       <button type="button" className="btn ghost" onClick={loadFen}>Load FEN</button>
       <div className="moves" aria-label="Analysis moves">
         {analysis.san.length === 0 ? <p className="panel-sub">Move a piece to start a variation.</p> : Array.from({ length: Math.ceil(analysis.san.length / 2) }, (_, i) => <div className="move-row" key={i}><span>{i + 1}.</span>{[0, 1].map((offset) => <button type="button" key={offset} disabled={!analysis.san[i * 2 + offset]} onClick={() => seek(i * 2 + offset + 1)} style={{ textAlign: "left", textDecoration: analysis.index === i * 2 + offset + 1 ? "underline" : "none" }}>{analysis.san[i * 2 + offset] || ""}</button>)}</div>)}
@@ -309,7 +338,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
         {keyboardError && <p role="alert" className="panel-sub">{keyboardError}</p>}
       </form>
       {message && <p className="status" role="status">{message}</p>}
-      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { userEdited.current = true; setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setImportedPgn(null); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
+      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { userEdited.current = true; pendingPgnFile.current++; setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setImportedPgn(null); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
     </aside>
     {promotion && <PromotionDialog onChoose={(piece) => makeMove(promotion.from, promotion.to, piece)} onCancel={() => setPromotion(null)} />}
   </div>;

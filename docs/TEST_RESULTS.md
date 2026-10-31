@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 105: Analysis PGN file import
+
+- Native approved `npm run check`: **PASS** — **9/9** pinned SQL source fingerprints (not a fresh hosted query), ESLint, strict TypeScript, **191/191 Vitest in 28 files** and complete **17/17 Next Webpack production pages**. The initial sandbox build failed with Windows `EPERM` while creating `.next/server/app/_global-error.segments`; the standalone native build and full native check both succeeded.
+- Real Chromium production-standalone `ROOKLINE_E2E_PRODUCTION=1 npm run test:e2e`: **89 local/mock PASS / one genuine hosted Supabase staging SKIP**. Covers a valid uploaded PGN with preserved headers, invalid/large files without board loss, same-file retry and late file read isolation. After correcting the singular `1 ply` UI string, the two affected browser cases reran **2/2 PASS** against a rebuilt production bundle.
+- No real three-account HTTPS Auth/RLS, two-client Realtime, independent PostgreSQL clock/row-lock or rated settlement validation. Remote version IDs still differ even though nine local migration SQL sources match pinned snapshots; no database push.
+
 ## 2026-10-31 — checkpoint 104: study mastery backup
 
 - `npm run verify:migrations`: **9/9 pinned source SQL hashes PASS**, not a fresh remote DB query; remote migration version IDs still differ. `npm run lint` PASS; `npm run typecheck` PASS; `npm run test` **189/189 PASS in 27 files**, including four new study backup tests.
