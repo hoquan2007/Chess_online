@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
-import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, type OnlineGame, type ServerClockSample } from "@/lib/online/games";
+import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
 import { availableDrawClaims, parseCoordinateMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
@@ -20,6 +21,7 @@ function clockLabel(milliseconds: number) {
 }
 
 export function GameRoom({ id }: { id: string }) {
+  const router = useRouter();
   const [game, setGame] = useState<OnlineGame | null>(null);
   const [viewer, setViewer] = useState<Viewer | null>(null);
   const [joinable, setJoinable] = useState(false);
@@ -206,6 +208,34 @@ export function GameRoom({ id }: { id: string }) {
     }
   }
 
+  // Finished games are immutable; another round is a fresh private invitation.
+  // The previous opponent must explicitly accept the new link.
+  async function createAnother(control: TimeControl) {
+    if (busy) return;
+    const epoch = roomEpoch.current;
+    const controller = new AbortController();
+    pendingMutations.current.add(controller);
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/api/games", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ control }), signal: controller.signal,
+      });
+      const result = await response.json();
+      if (controller.signal.aborted || epoch !== roomEpoch.current) return;
+      if (!response.ok) throw new Error(result.error ?? "Could not create a new challenge.");
+      if (typeof result.id !== "string" || !validUuid(result.id)) throw new Error("The new game address is invalid.");
+      router.push(`/game/${result.id}`);
+    } catch (caught) {
+      if (!controller.signal.aborted && epoch === roomEpoch.current) {
+        setError(caught instanceof Error ? caught.message : "Could not create a new challenge.");
+      }
+    } finally {
+      pendingMutations.current.delete(controller);
+      if (epoch === roomEpoch.current) setBusy(false);
+    }
+  }
+
   async function makeMove(from: Square, to: Square, piece?: Promotion) {
     if (!myTurn || busy || !game) return;
     if (!piece && selectPromotion(chess, from, to)) { setPromotion({ from, to }); return; }
@@ -317,6 +347,10 @@ export function GameRoom({ id }: { id: string }) {
 
   const top = orientation === "white" ? "b" : "w";
   const bottom = orientation === "white" ? "w" : "b";
+  const anotherControl = !game.rated && (game.status === "completed" || game.status === "cancelled") && viewer
+    ? (Object.keys(timeControls) as TimeControl[]).find((control) =>
+      timeControls[control].base_ms === game.base_ms && timeControls[control].increment_ms === game.increment_ms)
+    : undefined;
   const playerStrip = (color: Viewer) => <div className="player-strip"><span className="player-name"><span className="player-avatar" aria-hidden="true">{color === "w" ? "♙" : "♟"}</span>{color === viewer ? "You" : color === "w" ? "White opponent" : game.black_id ? "Black opponent" : "Waiting for Black"}</span><span className={`clock ${game.status === "active" && game.turn === color ? "running" : ""}`} aria-label={`${color === "w" ? "White" : "Black"} clock`}>{clockLabel(clocks[color])}</span></div>;
 
   return <section className="stack" onPointerDownCapture={unlockMoveAudio} onKeyDownCapture={unlockMoveAudio}>
@@ -345,6 +379,7 @@ export function GameRoom({ id }: { id: string }) {
       </form>
       <div className="game-actions"><button className="btn ghost" type="button" onClick={() => void copyInvite()}><ClipboardCopy size={16} /> Copy link</button><button className="btn ghost" type="button" onClick={downloadPgn}><ArrowDownToLine size={16} /> Export PGN</button>{game.status === "completed" && <Link className="btn primary" href={`/analysis?onlineGame=${encodeURIComponent(game.id)}`}>Analyze game</Link>}<button className="btn ghost" type="button" onClick={() => setFlipped(!flipped)}><ArrowLeftRight size={16} /> Flip</button><button className="btn ghost" type="button" aria-label={sound ? "Mute moves" : "Enable move sounds"} aria-pressed={sound} onClick={() => { setMoveSoundsEnabled(!sound); setSound(!sound); }}>{sound ? <Volume2 size={16} /> : <VolumeX size={16} />} Sound {sound ? "on" : "off"}</button></div>
       <div className="game-actions"><button ref={syncButtonRef} className="btn ghost" type="button" onClick={() => void load()}>Sync</button>{game.status === "waiting" && viewer === "w" && <button className="btn ghost" disabled={busy} type="button" onClick={() => void action("cancel")}>Cancel challenge</button>}<button className="btn ghost" disabled={busy || game.status !== "active"} type="button" onClick={() => void action("resign")}><Flag size={16} /> Resign</button><Link className="btn ghost" href="/play/online">My games</Link></div>
+      {anotherControl && <div className="stack"><button className="btn primary" type="button" disabled={busy} onClick={() => void createAnother(anotherControl)}>{busy ? "Creating challenge…" : `Create another ${anotherControl} challenge`}</button><p className="panel-sub">This creates a new private invitation. Share its link for another game.</p></div>}
       <div className="game-actions" aria-label="Draw claim controls"><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.repetition} onClick={() => void claimDraw("repetition")}>Claim threefold draw</button><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.fiftyMoves} onClick={() => void claimDraw("fiftyMoves")}>Claim 50-move draw</button></div>
       {error && <p className="status" role="alert">{error}</p>}{notice && <p className="status" role="status">{notice}</p>}
       <p className="panel-sub">Clocks are calculated by the server. Live updates use secure snapshots after each move; polling covers network interruptions.</p>

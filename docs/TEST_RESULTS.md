@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 91: restart invitation after an unrated game
+
+- New browser regressions for a completed Black participant creating a new 3+2 private room and for cancelled 10+0 challenge retry after HTTP 503 / rejection of malicious returned ID: focused **2/2 PASS** using `ROOKLINE_E2E_PRODUCTION=1`, port 3193, Playwright on an already built standalone server.
+- Full authorized `npx playwright test`: **82/82 local/mock Chromium PASS, one real hosted Supabase SKIP (83 discovered), exit 0**. The initial sandboxed localhost startup stalled; a permission-approved run produced both the focused and full PASS results.
+- `npm run check` through pinned migration parity **9/9**, lint, strict TypeScript and **181/181 Vitest PASS**; ordinary Windows sandbox build encountered `.next` EPERM, separately authorized `npm run build` exited 0 with **17/17 generated pages** before the browser runs. No new hosted/Supabase integration verification was performed; 20 acceptance gates remain OPEN, rated OFF.
+
 ## 2026-10-31 — checkpoint 88: bound a silent computer Worker
 
 - Added an actual browser regression with a Worker that accepts a request but never answers. Before the fix the test was **RED** after 31 seconds of mocked clock time: no engine timeout appeared. The test also sends a delayed result from the expired worker, starts a fresh game and verifies that only the new worker's legal move is played.

@@ -1888,6 +1888,79 @@ test("challenge creator can cancel a waiting invitation and sees its final state
   expect(cancelRequests).toBe(1);
 });
 
+test("finished game creates a fresh private invite at its original time control", async ({ page }) => {
+  const previousId = "00000000-0000-4000-8000-000000000091";
+  const nextId = "00000000-0000-4000-8000-000000000092";
+  const fen = new Chess().fen();
+  const previous = {
+    id: previousId, white_id: "white-id", black_id: "black-id", status: "completed",
+    pgn: "", fen, turn: "w", ply: 0, base_ms: 180000, increment_ms: 2000,
+    white_ms: 170000, black_ms: 180000, clock_anchor_at: null,
+    result: "Resignation", winner_id: "white-id", rated: false, created_at: new Date().toISOString(),
+  };
+  await page.route(`**/api/games/${previousId}`, (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ game: previous, viewerColor: "b" }),
+  }));
+  await page.route(`**/api/games/${nextId}`, (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ game: {
+      ...previous, id: nextId, white_id: "black-id", black_id: null, status: "waiting",
+      result: null, winner_id: null, white_ms: 180000,
+    }, viewerColor: "w" }),
+  }));
+  let created = 0;
+  let release: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/api/games", async (route) => {
+    created++;
+    expect(route.request().method()).toBe("POST");
+    expect(route.request().postDataJSON()).toEqual({ control: "3+2" });
+    await gate;
+    await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ id: nextId }) });
+  });
+
+  await page.goto(`/game/${previousId}`);
+  const another = page.getByRole("button", { name: "Create another 3+2 challenge" });
+  await expect(another).toBeVisible();
+  await expect(page.getByText("This creates a new private invitation.", { exact: false })).toBeVisible();
+  await another.click();
+  await expect(page.getByRole("button", { name: "Creating challenge…" })).toBeDisabled();
+  expect(created).toBe(1);
+  release?.();
+  await expect(page).toHaveURL(`/game/${nextId}`);
+  await expect(page.getByText("Invite an opponent to begin.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy link" })).toBeVisible();
+  expect(created).toBe(1);
+});
+
+test("cancelled game can retry challenge creation safely after API errors", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000093";
+  const initial = new Chess();
+  const cancelled = {
+    id, white_id: "white-id", black_id: null, status: "cancelled", pgn: "", fen: initial.fen(),
+    turn: "w", ply: 0, base_ms: 600000, increment_ms: 0, white_ms: 600000, black_ms: 600000,
+    clock_anchor_at: null, result: null, winner_id: null, rated: false, created_at: new Date().toISOString(),
+  };
+  await page.route(`**/api/games/${id}`, (route) => route.fulfill({
+    status: 200, contentType: "application/json", body: JSON.stringify({ game: cancelled, viewerColor: "w" }),
+  }));
+  let attempts = 0;
+  await page.route("**/api/games", (route) => {
+    attempts++;
+    expect(route.request().postDataJSON()).toEqual({ control: "10+0" });
+    return route.fulfill({ status: attempts === 1 ? 503 : 201, contentType: "application/json",
+      body: attempts === 1 ? JSON.stringify({ error: "Try again later" }) : JSON.stringify({ id: "javascript:alert(1)" }) });
+  });
+  await page.goto(`/game/${id}`);
+  const another = page.getByRole("button", { name: "Create another 10+0 challenge" });
+  await another.click();
+  await expect(page.getByRole("alert").filter({ hasText: "Try again later" })).toBeVisible();
+  await expect(another).toBeEnabled();
+  await another.click();
+  await expect(page.getByRole("alert").filter({ hasText: "The new game address is invalid." })).toBeVisible();
+  await expect(page).toHaveURL(`/game/${id}`);
+  expect(attempts).toBe(2);
+});
+
 test("game room ignores a stale join prompt after a newer valid game response", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000002";
   const chess = new Chess();

@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 91 — repeat private invitation after an unrated match
+
+- Finished or cancelled unrated rooms now offer an explicit fresh private challenge with the same allowlisted time control. Only a room participant may use the action; the other player must accept the newly created invitation. The UI tracks pending mutations, disables duplicate submission, recovers from service errors, rejects non-UUID response IDs and abandons stale requests after room changes.
+- Two new production-build Chromium scenarios **PASS** (finished Black viewer starting a new 3+2 invitation; cancelled 10+0 invitation retrying after 503 and rejecting a malicious returned ID). Full native standalone Chromium suite **82 local/mock PASS / 1 genuine hosted Supabase SKIP**, exit 0. Migration source parity **9/9**, ESLint, strict TypeScript, **181 Vitest**, and separately permission-approved Webpack **17/17 pages** PASS. The ordinary sandboxed Chromium server did not start and was interrupted; the approved retry passed.
+- Existing development HEAD before this slice: `9d5934c`. New slice's commit, GitHub CI and Preview evidence must be verified independently. **All 20 release gates OPEN, rated OFF.** S0 still needs secure server-only Preview Supabase credentials, three real identities over HTTPS and backed-up remote migration version reconciliation. S1 genuine two-browser Realtime, S2 database locks/clocks, S3 rated settlement, S4 learning/engine, S5 community and S6 independent full release audit remain pending. Do not merge `main` or deploy production.
+
 ## 2026-10-31, checkpoint 88 — silent computer Worker timeout regression
 
 - Added RED/GREEN real Chromium coverage for a Worker that never replies: fast-forward 31 seconds, observe the recoverable error, reset, reject the expired worker's stale move and accept the new worker's legal move. `GameWorkspace` now limits outstanding computer requests to 30 seconds and cleans up its timer after any reply/error/reset. **1 focused PASS, 80 full local/mock Chromium PASS / 1 genuine hosted SKIP**.

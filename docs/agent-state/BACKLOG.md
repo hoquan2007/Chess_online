@@ -1,5 +1,7 @@
 # Prioritized backlog
 
+**Checkpoint 91 (2026-10-31):** Fresh private invitation action after completed/cancelled unrated game added with same time control, authorized participant view, retry behavior, abort/epoch tracking and valid UUID navigation. Two focused Chromium PASS; full prebuilt Chromium **82 local/mock PASS / 1 real hosted SKIP**, 181 Vitest, ESLint, TS, nine pinned SQL hash checks and approved 17-page build PASS. Publish development slice, verify new exact-SHA Linux CI and protected Vercel Preview. Release remains blocked: S0 actual HTTPS three-identity Auth/RLS/Origin with server-only Preview Supabase key and backed-up migration history reconciliation; S1 real Realtime, S2 independent PostgreSQL concurrency/clocks, S3 rated settlement/matchmaking, S4 learning/engine, S5 community/tournaments, S6 independent acceptance. **All 20 gates OPEN, rated OFF.**
+
 **Checkpoint 88 (2026-10-31):** Silent computer Worker timeout/recovery fixed with RED/GREEN Chromium, including stale-message rejection; **1 focused PASS, 80 local/mock full Chromium PASS / 1 genuine hosted SKIP**, **181 Vitest**, pinned nine migrations, lint/TS and separate 17-page production build PASS. Composite build encountered sandbox `EPERM`. Prior `d014ba2` Linux CI SUCCESS and SHA-matched protected Preview READY; new branch commit/push verification pending. S0 real three-user HTTPS/Auth/RLS remains **BLOCKED_EXTERNAL** by missing Preview server-only secret and migration-version reconciliation; S1–S6 still open. **All 20 OPEN, rated OFF; no main or production promotion.**
 
 
