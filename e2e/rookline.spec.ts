@@ -233,14 +233,14 @@ test("two-move puzzle applies forced reply, rejects a wrong finish, and resets o
   await input.fill("a3f8");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Correct! Qf8+. Black replies Kh7. Find the finish." })).toBeVisible();
-  await expect(page.getByText("Solved 0 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 0 / 23 positions on this device.")).toBeVisible();
   await input.fill("f8e8");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "stronger tactic" })).toBeVisible();
   await page.locator('[data-square="f8"]').click();
   await page.locator('[data-square="g7"]').click();
   await expect(page.getByRole("status").filter({ hasText: "Correct! Qg7#" })).toBeVisible();
-  await expect(page.getByText("Solved 1 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-puzzle-practice") ?? "{}")["mate-022"])).toEqual({ errors: 2, hints: 0, solves: 1 });
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Drag a piece" })).toBeVisible();
@@ -250,6 +250,22 @@ test("two-move puzzle applies forced reply, rejects a wrong finish, and resets o
   await input.fill("f8g7");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Correct! Qg7#" })).toBeVisible();
+});
+
+test("Black's two-move puzzle plays White's forced response and scores only the final mate", async ({ page }) => {
+  await page.goto("/puzzles");
+  await page.getByRole("button", { name: "Puzzle 23", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "The dark queen's net" })).toBeVisible();
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await input.fill("h6c1");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Qc1+. White replies Ka2. Find the finish." })).toBeVisible();
+  await expect(page.getByText("Solved 0 / 23 positions on this device.")).toBeVisible();
+  await page.locator('[data-square="c1"]').click();
+  await page.locator('[data-square="b2"]').click();
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Qb2#" })).toBeVisible();
+  await expect(page.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-puzzle-practice") ?? "{}")["mate-023"])).toEqual({ errors: 0, hints: 0, solves: 1 });
 });
 
 test("puzzle promotion offers accessible choices and accepts a knight fork", async ({ page }) => {
@@ -268,7 +284,7 @@ test("puzzle promotion offers accessible choices and accepts a knight fork", asy
   await expect(dialog).toBeVisible();
   await dialog.getByRole("button", { name: "Promote to knight" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Correct! g8=N+" })).toBeVisible();
-  await expect(page.getByText("Solved 1 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
 });
 
 test("puzzle keyboard input validates moves, records new tactics, and restores progress", async ({ page }) => {
@@ -288,9 +304,9 @@ test("puzzle keyboard input validates moves, records new tactics, and restores p
   await input.fill("e1e8");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Correct! Re8#" })).toBeVisible();
-  await expect(page.getByText("Solved 1 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Solved 1 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
   await page.getByRole("button", { name: "Puzzle 9", exact: true }).click();
   await input.fill("a7a8n");
   await input.press("Enter");
@@ -298,7 +314,7 @@ test("puzzle keyboard input validates moves, records new tactics, and restores p
   await input.fill("a7a8q");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Correct! a8=Q+" })).toBeVisible();
-  await expect(page.getByText("Solved 2 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 2 / 23 positions on this device.")).toBeVisible();
 });
 
 test("puzzle progress can be backed up, merged on another device, and restored after reload", async ({ page }) => {
@@ -308,7 +324,7 @@ test("puzzle progress can be backed up, merged on another device, and restored a
     localStorage.setItem("rookline-puzzle-practice", JSON.stringify({ "mate-001": { errors: 2, hints: 1, solves: 1 } }));
   });
   await page.reload();
-  await expect(page.getByText("Solved 1 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
 
   const downloading = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export progress" }).click();
@@ -325,7 +341,7 @@ test("puzzle progress can be backed up, merged on another device, and restored a
   })) });
   await expect(page.getByRole("status").filter({ hasText: "Imported puzzle progress: 2 solved" })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Solved 2 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 2 / 23 positions on this device.")).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-puzzle-practice") ?? "{}")))
     .toEqual({ "mate-001": { errors: 2, hints: 3, solves: 4 }, "fork-005": { errors: 6, hints: 0, solves: 2 } });
 
@@ -333,7 +349,7 @@ test("puzzle progress can be backed up, merged on another device, and restored a
     kind: "rookline-puzzles", version: 999, completed: [], practice: {},
   })) });
   await expect(page.getByRole("status").filter({ hasText: "not a supported Rookline puzzle backup" })).toBeVisible();
-  await expect(page.getByText("Solved 2 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 2 / 23 positions on this device.")).toBeVisible();
 });
 
 test("two open puzzle tabs preserve each other's completions and adaptive practice", async ({ page, context }) => {
@@ -347,7 +363,7 @@ test("two open puzzle tabs preserve each other's completions and adaptive practi
     await firstMove.press("Enter");
     await firstMove.fill("e1e8");
     await firstMove.press("Enter");
-    await expect(second.getByText("Solved 1 / 22 positions on this device.")).toBeVisible();
+    await expect(second.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
 
     await second.getByRole("button", { name: "Puzzle 5", exact: true }).click();
     const secondMove = second.getByRole("textbox", { name: /Keyboard move/ });
@@ -355,8 +371,8 @@ test("two open puzzle tabs preserve each other's completions and adaptive practi
     await secondMove.press("Enter");
     await secondMove.fill("e4d6");
     await secondMove.press("Enter");
-    await expect(page.getByText("Solved 2 / 22 positions on this device.")).toBeVisible();
-    await expect(second.getByText("Solved 2 / 22 positions on this device.")).toBeVisible();
+    await expect(page.getByText("Solved 2 / 23 positions on this device.")).toBeVisible();
+    await expect(second.getByText("Solved 2 / 23 positions on this device.")).toBeVisible();
     const stored = await page.evaluate(() => ({
       completed: JSON.parse(localStorage.getItem("rookline-puzzles") ?? "[]") as string[],
       practice: JSON.parse(localStorage.getItem("rookline-puzzle-practice") ?? "{}") as Record<string, { errors: number; solves: number }>,
@@ -365,7 +381,7 @@ test("two open puzzle tabs preserve each other's completions and adaptive practi
     expect(stored.practice["mate-004"]).toMatchObject({ errors: 1, solves: 1 });
     expect(stored.practice["fork-005"]).toMatchObject({ errors: 1, solves: 1 });
     await page.reload();
-    await expect(page.getByText("Solved 2 / 22 positions on this device.")).toBeVisible();
+    await expect(page.getByText("Solved 2 / 23 positions on this device.")).toBeVisible();
   } finally {
     await second.close();
   }
@@ -424,7 +440,7 @@ test("new Black-to-move puzzles orient the board and solve a mate and promotion"
   await input.fill("e2e1q");
   await input.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "Correct! e1=Q+" })).toBeVisible();
-  await expect(page.getByText("Solved 2 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 2 / 23 positions on this device.")).toBeVisible();
 });
 
 test("puzzle topic navigation prioritizes unsolved tactics and survives a reload", async ({ page }) => {
@@ -441,7 +457,7 @@ test("puzzle topic navigation prioritizes unsolved tactics and survives a reload
   await page.getByRole("button", { name: "Next puzzle" }).click();
   await expect(page.getByRole("heading", { name: "A second knight fork" })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Solved 1 / 22 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
   await page.getByLabel("Practice topic").selectOption("Fork");
   await expect(page.getByRole("heading", { name: "A second knight fork" })).toBeVisible();
   await expect(page.getByText("Fork: 1 / 4 solved.")).toBeVisible();

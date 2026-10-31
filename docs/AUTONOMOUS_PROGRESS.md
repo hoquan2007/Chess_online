@@ -1,5 +1,16 @@
 # Autonomous progress ledger
 
+## 2026-11-01, checkpoint 138 — Black-side forced mate in two
+
+- CH-13 adds original `mate-023`, a Black-to-move queen-and-king mating net. The authored `Qc1+ Ka2 Qb2#` line is replay-validated by chess.js; the trainer correctly says **White replies** and only records completion after the final actual mate. Browser verification covers keyboard entry, reversed board orientation, mouse finish and persistent practice score.
+- **202/202 Vitest PASS (29 files)**, 9/9 local SQL source fingerprints, ESLint and strict TS PASS; Next Webpack **17/17 static pages PASS** in approved build after restricted composite `EPERM` on `.next`. Production standalone Chromium **101 PASS / 2 conditional SKIP** (103 total); no genuine hosted two-user Supabase test ran.
+- CH-13 local slice verified. Push/CI/current-code Preview confirmation follow this checkpoint. S0 Preview private server key and real three-user HTTPS Auth/RLS/Origin/Host remain outstanding; S1–S6 and 20 acceptance gates OPEN. Rated OFF; `main` and production withheld.
+
+## 2026-11-01, checkpoint 137 — previous SHA remotely verified, manual Preview ready
+
+- `23c934c14f88f40788a96c58ee675943890afa88` was pushed to `codex/chess-platform-foundation` and Linux GitHub Actions run `41225528768` completed **SUCCESS**. Since the Git-linked deployment did not appear for that SHA, the authorized manual **nonproduction** Vercel Preview `dpl_6kXB8q5n7g68TDWt2DMk53wbwmFJ` deployed successfully and reports **READY**. It carries an explicitly supplied `rooklineSourceSha` metadata value; this is not an independently verified Git-linked SHA attestation.
+- Authenticated HTTP smoke could not reach the app: `vercel curl` first failed npm dist-tag lookup and then `curl: (6) Could not resolve host` for the Preview URL. No live HTTP response is claimed. Preview-only Supabase server secret is still missing; hosted gates OPEN.
+
 ## 2026-11-01, checkpoint 136 — CH-13 two-move tactical puzzle
 
 - Added original `mate-022` (Qf8+, forced Kh7, Qg7#), chess.js-authenticated authored continuation, and a two-step trainer. A correct initial check advances the board without counting a solve; only an actual final mate records completion. Wrong first/second moves, resetting, mouse squares and keyboard coordinates have unit and real-browser coverage. Existing one-move puzzles retain their behavior.

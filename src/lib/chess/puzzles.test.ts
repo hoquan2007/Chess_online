@@ -4,7 +4,7 @@ import { evaluatePuzzleMove, isPuzzleSolution, nextAdaptivePuzzleIndex, nextPrac
 
 describe("original puzzle set", () => {
   it("contains legal, solvable positions", () => {
-    expect(puzzles).toHaveLength(22);
+    expect(puzzles).toHaveLength(23);
     expect(new Set(puzzles.map((item) => item.id)).size).toBe(puzzles.length);
     for (const item of puzzles) {
       const game = new Chess(item.fen);
@@ -44,6 +44,21 @@ describe("original puzzle set", () => {
     expect(evaluatePuzzleMove(start.id, "f8", "g7", "q", 1)).toMatchObject({ status: "correct", san: "Qg7#" });
     expect(evaluatePuzzleMove(start.id, "f8", "g7", "q", 0)).toEqual({ status: "illegal" });
     expect(evaluatePuzzleMove("mate-001", "g6", "g7", "q", 1)).toEqual({ status: "illegal" });
+  });
+  it("plays the authored two-move mate from Black's side and defers completion until mate", () => {
+    const id = "mate-023";
+    expect(evaluatePuzzleMove(id, "h6", "h1")).toEqual({ status: "incorrect" });
+    const first = evaluatePuzzleMove(id, "h6", "c1");
+    expect(first).toMatchObject({ status: "continue", san: "Qc1+", replySan: "Ka2" });
+    expect(isPuzzleSolution(id, "h6", "c1")).toBe(false);
+    if (first.status !== "continue") throw new Error("Expected forced continuation");
+    expect(new Chess(first.fen).turn()).toBe("b");
+    expect(new Chess(first.fen).get("a2")?.type).toBe("k");
+    expect(evaluatePuzzleMove(id, "c1", "c2", "q", 1)).toEqual({ status: "incorrect" });
+    const last = evaluatePuzzleMove(id, "c1", "b2", "q", 1);
+    expect(last).toMatchObject({ status: "correct", san: "Qb2#" });
+    if (last.status !== "correct") throw new Error("Expected final mate");
+    expect(new Chess(last.fen).isCheckmate()).toBe(true);
   });
   it("distinguishes illegal and legal but incorrect moves without changing a puzzle", () => {
     expect(evaluatePuzzleMove("mate-004", "e1", "f2")).toEqual({ status: "illegal" });
@@ -92,7 +107,8 @@ describe("original puzzle set", () => {
     expect(nextPracticePuzzleIndex(13, "Fork", ["fork-005", "fork-010", "fork-013", "fork-014"])).toBe(4);
     expect(nextPracticePuzzleIndex(9, "All", ["mate-001"])).toBe(10);
     expect(nextPracticePuzzleIndex(20, "All", ["mate-001"])).toBe(21);
-    expect(nextPracticePuzzleIndex(21, "All", ["mate-001"])).toBe(1);
+    expect(nextPracticePuzzleIndex(21, "All", ["mate-001"])).toBe(22);
+    expect(nextPracticePuzzleIndex(22, "All", ["mate-001"])).toBe(1);
   });
   it("sanitizes tampered practice history and bounds counters", () => {
     const stored = readPuzzlePractice({

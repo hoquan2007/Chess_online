@@ -109,7 +109,7 @@ export function PuzzleTrainer() {
       setStep(step + 1);
       setSelected(null);
       setKeyboardMove("");
-      setFeedback(`Correct! ${result.san}. Black replies ${result.replySan}. Find the finish.`);
+      setFeedback(`Correct! ${result.san}. ${current.fen.split(" ")[1] === "b" ? "White" : "Black"} replies ${result.replySan}. Find the finish.`);
       return true;
     }
     if (result.status !== "correct") {

@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-11-01 — checkpoint 138: Black-side two-move puzzle
+
+- `npm run check` passed 9/9 local SQL fingerprints, ESLint, strict TypeScript, and **202/202 Vitest (29 suites)**, then hit `EPERM` creating generated `.next/types` on restricted Windows. Separately approved `npm run build` completed **17/17 static pages, exit 0**.
+- Production standalone Chromium Playwright (`ROOKLINE_E2E_PRODUCTION=1`): **101 PASS / 2 SKIP, exit 0** (103 total), including a new Black-to-move forced reply and mate test, and the original White-to-move regression. The two hosted-dependent skips are not passes for real Supabase.
+- Previous SHA `23c934c` Linux CI `41225528768` **SUCCESS**, manual **nonproduction** Preview `dpl_6kXB8q5n7g68TDWt2DMk53wbwmFJ` **READY**. Live HTTPS smoke unverified due to Vercel CLI npm registry lookup failure and local Preview DNS resolution failure; manual source-SHA metadata is not Git-linked attestation.
+
 ## 2026-11-01 — checkpoint 136: CH-13 two-move puzzle
 
 - `npx vitest run src/lib/chess/puzzles.test.ts`: **14/14 PASS**. Full Vitest: **201/201 PASS in 29 files**; migration hashes **9/9**, ESLint and `tsc --noEmit` PASS. Next production Webpack build **17/17 static pages PASS** with approved elevated execution after restricted composite build hit Windows `.next` `EPERM`.
