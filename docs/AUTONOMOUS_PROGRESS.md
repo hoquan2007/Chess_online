@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 95 — preserve verified online rooms across disconnects
+
+- Transport-only GET failures now retain the last accepted private board/PGN in a read-only disconnected state, freeze displayed clock estimates and prohibit moves, draw claims, resignations, challenge cancellation and repeat invitations. An offline event aborts in-flight room reads to prevent an obsolete response from re-enabling play. The invite acceptance button is disabled until an authoritative online refresh. Explicit denied/malformed HTTP responses still invalidate protected room state.
+- Production-build Chromium regressions verify interrupted game sync, clock freeze, online recovery, and offline invite acceptance. Full suite **84 local/mock PASS / 1 genuine hosted Supabase SKIP** (85 discovered; exit 0). Pinned local migration fingerprints **9/9**, ESLint, strict TypeScript, **181/181 Vitest** and separate authorized Webpack production build **17/17 static pages** PASS. The first restricted build hit Windows `.next` EPERM, but elevated build passed. The sandboxed E2E server did not open its localhost port, and its run was interrupted; elevated standalone E2E passed.
+- **IN_PROGRESS, all 20 acceptance gates OPEN, rated OFF**. Genuine HTTPS three-identity Supabase Auth/RLS/Origin, two-browser Realtime, independent Postgres lock/clock races, rated settlement, learning/engine, community and independent release audit remain outstanding. Dedicated Preview server-only Supabase secret and backed-up reconciliation of nine divergent migration version IDs remain S0 external blockers. This checkpoint's remote SHA/CI and Preview need independent evidence after publication; no production deploy or `main` merge.
+
 ## 2026-10-31, checkpoint 92 — new development SHA verified remotely
 
 - The verified fresh-invitation slice was committed and pushed on `codex/chess-platform-foundation` as `0d3d6e34124d78027c1ac6a7ba7c648f2ebab3ed`; worktree clean after push. GitHub Linux Actions run `41165982373` at that **exact SHA finished SUCCESS**. Its `quality` job passed migration source verification, security audit, lint, strict TypeScript, Vitest, Next Webpack production build and Chromium Playwright.

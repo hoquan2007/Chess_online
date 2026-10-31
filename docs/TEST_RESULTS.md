@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 95: dropped game sync and invite disconnect safety
+
+- Native `npm run verify:migrations` **PASS 9/9 pinned local SQL source hashes** (the live remote database was not queried), `npm run lint` **PASS**, `npm run typecheck` **PASS**, `npm run test` **181/181 PASS in 25 files**. `git diff --check` reports only Windows LF/CRLF conversion warnings and no whitespace errors.
+- Initial restricted `npm run build` compiled TypeScript but exited 1 at prerender `/puzzles` because `.next/server/app/puzzles.segments/puzzles` mkdir returned Windows `EPERM`. Separately approved `npm run build` exited **0**, creating all **17/17** static pages.
+- Initial restricted production-browser attempt never opened local port 3194; stopped that process without an E2E result. Approved standalone Chromium (`ROOKLINE_E2E_PRODUCTION=1`, port 3195, `npx playwright test --workers=1`) exited **0: 84 local/mock passed, 1 real hosted Supabase skipped**, including two new offline recovery regressions. These tests use mocked game HTTP state; they do not establish real hosted multiplayer, RLS, Postgres clock concurrency or production readiness.
+- All **20 release gates OPEN**, rated mode **OFF**, S0 **BLOCKED_EXTERNAL** pending an isolated server-only Preview secret, three actual HTTPS Supabase users and backed-up reconciliation of nine remote migration version IDs before any DB push. No production deployment or `main` merge.
+
 ## 2026-10-31 — checkpoint 92: exact-SHA Linux CI and protected Preview
 
 - Pushed `0d3d6e34124d78027c1ac6a7ba7c648f2ebab3ed`. GitHub Actions run `41165982373` ended **completed/success**, its only `quality` job `124433536134` completed success. Independent job steps verify install, nine migration fingerprints, `npm audit --audit-level=high`, lint, strict types, unit, Webpack build, browser installation and Playwright all passed. This Linux CI runs the exact pushed SHA.

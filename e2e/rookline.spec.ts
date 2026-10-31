@@ -2035,6 +2035,72 @@ test("game room clears private history on access revocation and ignores a late a
   await expect(page.getByLabel("Move history")).toHaveCount(0);
 });
 
+test("an invited player cannot accept a challenge while the connection is lost", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000024";
+  let fetches = 0;
+  await page.route(`**/api/games/${id}`, (route) => {
+    fetches++;
+    return route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ joinable: true }) });
+  });
+  await page.goto(`/game/${id}`);
+  const accept = page.getByRole("button", { name: "Accept challenge" });
+  await expect(accept).toBeEnabled();
+
+  await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+  await expect(accept).toBeDisabled();
+  await expect(page.getByRole("alert").filter({ hasText: "Connection lost" })).toBeVisible();
+
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect.poll(() => fetches).toBeGreaterThanOrEqual(2);
+  await expect(accept).toBeEnabled();
+  await expect(page.getByRole("alert").filter({ hasText: "Connection lost" })).toHaveCount(0);
+});
+
+test("a dropped game sync keeps the verified board read-only and recovers after reconnect", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000023";
+  const chess = new Chess(); chess.move("e4"); chess.move("e5");
+  const initial = { id, white_id: "white-id", black_id: "black-id", status: "active", pgn: chess.pgn(),
+    fen: chess.fen(), turn: "w", ply: 2, base_ms: 300000, increment_ms: 0,
+    white_ms: 290000, black_ms: 292000, clock_anchor_at: new Date().toISOString(),
+    result: null, winner_id: null, rated: false, created_at: new Date().toISOString() };
+  chess.move("Nf3");
+  const resumed = { ...initial, pgn: chess.pgn(), fen: chess.fen(), turn: "b", ply: 3 };
+  let disconnected = false;
+  let snapshot = initial;
+  let attemptedMoves = 0;
+  await page.route(`**/api/games/${id}`, (route) => disconnected
+    ? route.abort("failed")
+    : route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ game: snapshot, viewerColor: "w" }) }));
+  await page.route(`**/api/games/${id}/move`, (route) => {
+    attemptedMoves++;
+    return route.fulfill({ status: 409, contentType: "application/json", body: "{}" });
+  });
+
+  await page.goto(`/game/${id}`);
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /Keyboard move/ })).toBeEnabled();
+
+  disconnected = true;
+  await page.getByRole("button", { name: "Sync", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Connection lost" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /Keyboard move/ })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Resign" })).toBeDisabled();
+  const frozenClock = await page.getByLabel("White clock").textContent();
+  await page.waitForTimeout(1200);
+  expect(await page.getByLabel("White clock").textContent()).toBe(frozenClock);
+  expect(attemptedMoves).toBe(0);
+
+  snapshot = resumed;
+  disconnected = false;
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(page.getByLabel("Move history").getByText("Nf3")).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "Connection lost" })).toHaveCount(0);
+  await expect(page.getByRole("textbox", { name: /Keyboard move/ })).toBeDisabled(); // Black's turn.
+  expect(attemptedMoves).toBe(0);
+});
+
 test("game room hides protected state after service errors or sign-out and can recover", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000022";
   const chess = new Chess(); chess.move("d4");
