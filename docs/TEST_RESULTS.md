@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 104: study mastery backup
+
+- `npm run verify:migrations`: **9/9 pinned source SQL hashes PASS**, not a fresh remote DB query; remote migration version IDs still differ. `npm run lint` PASS; `npm run typecheck` PASS; `npm run test` **189/189 PASS in 27 files**, including four new study backup tests.
+- `npm run build`: unprivileged Next compilation/17-page static generation succeeded but Windows sandbox returned `EPERM` creating `.next/standalone/.../css`; independently escalated `npm run build` exited **0**, including all **17/17 pages**.
+- `ROOKLINE_E2E_PRODUCTION=1 npm run test:e2e` with Chromium and standalone production server: **87 local/mock PASS**, including new opening/lesson portable backup round trip, cross-device merge, reload and invalid version rejection; **1 genuine Supabase hosted integration SKIP**. This proves local product paths only.
+- Prior commit `1031ff0` exact-SHA GitHub quality run `41173151936` **SUCCESS**. Its protected Preview `dpl_GEMrX6mNL9PMsMcjxArosk72aqVM` READY based on Vercel inspect; CLI HTTP smoke could not start because npm metadata network lookup failed. New commit remote run pending.
+
 ## 2026-10-31 — checkpoint 102: puzzle progress backup
 
 - `npm run check`: native SQL hash verification **9/9 PASS**, `npm run lint` PASS, `npm run typecheck` PASS, `vitest run` **185/185 PASS across 26 files**. Next Webpack compiled and generated **17/17 pages**, but Windows sandbox `EPERM` prevented writing `.next/standalone/node_modules/@next/env`; composite exit 1. Separate approved `npm run build` exited **0**, complete standalone production bundle.

@@ -857,6 +857,44 @@ test("two live study tabs retain different mastered lines and refresh their cata
   }
 });
 
+test("opening and lesson mastery exports and imports a validated, merging backup", async ({ page }) => {
+  await page.goto("/openings");
+  await page.evaluate(() => localStorage.setItem("rookline-study-practice", JSON.stringify(["italian:w"])));
+  await page.reload();
+  await expect(page.getByRole("button", { name: /Italian Game/ })).toContainText("Practice completed on this device");
+
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export study progress" }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe("rookline-study-progress.json");
+  expect(JSON.parse(await readFile((await download.path())!, "utf8"))).toEqual({
+    kind: "rookline-study", version: 1, completed: ["italian:w"],
+  });
+
+  const chooser = page.getByLabel("Choose study backup file");
+  await chooser.setInputFiles({ name: "study-other-device.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({
+    kind: "rookline-study", version: 1, completed: ["french:b", "castle:w", "bogus:w", "italian:w"],
+  })) });
+  await expect(page.getByRole("status").filter({ hasText: "Imported study progress: 3 mastered sides" })).toBeVisible();
+  await page.reload();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-study-practice") ?? "[]")))
+    .toEqual(["italian:w", "french:b", "castle:w"]);
+  await page.getByRole("button", { name: /French Defense/ }).click();
+  await page.getByRole("button", { name: "Practice as Black" }).click();
+  await expect(page.getByText("This line is mastered.", { exact: false })).toBeVisible();
+  await page.goto("/learn");
+  await page.getByRole("button", { name: /Castle before complications/ }).click();
+  await page.getByRole("button", { name: "Practice as White" }).click();
+  await expect(page.getByText("This line is mastered.", { exact: false })).toBeVisible();
+
+  await chooser.setInputFiles({ name: "invalid-study.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify({
+    kind: "rookline-study", version: 99, completed: [],
+  })) });
+  await expect(page.getByRole("status").filter({ hasText: "not a supported Rookline study backup" })).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-study-practice") ?? "[]")))
+    .toEqual(["italian:w", "french:b", "castle:w"]);
+});
+
 test("study mastery remains visible when local storage refuses writes", async ({ page }) => {
   await page.addInitScript(() => {
     const original = Storage.prototype.setItem;

@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 104 — portable opening and lesson mastery
+
+- Added typed, validated, capped study backup format (`rookline-study`, v1) and per-page export/import buttons. Both opening and lesson completions move between devices; import unions only known line/side IDs with the latest in-memory and storage state, keeping progress earned during async file reads. Unwritable localStorage leaves imported mastery available in memory with a warning.
+- Full verification: **189 unit PASS / 27 files, 9 SQL source hashes PASS, ESLint/TypeScript PASS, elevated Next production build 17 pages PASS, 87 actual Chromium local/mock PASS / 1 hosted staging SKIP**. Unprivileged standalone packaging hit Windows `EPERM` after successfully generating the pages.
+- Previous puzzle backup commit `1031ff0` confirmed GitHub Actions `41173151936` SUCCESS and protected nonproduction Preview `dpl_GEMrX6mNL9PMsMcjxArosk72aqVM` READY. HTTP smoke attempt failed at Vercel CLI npm metadata retrieval; it did not reach the website. Current study slice requires commit/push and new CI/Preview verification.
+- Release remains S0 BLOCKED_EXTERNAL: dedicated Preview server-only Supabase secret, backed-up migration-version reconciliation and genuine hosted HTTPS three-identity acceptance. All 20 release gates OPEN, rated OFF.
+
 ## 2026-10-31, checkpoint 102 — portable puzzle-progress backup
 
 - CH-13 now exports a versioned JSON file containing known puzzle completions and bounded adaptive practice counts; import rejects malformed, oversized, unrelated and future versions, merges existing progress using maximum per-counter values and preserves in-memory updates during asynchronous file reading. Uses original local-only catalog; no hosted account synchronization is claimed.

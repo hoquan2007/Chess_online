@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
-import { ChevronLeft, ChevronRight, Lightbulb, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Lightbulb, RotateCcw, Upload } from "lucide-react";
 import { evaluatePracticeMove, practiceNextPly, studyPosition, type PracticeSide, type StudyLine } from "@/lib/chess/study";
 import { parseCoordinateMove } from "@/lib/chess/rules";
 import { mergeStudyCompletions, readStudyCompletions, recordStudyCompletion, studyProgressKey } from "@/lib/chess/study-progress";
+import { exportStudyProgress, maxStudyBackupBytes, parseStudyProgress } from "@/lib/chess/study-backup";
 
 export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
   const [selectedId, setSelectedId] = useState(lines[0].id);
@@ -17,17 +18,24 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
   const [keyboardMove, setKeyboardMove] = useState("");
   const [feedback, setFeedback] = useState("");
   const [completed, setCompleted] = useState<string[]>([]);
+  const [ready, setReady] = useState(false);
+  const [backupMessage, setBackupMessage] = useState("");
+  const backupFileRef = useRef<HTMLInputElement>(null);
+  const completedRef = useRef<string[]>([]);
   const selected = lines.find((line) => line.id === selectedId) ?? lines[0];
   const chess = useMemo(() => studyPosition(selected.moves, ply), [selected, ply]);
   const finished = mode === "practice" && ply === selected.moves.length;
   const completedKey = `${selected.id}:${side}`;
 
   useEffect(() => {
-    queueMicrotask(() => setCompleted((current) => mergeStudyCompletions(current, readStudyCompletions())));
+    const sync = () => {
+      const merged = mergeStudyCompletions(completedRef.current, readStudyCompletions());
+      completedRef.current = merged;
+      setCompleted(merged);
+    };
+    queueMicrotask(() => { sync(); setReady(true); });
     const onStorage = (event: StorageEvent) => {
-      if (event.key === studyProgressKey || event.key === null) {
-        setCompleted((current) => mergeStudyCompletions(current, readStudyCompletions()));
-      }
+      if (event.storageArea === localStorage && (event.key === studyProgressKey || event.key === null)) sync();
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -39,7 +47,40 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
     setMode("practice"); setSide(color); setPly(practiceNextPly(selected, color, 0)); resetInputs();
   };
   const saveCompletion = () => {
-    setCompleted(recordStudyCompletion(completed, completedKey));
+    const next = recordStudyCompletion(completedRef.current, completedKey);
+    completedRef.current = next;
+    setCompleted(next);
+  };
+  const downloadProgress = () => {
+    const latest = mergeStudyCompletions(completedRef.current, readStudyCompletions());
+    const url = URL.createObjectURL(new Blob([exportStudyProgress(latest)], { type: "application/json" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "rookline-study-progress.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    setBackupMessage("Study progress backup downloaded.");
+  };
+  const importProgress = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (!file) return;
+    try {
+      if (file.size > maxStudyBackupBytes) throw new Error("Backup is larger than 64 KB.");
+      const imported = parseStudyProgress(await file.text());
+      // File reading is asynchronous: preserve newer solves from this tab and others.
+      const merged = mergeStudyCompletions(completedRef.current, readStudyCompletions(), imported);
+      completedRef.current = merged;
+      setCompleted(merged);
+      let persisted = true;
+      try { localStorage.setItem(studyProgressKey, JSON.stringify(merged)); }
+      catch { persisted = false; }
+      setBackupMessage(persisted
+        ? `Imported study progress: ${merged.length} mastered sides. Existing progress kept.`
+        : "Imported into this tab, but device storage is unavailable. Export a backup before closing.");
+    } catch (error) {
+      setBackupMessage(error instanceof Error ? error.message : "Could not read study backup.");
+    }
   };
   const attempt = (from: Square, to: Square, promotion?: "q" | "r" | "b" | "n") => {
     if (mode !== "practice" || finished) return false;
@@ -71,6 +112,15 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
           <strong>{line.title}</strong><small className="muted">{line.subtitle}</small>
           {completed.some((key) => key.startsWith(`${line.id}:`)) && <small className="muted">Practice completed on this device</small>}
         </button>)}
+      </div>
+      <div className="stack" style={{ gap: 8 }}>
+        <p className="panel-sub">Back up mastered openings and lessons to move your progress between devices. Import merges with existing practice.</p>
+        <div className="game-actions">
+          <button type="button" className="btn ghost" disabled={!ready} onClick={downloadProgress}><Download size={16} /> Export study progress</button>
+          <button type="button" className="btn ghost" disabled={!ready} onClick={() => backupFileRef.current?.click()}><Upload size={16} /> Import study progress</button>
+        </div>
+        <input ref={backupFileRef} type="file" accept=".json,application/json" hidden aria-label="Choose study backup file" onChange={importProgress} />
+        {backupMessage && <p className="panel-sub" role="status">{backupMessage}</p>}
       </div>
     </div>
     <section className="stack" aria-labelledby="study-heading">
