@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 106: branched PGN metadata and result
+
+- Chromium RED on original version: imported completed PGN then alternate Nf3 led to `Event "?"` on export; after fix, production Chromium reconstructs and reparses exported PGN with original Event/White/Black, `Result "*"`, correct SAN, and no stale event following Reset.
+- Native `npm run check` **PASS**: **9/9** migration source hashes checked against pinned local snapshot (not live remote query), lint, strict TypeScript, **192/192 Vitest across 28 files**, optimized production build with **17/17 static pages**.
+- Full `ROOKLINE_E2E_PRODUCTION=1 npx playwright test`: **90 local/mock Chromium PASS, 1 genuinely hosted Supabase test SKIP**; no live Auth/RLS, Realtime, DB clocks/locks or rated settlement established by this suite.
+- First run of new E2E against fixed code failed on a test-only assumption: chess.js automatically supplies `Event "?"` when importing empty PGN. Assertion now checks original event was removed; full suite passed. Previous CI SHA `1f8180e` SUCCESS, Preview READY, games API 503 due missing server credentials. New exact-SHA CI and Preview pending publish.
+
 ## 2026-10-31 — checkpoint 105: Analysis PGN file import
 
 - Native approved `npm run check`: **PASS** — **9/9** pinned SQL source fingerprints (not a fresh hosted query), ESLint, strict TypeScript, **191/191 Vitest in 28 files** and complete **17/17 Next Webpack production pages**. The initial sandbox build failed with Windows `EPERM` while creating `.next/server/app/_global-error.segments`; the standalone native build and full native check both succeeded.

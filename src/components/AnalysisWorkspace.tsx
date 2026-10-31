@@ -6,7 +6,7 @@ import { Chessboard } from "react-chessboard";
 import { ArrowLeft, ArrowRight, Download, RotateCcw } from "lucide-react";
 import { applyLegalMove, parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
 import { positionInsight } from "@/lib/chess/insights";
-import { maxAnalysisPgnBytes, parseAnalysisPgn } from "@/lib/chess/analysis-pgn";
+import { maxAnalysisPgnBytes, parseAnalysisPgn, exportAnalysisVariation } from "@/lib/chess/analysis-pgn";
 import type { analyzeBotPosition } from "@/lib/chess/bot";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { completedGameAnalysis, validUuid } from "@/lib/online/games";
@@ -19,6 +19,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   const [selected, setSelected] = useState<Square | null>(null);
   const [pgn, setPgn] = useState(initialPgn);
   const [importedPgn, setImportedPgn] = useState<string | null>(null);
+  const [importedHeaders, setImportedHeaders] = useState<Record<string, string>>({});
   const [fenText, setFenText] = useState("");
   const [message, setMessage] = useState("");
   const [orientation, setOrientation] = useState<"white" | "black">("white");
@@ -64,6 +65,9 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
             setAnalysis({ start: imported.start, san: imported.san, index: imported.san.length });
             setPgn(imported.pgn);
             setImportedPgn(imported.pgn);
+            const loaded = new Chess();
+            loaded.loadPgn(imported.pgn);
+            setImportedHeaders(loaded.getHeaders());
             setSelected(null);
             setPromotion(null);
             setMessage(`${imported.san.length} plies loaded from your completed online game.`);
@@ -91,6 +95,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
         setAnalysis({ start: restored.header().FEN || new Chess().fen(), san, index: san.length });
         setPgn(match.pgn);
         setImportedPgn(restored.pgn());
+        setImportedHeaders(restored.getHeaders());
         setMessage(`${san.length} plies loaded from your local archive.`);
       } catch {
         setMessage("This local game cannot be loaded. It may have been deleted or corrupted.");
@@ -180,6 +185,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       const parsed = parseAnalysisPgn(source);
       setAnalysis({ start: parsed.start, san: parsed.san, index: parsed.san.length });
       setImportedPgn(parsed.pgn);
+      setImportedHeaders(parsed.headers);
       setSelected(null);
       setPromotion(null);
       setMessage(`${parsed.san.length} ${parsed.san.length === 1 ? "ply" : "plies"} imported successfully.`);
@@ -218,6 +224,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     try {
       const parsed = new Chess(fenText.trim());
       setAnalysis({ start: parsed.fen(), san: [], index: 0 });
+      setImportedHeaders({});
       setImportedPgn(null);
       setSelected(null);
       setPromotion(null);
@@ -262,9 +269,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
   };
 
   const exportPgn = () => {
-    const reconstructed = new Chess(analysis.start);
-    for (const san of analysis.san) reconstructed.move(san);
-    const blob = new Blob([importedPgn ?? reconstructed.pgn()], { type: "application/x-chess-pgn" });
+    const blob = new Blob([importedPgn ?? exportAnalysisVariation(analysis.start, analysis.san, importedHeaders)], { type: "application/x-chess-pgn" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.download = "rookline-analysis.pgn";
@@ -338,7 +343,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
         {keyboardError && <p role="alert" className="panel-sub">{keyboardError}</p>}
       </form>
       {message && <p className="status" role="status">{message}</p>}
-      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { userEdited.current = true; pendingPgnFile.current++; setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setImportedPgn(null); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
+      <div className="game-actions"><button type="button" className="btn ghost" onClick={exportPgn}><Download size={17} /> Export PGN</button><button type="button" className="btn ghost" onClick={() => { userEdited.current = true; pendingPgnFile.current++; setAnalysis({ start: new Chess().fen(), san: [], index: 0 }); setImportedPgn(null); setImportedHeaders({}); setMessage(""); setPromotion(null); setKeyboardError(""); }}>Reset</button></div>
     </aside>
     {promotion && <PromotionDialog onChoose={(piece) => makeMove(promotion.from, promotion.to, piece)} onCancel={() => setPromotion(null)} />}
   </div>;

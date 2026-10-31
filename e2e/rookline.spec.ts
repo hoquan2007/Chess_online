@@ -462,6 +462,38 @@ test("analysis ignores a delayed PGN file read after the player imports newer mo
   await expect(page.getByLabel("PGN game")).toHaveValue("1. e4 e5 2. Nf3 *");
 });
 
+test("analysis exports branched PGN with its original metadata and a fresh unfinished result", async ({ page }) => {
+  await page.goto("/analysis");
+  await page.getByLabel("Choose PGN file (up to 32 KB)").setInputFiles({
+    name: "tournament.pgn", mimeType: "application/x-chess-pgn",
+    buffer: Buffer.from('[Event "Rookline Club"]\n[White "Alice"]\n[Black "Bob"]\n[Result "1-0"]\n\n1. d4 d5 2. c4 1-0'),
+  });
+  await expect(page.getByLabel("Analysis moves").getByText("c4")).toBeVisible();
+  await page.getByRole("button", { name: "Previous move" }).click();
+  await page.getByRole("textbox", { name: /Keyboard move/ }).fill("g1f3");
+  await page.getByRole("textbox", { name: /Keyboard move/ }).press("Enter");
+  await expect(page.getByLabel("Analysis moves").getByText("Nf3")).toBeVisible();
+
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PGN" }).click();
+  const game = new Chess();
+  game.loadPgn(await readFile(await (await download).path(), "utf8"));
+  expect(game.getHeaders().Event).toBe("Rookline Club");
+  expect(game.getHeaders().White).toBe("Alice");
+  expect(game.getHeaders().Black).toBe("Bob");
+  expect(game.getHeaders().Result).toBe("*");
+  expect(game.history()).toEqual(["d4", "d5", "Nf3"]);
+
+  await page.getByRole("button", { name: "Reset" }).click();
+  const resetDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export PGN" }).click();
+  const resetGame = new Chess();
+  resetGame.loadPgn(await readFile(await (await resetDownload).path(), "utf8"));
+  // chess.js assigns Event "?" when reading an empty PGN; the imported event must be gone.
+  expect(resetGame.getHeaders().Event).not.toBe("Rookline Club");
+  expect(resetGame.history()).toEqual([]);
+});
+
 test("analysis position snapshot follows move navigation and detects mate", async ({ page }) => {
   await page.goto("/analysis");
   const insight = page.getByRole("region", { name: "Position insight" });

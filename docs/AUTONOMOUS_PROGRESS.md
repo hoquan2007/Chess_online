@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 106 — branched Analysis PGN metadata
+
+- Real Chromium RED test reproduced lost Event/White/Black tags when continuing a different line after importing a completed PGN. The export reconstructs changed lines with validated PGN headers, `Result "*"`, custom start FEN and no stale tags after Reset. Added dedicated unit coverage and Chrome end-to-end export/download/reparse verification.
+- Approved native `npm run check` PASS: 9/9 pinned migration SQL source hashes, ESLint, strict TypeScript, 192 Vitest in 28 suites and Next Webpack optimized build (17/17 generated pages). Full production standalone Chrome E2E **90 local/mock PASS / 1 real Supabase hosted SKIP**. Corrected an E2E Reset assertion because chess.js parses an empty PGN with default `Event "?"`.
+- Previous development SHA `1f8180e` verified Linux quality run `41175549147` SUCCESS; its protected Vercel Preview `dpl_22EY7qUTQGSuBvBxvHX9aEUVerKh` READY with six public HTTP 200 routes; anonymous preferences 401 and games 503. New slice remote attestation pending until published.
+- Full release **IN_PROGRESS, 20/20 OPEN, rated OFF**: missing Preview server-only Supabase secret, backed-up reconciliation of nine remote migration-version IDs, real HTTPS Auth/RLS/Origin/Host users, two-client Realtime, independent PG clock/race, ratings, engine/learning, community and independent acceptance. No production deploy or `main` merge.
+
 ## 2026-10-31, checkpoint 105 — portable Analysis PGN file import
 
 - Added 32-KiB UTF-8 bounded `.pgn` upload alongside paste, parsing via chess.js with headers, BOM and custom starting FEN; validation preserves the current board on invalid/oversized files. Same-file retries work; late file reads cannot overwrite newer manual PGN, FEN, navigation, moves or resets. Fixed singular `1 ply` status.

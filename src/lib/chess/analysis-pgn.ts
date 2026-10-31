@@ -15,8 +15,22 @@ export function parseAnalysisPgn(raw: string) {
       start: game.header().FEN || new Chess().fen(),
       san: game.history(),
       pgn: game.pgn(),
+      headers: game.getHeaders(),
     };
   } catch {
     throw new Error("Invalid PGN. Check the move text and try again.");
   }
+}
+
+/** Export a changed analysis line while retaining its PGN event/player metadata. */
+export function exportAnalysisVariation(start: string, san: string[], sourceHeaders: Record<string, string> = {}) {
+  const game = new Chess(start);
+  for (const [key, value] of Object.entries(sourceHeaders)) {
+    // Chess.js derives setup tags from the actual starting position.
+    if (key !== "Result" && key !== "FEN" && key !== "SetUp") game.header(key, value);
+  }
+  // An imported outcome cannot describe a line the player has branched away from.
+  if (Object.keys(sourceHeaders).length > 0) game.header("Result", "*");
+  for (const move of san) game.move(move);
+  return game.pgn();
 }
