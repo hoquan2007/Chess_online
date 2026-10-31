@@ -8,7 +8,7 @@ import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
-import { availableDrawClaims, parseCoordinateMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
+import { availableDrawClaims, parseKeyboardMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
 
@@ -330,8 +330,8 @@ export function GameRoom({ id }: { id: string }) {
   function submitKeyboardMove(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!myTurn || busy) return;
-    const move = parseCoordinateMove(keyboardMove);
-    if (!move) { setKeyboardError("Enter a move like e2e4 or e7e8q."); return; }
+    const move = parseKeyboardMove(chess, keyboardMove);
+    if (!move) { setKeyboardError("Enter a move like e2e4, Nf3, or O-O."); return; }
     const promotionNeeded = !move.promotion && selectPromotion(chess, move.from, move.to);
     const legal = chess.moves({ square: move.from, verbose: true }).some((candidate) =>
       candidate.to === move.to && (promotionNeeded || (candidate.promotion ?? null) === (move.promotion ?? null)));
@@ -404,7 +404,7 @@ export function GameRoom({ id }: { id: string }) {
       <p role="status" className="status">{disconnectedSince !== null ? "Moves are disabled and the displayed clocks are paused until the server reconnects." : game.status === "waiting" ? "Waiting for opponent. Share this game link." : game.status === "active" ? busy ? "Saving move…" : myTurn ? "Your move" : "Waiting for opponent’s move" : game.status === "cancelled" ? "This invitation can no longer be accepted." : `Result: ${game.result ?? game.status}`}</p>
       <div className="moves" aria-label="Move history">{history.length === 0 ? <p className="panel-sub">Moves will appear here once your game starts.</p> : Array.from({ length: Math.ceil(history.length / 2) }, (_, index) => <div className="move-row" key={index}><span>{index + 1}.</span><strong>{history[index * 2]?.san}</strong><strong>{history[index * 2 + 1]?.san ?? ""}</strong></div>)}</div>
       <form className="keyboard-move-form" onSubmit={submitKeyboardMove}>
-        <label className="panel-sub" htmlFor="online-keyboard-move">Keyboard move · e2e4 or e7e8q</label>
+        <label className="panel-sub" htmlFor="online-keyboard-move">Keyboard move · e2e4, Nf3, or O-O</label>
         <div className="keyboard-move-row"><input id="online-keyboard-move" value={keyboardMove} onChange={(event) => { setKeyboardMove(event.target.value); setKeyboardError(""); }} disabled={!myTurn || busy} maxLength={12} autoComplete="off" placeholder="e2e4" /><button className="btn ghost" disabled={!myTurn || busy} type="submit">Move</button></div>
         {keyboardError && <p className="panel-sub" role="alert">{keyboardError}</p>}
       </form>

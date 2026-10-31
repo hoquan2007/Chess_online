@@ -12,6 +12,20 @@ export function parseCoordinateMove(value: string): MoveInput | null {
     ...(match[3] ? { promotion: match[3] as "q" | "r" | "b" | "n" } : {}) };
 }
 
+/** Accept UCI coordinates or a legal SAN move in the current position, without mutating it. */
+export function parseKeyboardMove(game: Chess, value: string): MoveInput | null {
+  const coordinate = parseCoordinateMove(value);
+  if (coordinate) return coordinate;
+  const notation = value.trim().replace(/0/g, "O");
+  if (!notation || notation.length > 24) return null;
+  const legal = game.moves({ verbose: true }).find((candidate) =>
+    candidate.san === notation || (candidate.san.replace(/[+#]$/, "") === notation));
+  if (!legal) return null;
+  const promotion = legal.promotion;
+  return { from: legal.from, to: legal.to,
+    ...(promotion === "q" || promotion === "r" || promotion === "b" || promotion === "n" ? { promotion } : {}) };
+}
+
 /** FIDE 6.9: a flag fall is a draw if the other side cannot mate by any legal sequence. */
 export function timeoutResult(game: Chess, flaggedSide: "w" | "b"): GameResult {
   const winner = flaggedSide === "w" ? "b" : "w";

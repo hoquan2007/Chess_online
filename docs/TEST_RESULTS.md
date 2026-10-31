@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 109: position-aware SAN keyboard entry
+
+- Before fix, new parser unit test failed because `parseKeyboardMove` did not exist; after fix, 193/193 Vitest across 28 files PASS. Test covers SAN/coordinate, illegal notation, immutable FEN, castling and underpromotion.
+- `npm run check` SQL fingerprints 9/9, ESLint, TypeScript and unit stages PASS; native sandbox build step failed `EPERM` at `.next/types/app/play/local`. Independently authorized `npm run build` exit 0 (17 static pages). Focused production Chromium keyboard SAN regression 1/1 PASS. Full `ROOKLINE_E2E_PRODUCTION=1 npx playwright test --workers=1` exit 0: **94/94 local/mock Chromium PASS**, **1 real hosted staging SKIP**.
+- Previous `26812565ce67fc113eeefaaa8cfe3ca281f39a61` passed exact-SHA Linux Actions `41196169589`; protected Preview `dpl_32fNgF6dVJGE6qQEc9ZdfbzRW1kV` READY. Attempted authenticated HTTP check failed before sending HTTP request because Vercel CLI could not retrieve npm dist-tags; do not claim response codes for that attempt.
+- Scope: keyboard SAN locally verified only. S0 real Supabase Auth/JWT/RLS and HTTPS Host/Origin, S1 two-client Realtime, S2 independent PostgreSQL lock/clock tests, S3 rated settlement, S4 full engine/learning, S5 community and S6 independent 20-gate audit remain OPEN. Database migration history ID mismatch requires backup/reconciliation prior to writes.
+
 ## 2026-10-31 — checkpoint 108: accessible game-setting selection
 
 - RED: `ROOKLINE_E2E_PRODUCTION=1 npx playwright test e2e/rookline.spec.ts --grep "computer options expose selected state" --workers=1` failed `1/1` because the selected strength button lacked `aria-pressed` after keyboard Enter.

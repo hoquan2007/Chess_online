@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowLeft, ArrowRight, Download, RotateCcw } from "lucide-react";
-import { applyLegalMove, parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
+import { applyLegalMove, parseKeyboardMove, selectPromotion } from "@/lib/chess/rules";
 import { positionInsight } from "@/lib/chess/insights";
 import { maxAnalysisPgnBytes, parseAnalysisPgn, exportAnalysisVariation } from "@/lib/chess/analysis-pgn";
 import type { analyzeBotPosition } from "@/lib/chess/bot";
@@ -255,8 +255,8 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
 
   const submitKeyboardMove = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const input = parseCoordinateMove(keyboardMove);
-    if (!input) { setKeyboardError("Enter a move like e2e4 or a7a8n."); return; }
+    const input = parseKeyboardMove(board, keyboardMove);
+    if (!input) { setKeyboardError("Enter a move like e2e4, Nf3, or O-O."); return; }
     const legal = board.moves({ square: input.from, verbose: true }).some((move) =>
       move.to === input.to && (input.promotion ? move.promotion === input.promotion : !move.promotion || selectPromotion(board, input.from, input.to)));
     if (!legal) { setKeyboardError("That move is not legal in this position."); return; }
@@ -338,7 +338,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
         {analysis.san.length === 0 ? <p className="panel-sub">Move a piece to start a variation.</p> : Array.from({ length: Math.ceil(analysis.san.length / 2) }, (_, i) => <div className="move-row" key={i}><span>{i + 1}.</span>{[0, 1].map((offset) => <button type="button" key={offset} disabled={!analysis.san[i * 2 + offset]} onClick={() => seek(i * 2 + offset + 1)} style={{ textAlign: "left", textDecoration: analysis.index === i * 2 + offset + 1 ? "underline" : "none" }}>{analysis.san[i * 2 + offset] || ""}</button>)}</div>)}
       </div>
       <form className="keyboard-move-form" onSubmit={submitKeyboardMove}>
-        <label className="panel-sub" htmlFor="analysis-keyboard-move">Keyboard move · e2e4 or a7a8n</label>
+        <label className="panel-sub" htmlFor="analysis-keyboard-move">Keyboard move · e2e4, Nf3, or O-O</label>
         <div className="keyboard-move-row"><input id="analysis-keyboard-move" value={keyboardMove} onChange={(event) => { setKeyboardMove(event.target.value); setKeyboardError(""); }} maxLength={12} autoComplete="off" placeholder="e2e4" /><button type="submit" className="btn ghost">Move</button></div>
         {keyboardError && <p role="alert" className="panel-sub">{keyboardError}</p>}
       </form>

@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 109 — SAN keyboard moves
+
+- Added position-aware, read-only SAN conversion for local/computer, Analysis and online room keyboard entry, retaining coordinate/UCI notation; accepts legal moves such as `Nf3`, `O-O`, `0-0-0` and promotions with SAN check suffix. Illegal/out-of-turn SAN remains rejected by chess.js.
+- Unit test first reproduced missing conversion (RED), then passed. Restricted `npm run check` passed SQL fingerprint verification (9/9), lint, strict TS and **193/193 Vitest (28 files)** but hit Windows sandbox `EPERM` creating `.next/types`; independently authorized `npm run build` exited 0 and generated 17 static pages. Focused production Chromium 1/1 PASS; full production Chromium **94 local/mock PASS / 1 genuinely hosted staging SKIP** (exit 0).
+- Previous checkpoint 108 was pushed at `26812565ce67fc113eeefaaa8cfe3ca281f39a61`; exact-SHA Linux Actions `41196169589` SUCCESS and protected Vercel Preview `dpl_32fNgF6dVJGE6qQEc9ZdfbzRW1kV` READY at that SHA. Authenticated Preview `vc curl` failed during unrelated npm dist-tag metadata retrieval, so HTTP status for that deployment is **unverified**.
+- S0 **BLOCKED_EXTERNAL**: server-only Preview Supabase credential, backed-up reconciliation of nine remote migration version IDs and genuine three-user HTTPS Auth/RLS/Origin/Host. S1–S6 and **20 final gates OPEN**; rated mode OFF; no `main` merge or production release.
+
 ## 2026-10-31, checkpoint 108 — keyboard-accessible game settings
 
 - Reproduced a real Chromium failure: computer strength was visually active, but the selected button had no `aria-pressed` state. Added `aria-pressed` to the mutually exclusive time control, strength and playing-side buttons; a focused keyboard Enter test now passes for all three groups.

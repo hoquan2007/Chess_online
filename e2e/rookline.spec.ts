@@ -18,6 +18,21 @@ test("home navigation and local chess legal moves", async ({ page }) => {
   await expect(page.getByLabel("Move history").getByText("e5")).toHaveCount(0);
 });
 
+test("local and analysis boards accept legal algebraic keyboard notation", async ({ page }) => {
+  await page.goto("/play/local");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  for (const san of ["e4", "e5", "Nf3", "Nc6"]) {
+    await input.fill(san);
+    await input.press("Enter");
+    await expect(page.getByLabel("Move history").getByText(san, { exact: true })).toBeVisible();
+  }
+  await page.goto("/analysis");
+  const analysisInput = page.getByRole("textbox", { name: /Keyboard move/ });
+  await analysisInput.fill("Nf3");
+  await analysisInput.press("Enter");
+  await expect(page.getByLabel("Analysis moves").getByText("Nf3", { exact: true })).toBeVisible();
+});
+
 test("local resignation exports a replayable PGN with the correct winner", async ({ page }) => {
   await page.goto("/play/local");
   const input = page.getByRole("textbox", { name: /Keyboard move/ });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, mayClaimDraw, parseCoordinateMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
+import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, mayClaimDraw, parseCoordinateMove, parseKeyboardMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
 import { chooseBotMove } from "./bot";
 
 describe("chess rules", () => {
@@ -9,6 +9,25 @@ describe("chess rules", () => {
     expect(parseCoordinateMove("a7a8n")).toEqual({ from: "a7", to: "a8", promotion: "n" });
     expect(parseCoordinateMove("e9e4")).toBeNull();
     expect(parseCoordinateMove("e2e4x")).toBeNull();
+  });
+  it("resolves legal SAN to coordinates without changing the position", () => {
+    const game = new Chess();
+    const originalFen = game.fen();
+    expect(parseKeyboardMove(game, "Nf3")).toEqual({ from: "g1", to: "f3" });
+    expect(parseKeyboardMove(game, "e4")).toEqual({ from: "e2", to: "e4" });
+    expect(parseKeyboardMove(game, "E2-E4")).toEqual({ from: "e2", to: "e4" });
+    expect(parseKeyboardMove(game, "Nf6")).toBeNull();
+    expect(parseKeyboardMove(game, "Nd2")).toBeNull();
+    expect(parseKeyboardMove(game, "bad notation")).toBeNull();
+    expect(game.fen()).toBe(originalFen);
+
+    const castle = new Chess("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1");
+    expect(parseKeyboardMove(castle, "O-O")).toEqual({ from: "e1", to: "g1" });
+    expect(parseKeyboardMove(castle, "0-0-0")).toEqual({ from: "e1", to: "c1" });
+
+    const promotion = new Chess("4k3/P7/8/8/8/8/8/4K3 w - - 0 1");
+    expect(parseKeyboardMove(promotion, "a8=Q+")).toEqual({ from: "a7", to: "a8", promotion: "q" });
+    expect(parseKeyboardMove(promotion, "a7a8n")).toEqual({ from: "a7", to: "a8", promotion: "n" });
   });
   it("rejects illegal and out of turn moves", () => {
     const game = new Chess();

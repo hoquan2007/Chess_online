@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, RotateCcw, Undo2, Volume2, VolumeX, Flag } from "lucide-react";
-import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, parseCoordinateMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
+import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, parseKeyboardMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
 import { advanceLocalClock } from "@/lib/chess/clocks";
 import { createLocalGameId } from "@/lib/chess/local-game-id";
 import type { Difficulty } from "@/lib/chess/bot";
@@ -376,8 +376,8 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
 
   const submitKeyboardMove = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const move = parseCoordinateMove(keyboardMove);
-    if (!move) { setKeyboardError("Enter a move like e2e4 or e7e8q."); return; }
+    const move = parseKeyboardMove(engine.current, keyboardMove);
+    if (!move) { setKeyboardError("Enter a move like e2e4, Nf3, or O-O."); return; }
     if (outcome || botTurn) return;
     const promotionNeeded = !move.promotion && selectPromotion(engine.current, move.from, move.to);
     if (!completeMove(move.from, move.to, move.promotion)) {
@@ -430,7 +430,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
           {history.length === 0 ? <p className="panel-sub">Your moves will appear here. Drag a piece or click a square.</p> : Array.from({ length: Math.ceil(history.length / 2) }, (_, i) => <div className="move-row" key={i}><span>{i + 1}.</span><strong>{history[i * 2]?.san ?? ""}</strong><strong>{history[i * 2 + 1]?.san ?? ""}</strong></div>)}
         </div>
         <form className="keyboard-move-form" onSubmit={submitKeyboardMove}>
-          <label htmlFor={`keyboard-move-${mode}`} className="panel-sub">Keyboard move · e2e4 or e7e8q</label>
+          <label htmlFor={`keyboard-move-${mode}`} className="panel-sub">Keyboard move · e2e4, Nf3, or O-O</label>
           <div className="keyboard-move-row"><input id={`keyboard-move-${mode}`} value={keyboardMove} onChange={(event) => { setKeyboardMove(event.target.value); setKeyboardError(""); }} disabled={!!outcome || botTurn} autoComplete="off" maxLength={12} placeholder="e2e4" /><button className="btn ghost" type="submit" disabled={!!outcome || botTurn}>Move</button></div>
           {keyboardError && <p role="alert" className="panel-sub">{keyboardError}</p>}
         </form>
