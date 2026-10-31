@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 121 — navigated FEN sharing and friend login destination
+
+- Analysis displays the FEN of the currently selected move and lets users copy it with clipboard failure guidance. A Chromium regression imports a three-ply PGN, rewinds to the first move, reads/copies the exact FEN, then verifies Reset restores starting FEN.
+- The friend lobby sends logged-out players to login/registration with `/play/friend` as the return target; the online lobby retains `/play/online`. A separate real Chromium test verified both destinations with an isolated dummy public Supabase configuration; no privileged credential was used.
+- **Verification PASS:** `npm run check` (9/9 local pinned migration fingerprints, ESLint, strict TypeScript, 195/195 Vitest in 28 suites, production build with 17 static pages); full production Chromium **97 local/mock PASS, 2 conditional SKIP** (one public-auth opt-in, one genuine hosted Supabase). The dedicated public-auth opt-in regression passed separately. No real hosted multiplayer test ran.
+- **IN_PROGRESS, 20/20 gates OPEN, rated OFF.** S0 Preview server-only staging secret and genuine three-identity HTTPS Auth/RLS; S1 real two-person private Realtime; S2 DB concurrency and server clock; S3 rated settlement; S4 engine/learning/profile completion; S5 community/tournaments; S6 independent release audit. Development-branch GitHub CI and protected Preview need exact-SHA post-push checks. No main merge or production deploy.
+
 ## 2026-10-31, checkpoint 118 — Analysis reply and two-ply exploration
 
 - CH-12's Worker now retains the opponent's strongest searched SAN reply for each of three ranked legal moves; checkmating moves have no reply. Determinism, reply legality and unchanged input board have unit coverage.

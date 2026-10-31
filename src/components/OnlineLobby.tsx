@@ -19,6 +19,7 @@ export function OnlineLobby({ friend = false }: { friend?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const configured = !!client;
+  const authDestination = encodeURIComponent(friend ? "/play/friend" : "/play/online");
 
   const refresh = useCallback(() => void session.current?.refresh(), []);
 
@@ -104,7 +105,7 @@ export function OnlineLobby({ friend = false }: { friend?: boolean }) {
 
   return <section className="stack">
     <div><p className="overline">{friend ? "Private challenge" : "Your online table"}</p><h1 className="page-title">{friend ? "Invite someone to play." : "The online board awaits."}</h1><p className="muted">Create an unrated private match, share the link with a friend and play from different devices. Your moves are saved on the server.</p></div>
-    {!configured ? <div className="text-panel stack"><h2>Online service not configured</h2><p className="muted">Add the Supabase environment variables and apply the reviewed migration to enable accounts and online games.</p><Link className="btn ghost" href="/play/local">Play on one board</Link></div> : !ready ? <p role="status" className="status">Checking your session…</p> : !userId ? <div className="text-panel stack"><h2>Sign in to play</h2><p className="muted">You need an account to save server-authoritative games and accept a private challenge.</p><div className="game-actions"><Link className="btn primary" href="/login?next=%2Fplay%2Fonline">Sign in</Link><Link className="btn ghost" href="/register?next=%2Fplay%2Fonline">Create account</Link></div></div> : <>
+    {!configured ? <div className="text-panel stack"><h2>Online service not configured</h2><p className="muted">Add the Supabase environment variables and apply the reviewed migration to enable accounts and online games.</p><Link className="btn ghost" href="/play/local">Play on one board</Link></div> : !ready ? <p role="status" className="status">Checking your session…</p> : !userId ? <div className="text-panel stack"><h2>Sign in to play</h2><p className="muted">You need an account to save server-authoritative games and accept a private challenge.</p><div className="game-actions"><Link className="btn primary" href={`/login?next=${authDestination}`}>Sign in</Link><Link className="btn ghost" href={`/register?next=${authDestination}`}>Create account</Link></div></div> : <>
       <div className="text-panel stack"><div><h2>New private game</h2><p className="muted">Choose a clock, then send the generated link to your opponent.</p></div>
         <div role="group" aria-label="Time control" className="pill-group">{(Object.keys(timeControls) as TimeControl[]).map((item) => <button type="button" className={`pill ${control === item ? "active" : ""}`} aria-pressed={control === item} key={item} onClick={() => setControl(item)}>{item}</button>)}</div>
         <div className="game-actions"><button type="button" disabled={busy} className="btn primary" onClick={() => void createGame()}>{busy ? "Creating…" : "Create challenge"}</button><button type="button" className="btn ghost" onClick={() => void signOut()}>Sign out</button></div>

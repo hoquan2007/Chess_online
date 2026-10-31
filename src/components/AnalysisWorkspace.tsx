@@ -304,6 +304,15 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
     URL.revokeObjectURL(url);
   };
 
+  const copyFen = async () => {
+    try {
+      await navigator.clipboard.writeText(boardFen);
+      setMessage("Current position FEN copied to clipboard.");
+    } catch {
+      setMessage("Automatic copy failed. Select the current FEN field to copy it manually.");
+    }
+  };
+
   const lastMove = board.history({ verbose: true }).at(-1);
   const insight = positionInsight(board);
   const styles: Record<string, React.CSSProperties> = {};
@@ -373,6 +382,8 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
       <label className="label">Choose PGN file (up to 32 KB)<input className="field" type="file" accept=".pgn,application/x-chess-pgn,text/plain" onChange={(event) => { void importPgnFile(event); }} /></label>
       <label className="label">FEN position<input className="field" value={fenText} onChange={(event) => { userEdited.current = true; pendingPgnFile.current++; setFenText(event.target.value); }} placeholder="Paste FEN here" /></label>
       <button type="button" className="btn ghost" onClick={loadFen}>Load FEN</button>
+      <label className="label">Current FEN<input className="field" value={boardFen} readOnly onFocus={(event) => event.currentTarget.select()} /></label>
+      <button type="button" className="btn ghost" onClick={() => void copyFen()}>Copy FEN</button>
       <div className="moves" aria-label="Analysis moves">
         {moveRows.length === 0 ? <p className="panel-sub">Move a piece to start a variation.</p> : moveRows.map((row) => <div className="move-row" key={row.number}>
           <span>{row.number}{row.white ? "." : "..."}</span>

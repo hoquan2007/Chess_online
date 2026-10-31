@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 121: current-position FEN and friend authentication routing
+
+- Analysis currently navigated FEN real Chromium regression **PASS**. Dummy public-only Supabase local Chromium checks of friend and online return links **PASS**. The latter runs only with `ROOKLINE_E2E_MOCK_PUBLIC_AUTH=1` and isolated nonsecret public test variables.
+- Full `npm run check` **PASS**: pinned local staging SQL hashes **9/9** (no remote query), ESLint, strict TypeScript, **195/195 Vitest** across 28 test suites, and Next.js 16.4.3 production build **17/17 static pages**.
+- Production-build Chromium `npx playwright test`: **97 PASS, 2 SKIP** in 99 total; skips were isolated public-auth opt-in and actual hosted three-user Supabase acceptance. The public-auth test passed in its own configured run; live Auth/RLS/Realtime/clock and rated acceptance remain unproven.
+
 ## 2026-10-31 — checkpoint 118: candidate reply and navigable variation
 
 - Added legal reply/determinism/checkmate/immutability unit assertions and a real Worker Chromium regression for exploring and navigating two legal plies.

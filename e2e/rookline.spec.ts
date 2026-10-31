@@ -422,6 +422,22 @@ test("analysis imports PGN and navigates positions", async ({ page }) => {
   expect(savedPgn).toContain("Nf3 Nc6");
 });
 
+test("analysis shares the currently selected FEN rather than the end of the imported game", async ({ page }) => {
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/analysis");
+  await page.getByRole("textbox", { name: "PGN game" }).fill("1. e4 e5 2. Nf3");
+  await page.getByRole("button", { name: "Import PGN" }).click();
+  const expected = new Chess();
+  expected.move("e4");
+  await page.getByRole("button", { name: "First move" }).click();
+  await page.getByRole("button", { name: "Next move" }).click();
+  await expect(page.getByRole("textbox", { name: "Current FEN" })).toHaveValue(expected.fen());
+  await page.getByRole("button", { name: "Copy FEN" }).click();
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(expected.fen());
+  await page.getByRole("button", { name: "Reset" }).click();
+  await expect(page.getByRole("textbox", { name: "Current FEN" })).toHaveValue(new Chess().fen());
+});
+
 test("analysis displays and navigates move numbers from a black-to-move setup PGN", async ({ page }) => {
   await page.goto("/analysis");
   await page.getByRole("textbox", { name: "PGN game" }).fill('[SetUp "1"]\n[FEN "4k3/8/8/8/8/8/8/4K3 b - - 0 8"]\n\n8... Kd7 9. Ke2 Ke6 10. Ke3 *');
