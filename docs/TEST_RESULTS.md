@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 128: published SHA and deterministic Node major
+
+- GitHub Linux quality run `41215067303` for published `724db0a0e771968f7caf44ce8894830c83e8f32d` **SUCCESS**, including migration hashes, npm audit, lint, TypeScript, Vitest, build and Chromium job steps.
+- Git-linked Vercel nonproduction Preview `dpl_2pGKyixFndHkdFX5NKVpafwwKjH7` for identical SHA reports **READY**. Real HTTPS is unverified: authenticated `vercel curl` aborted on npm metadata and DNS (`curl: (6)`) before receiving any application response.
+- `package.json` Node engine set to `24.x`. Revalidated 9 local pinned SQL hashes (no remote query), lint, strict TypeScript and **200/200 Vitest**. Composite build failed generated `.next` with Windows `EPERM`; separately elevated `npm run build` PASS, **17/17 static pages**. Chromium evidence from prior SHA still applies to otherwise unchanged application code; latest metadata needs CI after publication.
+
 ## 2026-10-31 — checkpoint 127: local game backup and restore
 
 - Added five domain tests for versioned backup, illegal/tampered PGN rejection, size/format/duplicate guards, merge capacity/conflicts and corrupt localStorage. **200/200 Vitest PASS in 29 suites** overall.

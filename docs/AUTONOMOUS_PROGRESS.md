@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 128 — verify published archive and pin Node runtime
+
+- Verified development commit `724db0a0e771968f7caf44ce8894830c83e8f32d` in GitHub Actions run `41215067303`: **SUCCESS**; migration fingerprints, npm audit, lint, strict types, Vitest, build and Chromium job steps all succeeded.
+- Created Git-sourced nonproduction Vercel Preview `dpl_2pGKyixFndHkdFX5NKVpafwwKjH7` for that exact commit; Vercel reports **READY**. SSO protection remains enabled. An authenticated HTTP smoke attempt did not reach the application: local Vercel CLI failed fetching npm dist-tags and curl could not resolve the Preview hostname. Actual HTTPS routes are therefore not verified.
+- Addressed Vercel's future-major-upgrade warning by narrowing the Node engine from `>=24` to `24.x`, matching the project's Node 24 runtime. Rechecked **9/9** pinned local SQL fingerprints, lint, TypeScript and **200 Vitest PASS**. Composite build failed generated `.next` files with Windows `EPERM`; independently elevated Next build generated **17/17** static pages, exit 0. This config change still needs exact-SHA CI/Preview verification after push.
+- S0 still requires a securely stored Preview-only Supabase server key and three genuine HTTPS identities. Real Auth/RLS/Host/Origin, private Realtime, PostgreSQL races, rated settlement, licensed engine/hosted study, community and all 20 independent gates remain unproved. **Rated OFF, no `main` merge or production.**
+
 ## 2026-10-31, checkpoint 127 — back up and restore completed local chess games
 
 - CH-11: Added versioned JSON backup for device-only completed games. Export checks replayable PGN with chess.js and skips corrupt records; import rejects malformed, oversized, duplicate and illegal game entries and merges up to 80 records while preserving existing IDs. Added per-game delete/cancel confirmation and storage failure feedback.
