@@ -1,5 +1,13 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 108: accessible game-setting selection
+
+- RED: `ROOKLINE_E2E_PRODUCTION=1 npx playwright test e2e/rookline.spec.ts --grep "computer options expose selected state" --workers=1` failed `1/1` because the selected strength button lacked `aria-pressed` after keyboard Enter.
+- FIX: `src/components/GameWorkspace.tsx` now exposes `aria-pressed` for active/inactive time control, difficulty and human-side options; same regression passes in the complete production Chromium suite.
+- GREEN: elevated `npm run check` exit 0: 9/9 pinned migration source hashes, lint, TypeScript, **192/192 Vitest (28 suites)** and 17 generated Next pages. `ROOKLINE_E2E_PRODUCTION=1 npx playwright test --workers=1` exit 0: **93 local/mock PASS**, **1 genuine hosted staging SKIP**. Browser checks do not establish authentic Supabase multiplayer.
+- Remote evidence for preceding checkpoint 107: GitHub SHA `f1119cac5cd030fdafade9ac8a42d38cc051c0b2`, Linux workflow `41195205056` SUCCESS; protected Vercel Preview `dpl_5MUgUeUcQDgnPUf8SYyrMqYueUvb` READY at that SHA. Authenticated `vc curl` confirmed six HTML `200`, anonymous `/api/preferences` `401`, `/api/games` `503`. Direct unauthenticated URL redirects to Vercel Authentication (`302`); do not mistake its login page for app success.
+- Hosted blocker confirmed via live Supabase project `tyvczicinpjixmxgjhjn` ACTIVE_HEALTHY and nine installed migration entries; unresolved version differences and absent Preview server-only credential prevent genuine HTTPS Auth/RLS verification. No DB writes, rated changes, `main` merge or production deployment.
+
 ## 2026-10-31 — checkpoint 107: computer difficulty reload
 
 - `npm run check`: 9 pinned SQL source hashes, ESLint, strict TypeScript, **192/192 Vitest in 28 suites PASS**. Windows sandbox generated output failed at `.next/types/app/play/local` with `EPERM`; a separate `npm run build` with native approved permissions **PASS**, building all **17 static pages**.

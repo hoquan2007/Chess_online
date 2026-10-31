@@ -1305,6 +1305,25 @@ test("computer strength survives reload and a new game without losing the saved 
   await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(0);
 });
 
+test("computer options expose selected state to keyboard and assistive technology", async ({ page }) => {
+  await page.goto("/play/computer");
+  const advanced = page.getByRole("button", { name: "advanced", exact: true });
+  await advanced.focus();
+  await advanced.press("Enter");
+  await expect(advanced).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "medium", exact: true })).toHaveAttribute("aria-pressed", "false");
+  const threeTwo = page.getByRole("button", { name: "3+2", exact: true });
+  await threeTwo.focus();
+  await threeTwo.press("Enter");
+  await expect(threeTwo).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "5+0", exact: true })).toHaveAttribute("aria-pressed", "false");
+  const black = page.getByRole("button", { name: "Black", exact: true });
+  await black.focus();
+  await black.press("Enter");
+  await expect(black).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "White", exact: true })).toHaveAttribute("aria-pressed", "false");
+});
+
 test("legacy and unknown computer strength snapshots restore the game with medium difficulty", async ({ page }) => {
   await page.addInitScript(() => {
     const snapshot = {

@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 108 — keyboard-accessible game settings
+
+- Reproduced a real Chromium failure: computer strength was visually active, but the selected button had no `aria-pressed` state. Added `aria-pressed` to the mutually exclusive time control, strength and playing-side buttons; a focused keyboard Enter test now passes for all three groups.
+- **Full authorized `npm run check` PASS**: 9/9 pinned remote SQL source hashes, ESLint, strict TypeScript, 192/192 Vitest (28 files), complete Next 17-page production build. **Production Chromium 93/93 local/mock PASS, 1 genuine hosted staging SKIP**. This is local UI accessibility evidence, not full screen-reader or hosted multiplayer signoff.
+- Prior checkpoint 107 was published as `f1119cac5cd030fdafade9ac8a42d38cc051c0b2`; its exact-SHA Linux Actions run `41195205056` succeeded and protected Preview `dpl_5MUgUeUcQDgnPUf8SYyrMqYueUvb` is READY. Authenticated `vc curl` verified six HTML routes `200`, anonymous preferences `401`, `/api/games` `503` from missing Preview server-only Supabase credential; raw unauthenticated requests receive Vercel `302` protection.
+- S0 still **BLOCKED_EXTERNAL**: provide isolated Preview server secret, reconcile nine divergent migration history IDs after backup and verify genuine three-user HTTPS Auth/RLS/Host/Origin. S1–S6 and **20 acceptance gates remain OPEN**; rated OFF, production withheld.
+
 ## 2026-10-31, checkpoint 107 — persistent computer strength
 
 - Found that computer difficulty selection reverted to medium after reload, even though the PGN and clocks survived. GameWorkspace now saves `level` only for computer mode, restores easy/medium/hard/advanced, defaults to medium for absent/unknown legacy values without destroying the saved match, and retains selected difficulty on New game.
