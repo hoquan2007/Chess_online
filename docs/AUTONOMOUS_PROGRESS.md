@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 131 — selective three-ply Analysis exploration
+
+- CH-12 searches every legal root move two plies, then extends the three leading candidates to a third ply. Its UI exposes the reply and legal follow-up; chess.js independently revalidates each SAN before adding the navigable line. This is an original selective heuristic, not a full chess engine.
+- After the final assertion edits: **7/7 focused Vitest** and **1/1 real Chromium** PASS. Broad verification on the same implementation before those assertion-only edits: **200/200 Vitest (29 suites), nine pinned local SQL hashes, lint/strict TypeScript PASS; separate authorized Next production build 17/17 pages; production Chromium 99 local/mock PASS / 2 conditional SKIP**. An attempted full-width three-ply search exceeded unit time limits; selective extension passed. Restricted composite build encountered Windows `.next` `EPERM`; independently authorized build passed.
+- Development SHA needs publication plus exact-SHA Linux CI and Git-linked protected nonproduction Preview. S0 still requires secure Preview-only server Supabase secret and real three-user HTTPS Auth/RLS/Origin/Host; S1 private Realtime/reconnect; S2 independent PostgreSQL clock/lock races; S3 rated once-only settlement; S4 licensed full engine/hosted learning; S5 community/tournaments; S6 independent 20-gate audit. **All 20 OPEN, rated OFF; no main merge or production.**
+
 ## 2026-10-31, checkpoint 128 — verify published archive and pin Node runtime
 
 - Verified development commit `724db0a0e771968f7caf44ce8894830c83e8f32d` in GitHub Actions run `41215067303`: **SUCCESS**; migration fingerprints, npm audit, lint, strict types, Vitest, build and Chromium job steps all succeeded.

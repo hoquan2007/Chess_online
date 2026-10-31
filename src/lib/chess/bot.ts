@@ -66,25 +66,26 @@ function quietSearch(game: Chess, alpha: number, beta: number, perspective: "w" 
   return best;
 }
 
-function search(game: Chess, depth: number, alpha: number, beta: number, perspective: "w" | "b", ply: number, principalReply?: { san: string | null }): number {
+function search(game: Chess, depth: number, alpha: number, beta: number, perspective: "w" | "b", ply: number, principalLine?: { san: string[] }): number {
   if (gameResult(game).finished) return evaluate(game, perspective, ply);
   if (depth === 0) return quietSearch(game, alpha, beta, perspective, ply, 2);
   const maximizing = game.turn() === perspective;
   let best = maximizing ? -Infinity : Infinity;
   for (const move of game.moves({ verbose: true })) {
     game.move(move);
-    const score = search(game, depth - 1, alpha, beta, perspective, ply + 1);
+    const continuation = principalLine ? { san: [] as string[] } : undefined;
+    const score = search(game, depth - 1, alpha, beta, perspective, ply + 1, continuation);
     game.undo();
     if (maximizing) {
       if (score > best) {
         best = score;
-        if (principalReply) principalReply.san = move.san;
+        if (principalLine) principalLine.san = [move.san, ...(continuation?.san ?? [])];
       }
       alpha = Math.max(alpha, best);
     } else {
       if (score < best) {
         best = score;
-        if (principalReply) principalReply.san = move.san;
+        if (principalLine) principalLine.san = [move.san, ...(continuation?.san ?? [])];
       }
       beta = Math.min(beta, best);
     }
@@ -114,33 +115,42 @@ export function chooseBotMove(game: Chess, difficulty: Difficulty): Move | null 
   return selected;
 }
 
-/** A deliberately small, original material/position search hint, not a full chess engine. */
+/** Original selective three-ply material/position hint; not a full chess engine. */
 export function analyzeBotPosition(game: Chess): {
   finished: boolean;
   bestMove: { san: string; from: string; to: string; promotion?: string } | null;
   scoreCp: number | null;
   depth: number;
-  candidates: { san: string; from: string; to: string; promotion?: string; scoreCp: number; replySan: string | null }[];
+  candidates: { san: string; from: string; to: string; promotion?: string; scoreCp: number; replySan: string | null; continuationSan: string | null }[];
 } {
-  const depth = 2;
+  const depth = 3;
   if (gameResult(game).finished) return { finished: true, bestMove: null, scoreCp: null, depth, candidates: [] };
   const legal = game.moves({ verbose: true });
   if (legal.length === 0) return { finished: true, bestMove: null, scoreCp: null, depth, candidates: [] };
   const perspective = game.turn();
-  const ranked: { san: string; from: string; to: string; promotion?: string; score: number; replySan: string | null }[] = [];
+  type Ranked = { san: string; from: string; to: string; promotion?: string; score: number; replySan: string | null; continuationSan: string | null };
+  const preliminary: Ranked[] = [];
   for (const move of legal) {
     game.move(move);
-    // Retain the opponent's strongest reply from the same minimax pass as the
-    // candidate score; do not suggest a reply to an already finished game.
-    const reply = { san: null as string | null };
-    const score = search(game, depth - 1, -Infinity, Infinity, perspective, 1, reply);
+    const reply = { san: [] as string[] };
+    const score = search(game, 1, -Infinity, Infinity, perspective, 1, reply);
     game.undo();
-    ranked.push({ san: move.san, from: move.from, to: move.to, promotion: move.promotion, score, replySan: reply.san });
+    preliminary.push({ san: move.san, from: move.from, to: move.to, promotion: move.promotion, score,
+      replySan: reply.san[0] ?? null, continuationSan: null });
   }
-  // Reuse the already searched root moves. Sorting is stable, so equal scores
-  // keep chess.js legal-move ordering and repeated requests remain predictable.
+  // Search all root moves at two plies, then extend the best three to three
+  // plies. This keeps the browser responsive on high-branching positions.
+  preliminary.sort((a, b) => b.score - a.score);
+  const ranked = preliminary.slice(0, 3).map((candidate) => {
+    game.move({ from: candidate.from, to: candidate.to, promotion: candidate.promotion });
+    const continuation = { san: [] as string[] };
+    const score = search(game, depth - 1, -Infinity, Infinity, perspective, 1, continuation);
+    game.undo();
+    return { ...candidate, score, replySan: continuation.san[0] ?? null,
+      continuationSan: continuation.san[1] ?? null };
+  });
   ranked.sort((a, b) => b.score - a.score);
-  const candidates = ranked.slice(0, 3).map(({ score, ...move }) => ({
+  const candidates = ranked.map(({ score, ...move }) => ({
     ...move, scoreCp: perspective === "w" ? score : -score,
   }));
   return {

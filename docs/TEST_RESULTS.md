@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 131: CH-12 selective three-ply continuation
+
+- After final assertion edits, `npx vitest run src/lib/chess/bot.test.ts` **7/7 PASS** and `ROOKLINE_E2E_PRODUCTION=1 npx playwright test -g 'analysis explores'` **1/1 real Chromium PASS** (three plies, move navigation).
+- On the same implementation before assertion-only edits: **200/200 Vitest, 99 local/mock production Chromium PASS / 2 conditionally SKIP, 9/9 pinned local migration hashes, lint/strict TS PASS; separate elevated build 17/17 pages**. Composite restricted build encountered Windows `.next` `EPERM`.
+- These checks do not validate real hosted Auth/RLS/Realtime, rated clocks or full licensed analysis. New development SHA CI and protected nonproduction Preview pending.
+
 ## 2026-10-31 — checkpoint 128: published SHA and deterministic Node major
 
 - GitHub Linux quality run `41215067303` for published `724db0a0e771968f7caf44ce8894830c83e8f32d` **SUCCESS**, including migration hashes, npm audit, lint, TypeScript, Vitest, build and Chromium job steps.

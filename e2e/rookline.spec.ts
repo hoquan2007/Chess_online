@@ -634,7 +634,7 @@ test("analysis candidate search uses a real worker, follows positions, and handl
   await page.goto("/analysis");
   const region = page.getByRole("region", { name: "Candidate move analysis" });
   await region.getByRole("button", { name: "Find candidate move" }).click();
-  await expect(region.getByText(/Candidate:/)).toContainText(/Heuristic estimate: .*depth 2 plies/, { timeout: 20_000 });
+  await expect(region.getByText(/Candidate:/)).toContainText(/Heuristic estimate: .*depth 3 plies/, { timeout: 30_000 });
   const candidates = region.getByRole("list", { name: "Ranked candidate moves" });
   await expect(candidates.getByRole("listitem")).toHaveCount(3);
   await candidates.getByRole("listitem").first().getByRole("button", { name: /^Try / }).click();
@@ -670,24 +670,25 @@ test("analysis worker looks past an immediately recaptured queen", async ({ page
   await expect(candidate).not.toContainText("Candidate: Qxf5");
 });
 
-test("analysis explores a candidate and the worker's legal reply as a navigable two-ply line", async ({ page }) => {
+test("analysis explores the worker's legal three-ply continuation", async ({ page }) => {
   await page.goto("/analysis");
   const region = page.getByRole("region", { name: "Candidate move analysis" });
   await region.getByRole("button", { name: "Find candidate move" }).click();
   const candidates = region.getByRole("list", { name: "Ranked candidate moves" });
   await expect(candidates.getByRole("listitem")).toHaveCount(3, { timeout: 20_000 });
   await expect(candidates.getByText(/Likely reply:/)).toHaveCount(3);
+  await expect(candidates.getByText(/Follow-up:/)).toHaveCount(3);
   const explore = candidates.getByRole("button", { name: /^Explore / }).first();
   const explored = await explore.getAttribute("aria-label");
   await explore.click();
   await expect(page.getByRole("status").filter({ hasText: "Exploring " })).toContainText(explored?.replace("Explore ", "") ?? "");
-  await expect(page.getByLabel("Analysis moves").locator(".move-row")).toHaveCount(1);
-  await expect(page.locator(".clock").filter({ hasText: "2 / 2" })).toBeVisible();
+  await expect(page.getByLabel("Analysis moves").locator(".move-row")).toHaveCount(2);
+  await expect(page.locator(".clock").filter({ hasText: "3 / 3" })).toBeVisible();
   await expect(candidates).toHaveCount(0);
   await page.getByRole("button", { name: "Previous move" }).click();
-  await expect(page.locator(".clock").filter({ hasText: "1 / 2" })).toBeVisible();
+  await expect(page.locator(".clock").filter({ hasText: "2 / 3" })).toBeVisible();
   await page.getByRole("button", { name: "Next move" }).click();
-  await expect(page.locator(".clock").filter({ hasText: "2 / 2" })).toBeVisible();
+  await expect(page.locator(".clock").filter({ hasText: "3 / 3" })).toBeVisible();
 });
 
 test("silent analysis worker times out, retries, and ignores stale replies after navigation", async ({ page }) => {

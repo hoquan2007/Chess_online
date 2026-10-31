@@ -40,7 +40,7 @@ describe("original analysis hint", () => {
     const history = game.history();
     const hint = analyzeBotPosition(game);
     expect(hint.finished).toBe(false);
-    expect(hint.depth).toBe(2);
+    expect(hint.depth).toBe(3);
     expect(hint.bestMove).not.toBeNull();
     expect(hint.candidates).toHaveLength(3);
     expect(hint.candidates[0]).toMatchObject({ ...hint.bestMove, scoreCp: hint.scoreCp });
@@ -76,6 +76,11 @@ describe("original analysis hint", () => {
       expect(candidate.replySan).not.toBeNull();
       expect(continuation.moves()).toContain(candidate.replySan);
       continuation.move(candidate.replySan!);
+      expect(candidate.continuationSan).not.toBeNull();
+      if (candidate.continuationSan) {
+        expect(continuation.moves()).toContain(candidate.continuationSan);
+        continuation.move(candidate.continuationSan);
+      }
     }
     expect(analyzeBotPosition(position)).toEqual(hint);
     expect(position.fen()).toBe(before);
@@ -84,6 +89,7 @@ describe("original analysis hint", () => {
     const mateHint = analyzeBotPosition(mateInOne);
     expect(mateHint.bestMove?.san).toMatch(/#$/);
     expect(mateHint.candidates[0].replySan).toBeNull();
+    expect(mateHint.candidates[0].continuationSan).toBeNull();
     expect(mateInOne.fen()).toBe("7k/5Q2/6K1/8/8/8/8/8 w - - 0 1");
   });
 
