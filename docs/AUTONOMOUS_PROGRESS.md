@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 84 — Linux CI green and protected Preview ready
+
+- Committed and pushed the standalone E2E CI repair as `0e942c9825b945dfbfc9b1ef4a6ee088eb650285` on `codex/chess-platform-foundation`, leaving `main` unchanged. GitHub Actions run `41160142549` at that exact SHA finished **SUCCESS**: the Linux Playwright job reports **77 passed / 1 hosted skipped**; all preceding workflow quality steps succeeded.
+- Deployed a **non-production** protected Vercel Preview from that local commit: `dpl_3qgENd5k9Vxtvw1eaMW1tRHDcPBB` is **READY** (17 static pages built). Authenticated HTTPS smoke: `/`, `/play/local`, `/login` **200**; anonymous `/api/games` **503** (Supabase server secret absent), `/api/preferences` **401**. Vercel CLI inspect confirms `target=preview` but exposes no `gitSource` metadata, so the platform does not independently attest the source SHA.
+- Read-only Supabase project inspection confirmed `chessonline` healthy with nine applied migrations, RLS enabled on seven public tables, and one informational deny-all RLS advisory for `game_rate_limits`. Only the two `NEXT_PUBLIC_SUPABASE_*` variables exist in Preview; no server-only key. Migration SQL hashes match nine local pinned sources but remote migration **version IDs differ**.
+- **S0 remains BLOCKED_EXTERNAL:** provision an isolated server-only secret in Preview, verify three real HTTPS identities/Auth/RLS/Host/Origin, back up and reconcile migration history before any `db push`. Then execute S1–S6 and independent 20-gate acceptance. **20 OPEN, rated OFF, no production deployment or `main` merge.**
+
 ## 2026-10-31, checkpoint 83 — test the built standalone product in CI
 
 - The pushed `471eae2` Linux Actions run `41158246211` **FAILED**: 76 browser cases passed, one real hosted case skipped, and the initial Analysis Web Worker test timed out. Playwright trace records its on-demand `next dev` worker-chunk request still pending with no response after the 20-second assertion window. The same commit's protected Preview `dpl_DYrNBjNUMN3y7w7q78z4MRVuqGSN` is READY; authenticated smoke returns `/`, `/play/local`, `/login` HTTP 200, anonymous `/api/games` 503 and `/api/preferences` 401.

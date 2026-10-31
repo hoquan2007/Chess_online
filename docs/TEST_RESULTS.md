@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 84: exact-SHA Linux CI and Vercel Preview
+
+- Development branch commit `0e942c9825b945dfbfc9b1ef4a6ee088eb650285`: GitHub Actions run `41160142549` completed **SUCCESS**. Ubuntu job completed migration parity 9/9, npm audit, lint, typecheck, 181 Vitest, Next Webpack production build, browser installation and `npm run test:e2e`; Linux Playwright log ends with **77 passed (1.1m), 1 skipped** (the real hosted Supabase case).
+- Vercel non-production Preview `dpl_3qgENd5k9Vxtvw1eaMW1tRHDcPBB` **READY**, target `preview`; protected `vercel curl` probes returned homepage/local board/login **200**, anonymous games **503**, anonymous preferences **401**. Direct CLI upload was started from matching local HEAD; Vercel inspection has no recorded `gitSource` for an independent exact-SHA check.
+- Only public Supabase Preview environment variables exist; no secure server key, three real hosted users, realtime/row-lock clock tests, or rated verification. All twenty release gates remain OPEN.
+
 ## 2026-10-31 — checkpoint 83: standalone production E2E regression
 
 - Prior Linux Actions run `41158246211` (SHA `471eae2`) FAILED only at Playwright Analysis Worker initialization: 76 local/mock passed, 1 failed, 1 hosted skipped. Saved trace shows `_app-pages-browser_src_workers_analysis_worker_ts.js` requested by `next dev` and never responding during the 20-second expectation; the UI remained "Analyzing position…".
