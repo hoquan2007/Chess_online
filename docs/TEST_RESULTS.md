@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 92: exact-SHA Linux CI and protected Preview
+
+- Pushed `0d3d6e34124d78027c1ac6a7ba7c648f2ebab3ed`. GitHub Actions run `41165982373` ended **completed/success**, its only `quality` job `124433536134` completed success. Independent job steps verify install, nine migration fingerprints, `npm audit --audit-level=high`, lint, strict types, unit, Webpack build, browser installation and Playwright all passed. This Linux CI runs the exact pushed SHA.
+- Vercel CLI upload from a clean checkout of that source returned protected **Preview READY** `dpl_8NWurTbNrqoZsdyFABAkNM8m5xMW`, 17 generated pages, `target=preview` confirmed via `vercel inspect`. Authenticated `vercel curl` status: `/` 200, `/play/local` 200, `/login` 200, `/api/games` 503, `/api/preferences` 401. CLI-uploaded Preview metadata does not independently certify the Git SHA. No production deployment.
+- Public game API 503 and the guarded hosted Chromium SKIP are evidence that real Supabase Auth/RLS/Realtime remains unverified. All 20 acceptance gates OPEN and rated mode OFF.
+
 ## 2026-10-31 — checkpoint 91: restart invitation after an unrated game
 
 - New browser regressions for a completed Black participant creating a new 3+2 private room and for cancelled 10+0 challenge retry after HTTP 503 / rejection of malicious returned ID: focused **2/2 PASS** using `ROOKLINE_E2E_PRODUCTION=1`, port 3193, Playwright on an already built standalone server.

@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 92 — new development SHA verified remotely
+
+- The verified fresh-invitation slice was committed and pushed on `codex/chess-platform-foundation` as `0d3d6e34124d78027c1ac6a7ba7c648f2ebab3ed`; worktree clean after push. GitHub Linux Actions run `41165982373` at that **exact SHA finished SUCCESS**. Its `quality` job passed migration source verification, security audit, lint, strict TypeScript, Vitest, Next Webpack production build and Chromium Playwright.
+- From the clean checkout at this SHA, deployed Vercel nonproduction Preview `dpl_8NWurTbNrqoZsdyFABAkNM8m5xMW` (**READY**, `target=preview`). Protected authenticated HTTPS smoke returned `/` **200**, `/play/local` **200**, `/login` **200**, `/api/games` **503** (server-only Supabase credential still absent) and `/api/preferences` **401** (anonymous). Local CLI upload does not independently prove the Git SHA in deployment metadata; the source was clean at deployment.
+- Hosted three-identity Auth/RLS and real Realtime acceptance still **BLOCKED_EXTERNAL**. Do not provision the missing high-privilege secret in browser-facing settings. S0–S6 and all 20 acceptance gates remain OPEN; rated mode OFF, `main` and production untouched.
+
 ## 2026-10-31, checkpoint 91 — repeat private invitation after an unrated match
 
 - Finished or cancelled unrated rooms now offer an explicit fresh private challenge with the same allowlisted time control. Only a room participant may use the action; the other player must accept the newly created invitation. The UI tracks pending mutations, disables duplicate submission, recovers from service errors, rejects non-UUID response IDs and abandons stale requests after room changes.
