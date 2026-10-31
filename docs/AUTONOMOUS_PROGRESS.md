@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-10-31, checkpoint 82 — reject impossible invitation cancellation snapshots
+
+- Prior published `a5fae1b9c156bb8d303045414ce4d26460125087` passed Linux GitHub Actions run `41149734462`; protected non-production Vercel Preview `dpl_9BKDPUxLFYBHUPMyTRgsC8LmUfGj` was READY at the same SHA. These checks precede the new cancellation fix.
+- A later HTTP snapshot could previously mark an active/played game `cancelled`, or rewrite clocks and player seats while claiming a waiting invitation was cancelled. Added a RED/GREEN regression and restricted cancellation to an unchanged unjoined `waiting` invitation; previously accepted identical terminal states stay valid.
+- Focused **26/26 Vitest PASS**; nine pinned migration fingerprints, ESLint, strict TypeScript and full **181/181 Vitest PASS**. Combined `npm run check` reached build but failed Windows sandbox `EPERM` creating `.next/types/app/api/games`; separate approved `npm run build` succeeded, **17/17 static pages**. Full approved Chromium on port 3227 exited 0: **77 local/mock PASS / 1 real hosted staging SKIP**.
+- Current local runtime presence-only probe finds no Supabase URL, public key or server secret. Previous Preview inventory had only the two public variables. Genuine HTTPS three-person Auth/RLS/Origin, private Realtime, independent PostgreSQL lock/clock races, rated settlement, remaining learning/social features and independent acceptance remain unverified. Reconcile nine remote migration version IDs from a backup before any schema push. **All 20 gates OPEN, rated OFF, IN_PROGRESS**; publish only the development branch and protected Preview.
+
 ## 2026-10-31, checkpoint 81 — immutable game metadata across online transitions
 
 - GitHub Actions run `41148295733` for prior published commit `67759355e39350cfe69bddfba80b4dcf9b1bf8c7` finished **SUCCESS**; protected non-production Vercel deployment `dpl_6Q2KGSJYRxhAmp9v5fy4QFAWSaaF` is **READY** and reports the exact same source SHA. Vercel project still has SSO enabled and only two Preview public Supabase settings; no server-only credential. Local HTTP smoke could not resolve the Vercel hostname in the restricted DNS environment, so READY is not treated as an HTTP smoke pass.

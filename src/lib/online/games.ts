@@ -48,6 +48,17 @@ export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
       (incoming.winner_id !== null && incoming.winner_id !== incoming.white_id && incoming.winner_id !== incoming.black_id)) {
     return true;
   }
+  // The only cancellation RPC revokes an unjoined waiting invitation. It
+  // changes the lifecycle flag, never the position, result, seats or clocks.
+  if (incoming.status === "cancelled" && current.status !== "cancelled" && (
+      current.status !== "waiting" ||
+      incoming.black_id !== null || incoming.result !== null || incoming.winner_id !== null ||
+      incoming.fen !== current.fen || incoming.pgn !== current.pgn ||
+      incoming.turn !== current.turn || incoming.ply !== current.ply ||
+      incoming.white_ms !== current.white_ms || incoming.black_ms !== current.black_ms ||
+      incoming.clock_anchor_at !== current.clock_anchor_at)) {
+    return true;
+  }
   // A committed state at the same lifecycle phase and ply is immutable. SQL
   // mutations either advance the ply or transition the lifecycle phase.
   // Compare values by key so equivalent object key order remains valid.

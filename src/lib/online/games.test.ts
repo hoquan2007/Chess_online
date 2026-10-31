@@ -254,6 +254,23 @@ describe("out-of-order authoritative snapshots", () => {
     expect(isOlderGameSnapshot(active, { ...completed, black_id: "other-black" })).toBe(true);
     expect(isOlderGameSnapshot(active, { ...completed, winner_id: "outsider" })).toBe(true);
   });
+  it("accepts creator cancellation only for an unchanged waiting invitation", () => {
+    const waiting = snapshot({ status: "waiting", black_id: null, clock_anchor_at: null });
+    const cancelled = { ...waiting, status: "cancelled" as const };
+    const active = snapshot();
+    expect(isOlderGameSnapshot(waiting, cancelled)).toBe(false);
+    expect(isOlderGameSnapshot(cancelled, cancelled)).toBe(false);
+    expect(isOlderGameSnapshot(active, { ...active, status: "cancelled" })).toBe(true);
+    expect(isOlderGameSnapshot(played(["e4"]), { ...played(["e4"]), status: "cancelled" })).toBe(true);
+    for (const changed of [
+      { white_ms: 0 },
+      { black_ms: 0 },
+      { clock_anchor_at: "2026-10-29T02:00:00.000Z" },
+      { result: "resignation" },
+      { winner_id: "white-id" },
+      { black_id: "black-id" },
+    ]) expect(isOlderGameSnapshot(waiting, { ...cancelled, ...changed })).toBe(true);
+  });
 });
 
 describe("auth redirects", () => {

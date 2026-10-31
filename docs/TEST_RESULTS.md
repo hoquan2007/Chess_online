@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-10-31 — checkpoint 82: enforce cancellation lifecycle and clock immutability
+
+- RED/GREEN `npx vitest run src/lib/online/games.test.ts`: failed on active-to-cancelled before repair; after the final fix **26/26 PASS**, including normal waiting invitation cancellation, identical cancelled snapshot, a played-game cancellation rejection, and six fields that cannot be changed by cancellation. The first proposed guard also caused an existing terminal-fixture test failure; it was constrained to transitions from non-cancelled state and the full focused suite passed.
+- `npm run check`: pinned SQL hash parity **9/9**, ESLint PASS, strict TypeScript PASS, **181/181 Vitest in 25 files PASS**; Windows `.next` mkdir `EPERM` prevented a composite exit 0. Separate approved `npm run build`: exit **0**, optimized Next.js 16.4.3 Webpack with **17/17** generated static pages. `ROOKLINE_E2E_PORT=3227 npm run test:e2e -- --workers=1`: exit **0**, **77 local/mock Chromium PASS**, **1 genuine hosted Supabase SKIP**, 4.0 minutes.
+- Presence-only check of local runtime: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_SERVICE_ROLE_KEY` all absent. No genuine hosted Auth/RLS, HTTPS Origin/Host, independent private Realtime, Postgres row-lock/clock contention, rated settlement or production-readiness claims. Remote migration version mapping still requires backed-up reconciliation. **20 full-product gates OPEN, rated OFF.**
+
 ## 2026-10-31 — checkpoint 81: preserve identities and time controls across transitions
 
 - **Remote previous SHA:** GitHub Actions `41148295733` completed **SUCCESS** for `67759355e39350cfe69bddfba80b4dcf9b1bf8c7`. Vercel non-production Preview `dpl_6Q2KGSJYRxhAmp9v5fy4QFAWSaaF` reported **READY** for that SHA; SSO protected, two public Supabase Preview env keys, no server secret. Restricted PowerShell DNS lookup failed; no claim of successful HTTP route smoke. New checkpoint must be verified against its own SHA after publication.
