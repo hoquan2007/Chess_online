@@ -6,7 +6,7 @@ import { Chessboard } from "react-chessboard";
 import { ArrowRight, Download, Lightbulb, RotateCcw, Upload } from "lucide-react";
 import { evaluatePuzzleMove, nextAdaptivePuzzleIndex, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, readPuzzleCompletions, readPuzzlePractice, recordPuzzlePractice, type PuzzlePractice, type PuzzlePracticeEvent, type PuzzleTheme } from "@/lib/chess/puzzles";
 import { exportPuzzleProgress, maxPuzzleBackupBytes, mergePuzzleProgress, parsePuzzleProgress } from "@/lib/chess/puzzle-backup";
-import { parseCoordinateMove, selectPromotion } from "@/lib/chess/rules";
+import { parseKeyboardMove, selectPromotion } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
 
 const completedKey = "rookline-puzzles";
@@ -137,8 +137,8 @@ export function PuzzleTrainer() {
 
   const submitKeyboardMove = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const parsed = parseCoordinateMove(keyboardMove);
-    if (!parsed) { setFeedback("Use coordinates such as e2e4 or a7a8q."); return; }
+    const parsed = parseKeyboardMove(new Chess(fen), keyboardMove);
+    if (!parsed) { setFeedback("Use coordinates such as e2e4 or legal notation such as Qf8+."); return; }
     attempt(parsed.from, parsed.to, parsed.promotion);
   };
 
@@ -224,7 +224,7 @@ export function PuzzleTrainer() {
         <p className="panel-sub">Adaptive review revisits positions you missed or needed hints for. Practice history stays on this device.</p>
       </div>
       <form onSubmit={submitKeyboardMove} className="stack" style={{ gap: 7 }}>
-        <label htmlFor="puzzle-keyboard-move" className="panel-sub">Keyboard move · e2e4 or a7a8q</label>
+        <label htmlFor="puzzle-keyboard-move" className="panel-sub">Keyboard move · e2e4, Qf8+ or a7a8q</label>
         <div className="keyboard-move-row">
           <input id="puzzle-keyboard-move" value={keyboardMove} onChange={(event) => setKeyboardMove(event.target.value)}
             maxLength={12} autoComplete="off" placeholder="e2e4" disabled={!ready || solved} />

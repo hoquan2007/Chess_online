@@ -268,6 +268,27 @@ test("Black's two-move puzzle plays White's forced response and scores only the 
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-puzzle-practice") ?? "{}")["mate-023"])).toEqual({ errors: 0, hints: 0, solves: 1 });
 });
 
+test("puzzle keyboard accepts legal SAN in either move of a scripted tactic and for Black", async ({ page }) => {
+  await page.goto("/puzzles");
+  const input = page.getByRole("textbox", { name: /Keyboard move/ });
+  await page.getByRole("button", { name: "Puzzle 22", exact: true }).click();
+  await input.fill("Qf8+");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Black replies Kh7" })).toBeVisible();
+  await input.fill("Qg7#");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Qg7#" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Puzzle 23", exact: true }).click();
+  await input.fill("Qc1+");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "White replies Ka2" })).toBeVisible();
+  await input.fill("Qb2#");
+  await input.press("Enter");
+  await expect(page.getByRole("status").filter({ hasText: "Correct! Qb2#" })).toBeVisible();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-puzzle-practice") ?? "{}")["mate-023"]?.solves)).toBe(1);
+});
+
 test("puzzle promotion offers accessible choices and accepts a knight fork", async ({ page }) => {
   await page.goto("/puzzles");
   await page.getByRole("button", { name: "Puzzle 21", exact: true }).click();

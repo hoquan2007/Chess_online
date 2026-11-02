@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-11-02, checkpoint 139 — keyboard SAN for scripted puzzles
+
+- CH-13 puzzle keyboard now accepts SAN in the current position as well as coordinates, reusing `parseKeyboardMove`. Original White and Black two-move mating lines accept algebraic checks/mates in both move slots, with forced opponent replies and a completion recorded after mate.
+- **202/202 Vitest PASS**, ESLint and strict TypeScript PASS, 9/9 local migration SQL fingerprints, isolated approved Next production build **17/17 pages PASS** after restricted composite `.next/types` `EPERM`. Focused Chromium **1/1 PASS**; full standalone Chromium **102 PASS / 2 hosted-dependent SKIP**. No genuine hosted Supabase verification was performed.
+- Next: publish development branch and verify exact-SHA Linux CI and protected nonproduction Preview. S0 dedicated Preview server-only secret plus three real HTTPS Auth/JWT/RLS/Origin/Host identities remains blocked; S1–S6 and **20 release gates OPEN**, rated OFF, no main or production.
+
 ## 2026-11-01, checkpoint 138 — Black-side forced mate in two
 
 - CH-13 adds original `mate-023`, a Black-to-move queen-and-king mating net. The authored `Qc1+ Ka2 Qb2#` line is replay-validated by chess.js; the trainer correctly says **White replies** and only records completion after the final actual mate. Browser verification covers keyboard entry, reversed board orientation, mouse finish and persistent practice score.

@@ -1,5 +1,12 @@
 # Test evidence ledger
 
+## 2026-11-02 — checkpoint 139: legal SAN puzzle keyboard
+
+- Position-aware SAN parser shared with other chess modes now handles both moves of White and Black two-move puzzles. Focused built-app Chromium regression: **1/1 PASS** (`Qf8+`, `Qg7#`, `Qc1+`, `Qb2#` and forced responses).
+- `npm run check`: 9/9 local source SQL fingerprint parity (no remote query), ESLint, strict TypeScript and **202/202 Vitest PASS (29 files)**. Composite Next build failed with sandbox Windows `EPERM` when creating `.next/types/app/analysis`; separately approved `npm run build` compiled and generated **17/17 pages, exit 0**.
+- Full standalone production Chromium suite: **102 PASS / 2 SKIP, exit 0** (104 total). Both skipped scenarios depend on hosted conditions; local/mock checks do not prove real Supabase Auth, RLS or private multiplayer.
+- Development commit publication, exact-SHA Linux CI and protected Preview verification pending at this point. S0–S6 and all 20 production release gates remain OPEN; rated OFF.
+
 ## 2026-11-01 — checkpoint 138: Black-side two-move puzzle
 
 - `npm run check` passed 9/9 local SQL fingerprints, ESLint, strict TypeScript, and **202/202 Vitest (29 suites)**, then hit `EPERM` creating generated `.next/types` on restricted Windows. Separately approved `npm run build` completed **17/17 static pages, exit 0**.

@@ -1,5 +1,7 @@
 # Active task
 
+**Checkpoint 139 (2026-11-02):** CH-13 SAN keyboard entry now uses the position-aware shared parser and supports both sides of authored two-ply mate sequences. Real Chromium regression verifies both SAN moves and the forced replies. **202 Vitest, 102 local/mock Chromium PASS / 2 hosted SKIP, 9 local SQL hashes, lint/strict TS and approved 17-page build PASS**; restricted composite build encountered Windows `.next/types` `EPERM`, independent build passed. Publish and verify exact-SHA development CI/protected nonproduction Preview. S0 private Preview server key and genuine HTTPS three-identity Auth/JWT/RLS/Origin/Host remain blocked; S1–S6, 20 release gates OPEN, rated OFF; no main or production.
+
 **Checkpoint 138 (2026-11-01):** Implemented Black-to-move `mate-023` with forced `Qc1+ Ka2 Qb2#`; dynamic "White replies" UI and persistence validated: **202 Vitest, 101 local/mock Chromium PASS / 2 hosted SKIP**, 9 local SQL fingerprints, lint/strict TS and approved 17-page Next build PASS. Previous `23c934c` Linux CI `41225528768` SUCCESS, manual **nonproduction** Preview READY (`dpl_6kXB8q5n7g68TDWt2DMk53wbwmFJ`), HTTP smoke not reached due local DNS. Publish current code, check new SHA in CI/Preview. S0 private Preview server key and real HTTPS 3 identities still missing; S1–S6 and 20 gates OPEN; rated OFF, no `main` or production.
 
 

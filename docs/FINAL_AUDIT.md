@@ -1,5 +1,7 @@
 # Final acceptance audit (OPEN)
 
+**Checkpoint 139 (2026-11-02):** CH-13 SAN keyboard entry works on authored White and Black two-move puzzles and was verified by focused and full real Chromium local tests. **202 Vitest**, nine local SQL fingerprints, ESLint, strict TS, independently approved 17-page build, **102 local/mock Chromium PASS / 2 hosted SKIP**. The restricted composite Windows build failed `EPERM` on generated `.next/types`; the independent production build passed. Hosted Auth/RLS and multiplayer remain untested with real private credentials. **S0–S6 and all 20/20 release gates OPEN**, rated OFF; no `main` merge or production deployment.
+
 **Checkpoint 138 (2026-11-01):** CH-13 now includes 23 original puzzles and a Black-side forced two-move mate with correct White-reply wording, validated initial/finishing moves and persistent completion. 202 unit tests, 9 local SQL fingerprints, ESLint/strict TS, approved 17-page production build and **101 local/mock Chromium PASS / 2 conditional SKIP**. Previous SHA `23c934c` passed Linux CI (`41225528768`), manual nonproduction Preview `dpl_6kXB8q5n7g68TDWt2DMk53wbwmFJ` READY but live HTTPS smoke blocked by local DNS; this Preview has no independent Git-linked SHA attestation. **S0–S6 and 20/20 gates OPEN**: dedicated Preview server Supabase credential, real 3-user HTTPS Auth/RLS/Origin/Host, private Realtime, separate PG session concurrency, rated settlement, advanced engine, community and release audit remain unproven. Rated OFF; no `main` merge or production.
 
 
