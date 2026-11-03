@@ -25,9 +25,12 @@ let mismatches = 0;
 for (const [filename, expectedHash] of staging) {
   try {
     const source = readFileSync(new URL(`../supabase/migrations/${filename}`, import.meta.url), "utf8");
+    // Git may check out SQL files with CRLF on Windows. Compare the canonical
+    // LF text recorded in the staging snapshot without weakening SQL checks.
+    const normalizedSource = source.replace(/\r\n/g, "\n");
     // The remote Supabase MCP stored each migration as one SQL statement,
     // excluding the local file's single trailing LF.
-    const recordedStatement = source.endsWith("\n") ? source.slice(0, -1) : source;
+    const recordedStatement = normalizedSource.endsWith("\n") ? normalizedSource.slice(0, -1) : normalizedSource;
     const actualHash = createHash("md5").update(recordedStatement, "utf8").digest("hex");
     if (actualHash !== expectedHash) {
       console.error(`MISMATCH ${filename}: expected ${expectedHash}, got ${actualHash}`);

@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-11-03, checkpoint 140 — local Supabase secrets and Windows SQL parity
+
+- Added the three application-required Supabase variables to local Git-ignored `.env.local`: public project URL, public publishable key and **server-only** `SUPABASE_SECRET_KEY`. Confirmed each variable appears exactly once; no values were printed or committed. The app currently does not reference `DATABASE_URL`, so no PostgreSQL connection password was stored. Confirmed the private secret has no literal match in the generated public `.next/static` bundle.
+- Fixed `scripts/verify-staging-migrations.mjs` to normalize Windows CRLF SQL checkouts to the canonical LF representation before hashing, retaining the pinned nine remote-staging SQL fingerprints. **9/9 source hashes, ESLint, strict TypeScript and 202/202 Vitest PASS**. Composite `npm run check` could not complete its Next build due to Windows generated-directory `EPERM`; separately approved `npm run build` **PASS, 17/17 pages**.
+- Existing Vercel Preview configuration has the two public Supabase variables but lacks the server-only secret. An attempted Preview-only sensitive-variable write was explicitly **rejected by automatic authorization review**, pending user's specific permission for `hnquan/chessonline` Preview. No secret was placed in Vercel. Browser E2E invocation was blocked before execution; no new Chromium or hosted Auth/JWT/RLS/Origin/Host/Realtime evidence is claimed. S0–S6 and all **20 acceptance gates OPEN**, rated OFF; no `main` merge or production deployment.
+
 ## 2026-11-02, checkpoint 139 — keyboard SAN for scripted puzzles
 
 - CH-13 puzzle keyboard now accepts SAN in the current position as well as coordinates, reusing `parseKeyboardMove`. Original White and Black two-move mating lines accept algebraic checks/mates in both move slots, with forced opponent replies and a completion recorded after mate.

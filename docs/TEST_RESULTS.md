@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-11-03 — checkpoint 140: local credential provisioning and SQL line-ending compatibility
+
+- Local `.env.local` contains exactly one of each required public URL, public publishable key and confidential server key; Git ignores the file. No database URL was required by the current backend. The built `.next/static` files contained **zero literal occurrences of the private key** in the local scan.
+- Canonical-LF normalization removes Windows CRLF-only false mismatches from the migration fingerprint checker. Verification: **9/9 local pinned SQL hashes**, ESLint **PASS**, strict TypeScript **PASS**, **202/202 Vitest PASS (29 files)**. `npm run check` build stage hit local `EPERM` creating a generated `.next` path; independent approved `npm run build` **PASS** including **17/17 generated pages**.
+- New browser E2E execution **not performed** because the command was blocked before running. Vercel Preview secret write was refused by automatic authorization review; public Preview variables are present, private server secret is absent. Genuine hosted three-user Auth/JWT/RLS/Origin/Host, live Realtime/reconnect, PostgreSQL races and rated results **NOT VERIFIED**; **20 release gates OPEN**.
+
 ## 2026-11-02 — checkpoint 139: legal SAN puzzle keyboard
 
 - Position-aware SAN parser shared with other chess modes now handles both moves of White and Black two-move puzzles. Focused built-app Chromium regression: **1/1 PASS** (`Qf8+`, `Qg7#`, `Qc1+`, `Qb2#` and forced responses).
