@@ -1,5 +1,24 @@
 # Autonomous progress ledger
 
+## 2026-11-03, checkpoint 142 — protected HTTPS real-user multiplayer acceptance
+
+- Built a Git-linked Vercel **nonproduction Preview** `dpl_B9oECfvArxLL4PbHxyxDeTVtvgkV`, READY with attested source `c48970bbd9486949c7b595dba9c0bcd67f8e5cd0`; authenticated HTML returned HTTP 200. Its server secret is stored only in encrypted Preview configuration.
+- Connected the opt-in Playwright test through Vercel SSO without persisting a Preview access token in traces. Narrowed the OIDC header to same-origin routed browser calls and explicitly scoped Playwright API calls; external Supabase network and WebSocket traffic never receives the browser-context default header. Fixed a strict Playwright theme selector.
+- **1/1 real hosted E2E PASS (2.2 min, exit 0)** using three disposable Supabase Auth accounts. Exercised authentic signed-in HTTPS sessions, user settings/profile RLS, outsider forbidden accesses, Host/Origin, canonical chess moves and stored PGN, concurrent challenges/moves, two authorized Realtime Postgres subscriptions, zero outsider notifications, reconnect, resignation, logout and cleanup. Database read-only structural inspection found **7/7 exposed tables with RLS**, `games` in Realtime publication and no public authenticated privileged Rookline RPC execution.
+- Complete local `npm run check` **PASS**: nine local SQL fingerprint checks, lint, strict types, 202 Vitest and Webpack 17/17 pages. The only pending release work is significant: S2 separate PostgreSQL connections/races/clocks, S3 rated settlement, S4 licensed engine/learning, S5 community/tournaments and S6 independent 20-gate audit. Nine staging migration version identifiers still require backed-up reconciliation before CLI sync. **All 20 gates OPEN, rated OFF; no production/main merge.**
+
+## 2026-11-03, checkpoint 141 — authorized GitHub and protected Preview configuration
+
+- After explicit user authorization, pushed the credential-free checkpoint-140 commit `c292e3853db663ccf18cd44d0fb79efca0f9a892` to GitHub `hoquan2007/Chess_online`, branch `codex/chess-platform-foundation`; verified local branch and remote-tracking SHA match with a clean working tree immediately after push.
+- Created **`SUPABASE_SECRET_KEY` as `sensitive`, `visibility=secret`, target `preview` only** in Vercel project `hnquan/chessonline`; verified presence from non-decrypted environment metadata. No private value or PostgreSQL password was placed in source, documentation or production environment.
+- Exact-commit GitHub workflow lookup returned no runs at verification time. Read-only `vercel ls` failed before any deployment listing because the CLI could not fetch npm dist-tags or user context; there is no evidence yet that a new protected Preview has built with this variable. Real three-identity hosted Auth/RLS and private multiplayer remain untested. **All 20 acceptance gates OPEN; rated OFF; no `main` merge or production release.**
+
+## 2026-11-03, checkpoint 140 — local Supabase secrets and Windows SQL parity
+
+- Added the three application-required Supabase variables to local Git-ignored `.env.local`: public project URL, public publishable key and **server-only** `SUPABASE_SECRET_KEY`. Confirmed each variable appears exactly once; no values were printed or committed. The app currently does not reference `DATABASE_URL`, so no PostgreSQL connection password was stored. Confirmed the private secret has no literal match in the generated public `.next/static` bundle.
+- Fixed `scripts/verify-staging-migrations.mjs` to normalize Windows CRLF SQL checkouts to the canonical LF representation before hashing, retaining the pinned nine remote-staging SQL fingerprints. **9/9 source hashes, ESLint, strict TypeScript and 202/202 Vitest PASS**. Composite `npm run check` could not complete its Next build due to Windows generated-directory `EPERM`; separately approved `npm run build` **PASS, 17/17 pages**.
+- Existing Vercel Preview configuration has the two public Supabase variables but lacks the server-only secret. An attempted Preview-only sensitive-variable write was explicitly **rejected by automatic authorization review**, pending user's specific permission for `hnquan/chessonline` Preview. No secret was placed in Vercel. Browser E2E invocation was blocked before execution; no new Chromium or hosted Auth/JWT/RLS/Origin/Host/Realtime evidence is claimed. S0–S6 and all **20 acceptance gates OPEN**, rated OFF; no `main` merge or production deployment.
+
 ## 2026-11-02, checkpoint 139 — keyboard SAN for scripted puzzles
 
 - CH-13 puzzle keyboard now accepts SAN in the current position as well as coordinates, reusing `parseKeyboardMove`. Original White and Black two-move mating lines accept algebraic checks/mates in both move slots, with forced opponent replies and a completion recorded after mate.

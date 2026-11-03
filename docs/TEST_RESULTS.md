@@ -1,5 +1,25 @@
 # Test evidence ledger
 
+## 2026-11-03 — checkpoint 142: genuine protected Preview multiplayer and Supabase RLS
+
+- Git-linked protected **nonproduction** Preview `dpl_B9oECfvArxLL4PbHxyxDeTVtvgkV` reports READY at application SHA `c48970bbd9486949c7b595dba9c0bcd67f8e5cd0`, with authenticated HTML HTTP 200. App endpoint: `https://chessonline-6ar5bozpb-hnquan.vercel.app`. Preview-only secret is stored encrypted on Vercel; no secret was printed, committed or bundled.
+- Dedicated staging Supabase project `tyvczicinpjixmxgjhjn`: seven exposed public tables have RLS enabled; `games` is in the `supabase_realtime` publication; privileged Rookline public RPCs are not executable by `authenticated`. Owner and participant policies were inspected; the browser run independently exercised row-level isolation through client-accessible Supabase APIs.
+- Opt-in **real hosted** `npx playwright test e2e/staging-online.spec.ts --workers=1`: **1/1 PASS, exit 0 (2.2 min)**, after rerun with an origin-scoped Vercel Preview OIDC header. Three disposable actual Supabase Auth users signed in via the protected HTTPS site. Verified browser cookie auth, Host/Origin CSRF checks, owner-only profile edits and settings persistence, outsiders barred by RLS, challenge create/cancel/join and concurrent cancellation, legal/illegal/replayed/out-of-turn/parallel move handling, Fool's Mate terminal PGN persisted, player-only archives, real independent two-player/outsider `postgres_changes` subscriptions, private outsider Realtime isolation, disconnect/reconnect, resignation and logout. Test cleanup removed disposable games and identities on successful exit.
+- `npm run check` **PASS, exit 0**: pinned local SQL fingerprints **9/9**, ESLint, strict TypeScript, **202/202 Vitest** and Next.js Webpack build **17/17 generated pages**. This build verifies the app code at the tested development SHA; subsequent harness/doc-only commit will change the Git SHA and needs independent CI/Preview confirmation.
+- Hosted browser races and RLS verification do not replace **S2** tests with two independent direct PostgreSQL connections for clock precedence and row-lock behavior. No rated settlement or full-product acceptance has been certified. **20 release gates remain OPEN; rated OFF; no main merge/production release.**
+
+## 2026-11-03 — checkpoint 141: remote configuration verification
+
+- GitHub development branch accepted commit `c292e3853db663ccf18cd44d0fb79efca0f9a892`; local tracking references matched after push. A commit-specific workflow query returned an empty list, so **new Linux CI not yet verified**.
+- Vercel project `hnquan/chessonline` reports Preview-only `SUPABASE_SECRET_KEY` with sensitive/secret visibility when queried with decryption disabled. Existing public Preview settings remain present. This confirms configuration storage, **not** deployment/runtime Auth or Realtime.
+- Read-only Vercel CLI deployment listing failed during npm dist-tag/user fetch before receiving deployment data; Preview rebuild and HTTPS smoke **unverified**. No hosted acceptance gate was closed.
+
+## 2026-11-03 — checkpoint 140: local credential provisioning and SQL line-ending compatibility
+
+- Local `.env.local` contains exactly one of each required public URL, public publishable key and confidential server key; Git ignores the file. No database URL was required by the current backend. The built `.next/static` files contained **zero literal occurrences of the private key** in the local scan.
+- Canonical-LF normalization removes Windows CRLF-only false mismatches from the migration fingerprint checker. Verification: **9/9 local pinned SQL hashes**, ESLint **PASS**, strict TypeScript **PASS**, **202/202 Vitest PASS (29 files)**. `npm run check` build stage hit local `EPERM` creating a generated `.next` path; independent approved `npm run build` **PASS** including **17/17 generated pages**.
+- New browser E2E execution **not performed** because the command was blocked before running. Vercel Preview secret write was refused by automatic authorization review; public Preview variables are present, private server secret is absent. Genuine hosted three-user Auth/JWT/RLS/Origin/Host, live Realtime/reconnect, PostgreSQL races and rated results **NOT VERIFIED**; **20 release gates OPEN**.
+
 ## 2026-11-02 — checkpoint 139: legal SAN puzzle keyboard
 
 - Position-aware SAN parser shared with other chess modes now handles both moves of White and Black two-move puzzles. Focused built-app Chromium regression: **1/1 PASS** (`Qf8+`, `Qg7#`, `Qc1+`, `Qb2#` and forced responses).

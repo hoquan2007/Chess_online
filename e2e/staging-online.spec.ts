@@ -10,6 +10,12 @@ loadEnvConfig(process.cwd(), true);
 const enabled = process.env.ROOKLINE_STAGING_E2E === "1";
 const projectRef = "tyvczicinpjixmxgjhjn";
 const appOrigin = enabled ? resolveStagingAppOrigin(process.env.ROOKLINE_STAGING_APP_ORIGIN) : "http://127.0.0.1:3100";
+const previewOidcToken = process.env.ROOKLINE_STAGING_VERCEL_OIDC_TOKEN;
+const previewOidcHeader = "x-vercel-trusted-oidc-idp-token";
+
+function previewHeaders(headers: Record<string, string> = {}) {
+  return previewOidcToken ? { ...headers, [previewOidcHeader]: previewOidcToken } : headers;
+}
 
 test("two real Supabase users play an authoritative private game", async ({ browser }) => {
   test.skip(!enabled, "Opt in with ROOKLINE_STAGING_E2E=1 and dedicated staging credentials.");
@@ -53,15 +59,19 @@ test("two real Supabase users play an authoritative private game", async ({ brow
   }
 
   async function gameState(context: BrowserContext, id: string) {
-    const response = await context.request.get(`/api/games/${id}`);
+    const response = await getPreview(context, `/api/games/${id}`);
     expect(response.status()).toBe(200);
     return (await response.json()).game as { id: string; ply: number; status: string; winner_id: string | null; result: string | null; pgn: string };
   }
 
   // Playwright's APIRequestContext is not a browser fetch; attach the same
   // Origin a real authenticated browser POST would send.
+  function getPreview(context: BrowserContext, path: string) {
+    return context.request.get(path, { headers: previewHeaders() });
+  }
+
   function postGame(context: BrowserContext, path: string, data?: Record<string, unknown>) {
-    return context.request.post(path, { headers: { Origin: appOrigin }, data });
+    return context.request.post(path, { headers: previewHeaders({ Origin: appOrigin }), data });
   }
 
   async function move(context: BrowserContext, gameId: string, from: string, to: string, expectedPly: number, requestId = randomUUID()) {
@@ -102,12 +112,21 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     const whiteId = await createDisposableUser(emails[0]);
     const blackId = await createDisposableUser(emails[1]);
     const outsiderId = await createDisposableUser(emails[2]);
+    const contextOptions = { baseURL: appOrigin };
     const [whiteContext, blackContext, outsiderContext] = await Promise.all([
-      browser.newContext({ baseURL: appOrigin }),
-      browser.newContext({ baseURL: appOrigin }),
-      browser.newContext({ baseURL: appOrigin }),
+      browser.newContext(contextOptions),
+      browser.newContext(contextOptions),
+      browser.newContext(contextOptions),
     ]);
     contexts.push(whiteContext, blackContext, outsiderContext);
+    // Add the Preview token only to app-origin browser requests. A global
+    // extraHTTPHeaders setting could also leak it via Supabase WebSockets.
+    if (previewOidcToken) {
+      await Promise.all(contexts.map((context) => context.route("**/*", async (route) => {
+        if (new URL(route.request().url()).origin !== appOrigin) return route.continue();
+        return route.continue({ headers: previewHeaders(route.request().headers()) });
+      })));
+    }
     const whitePage = await signIn(whiteContext, emails[0]);
     const blackPage = await signIn(blackContext, emails[1]);
     await signIn(outsiderContext, emails[2]);
@@ -132,7 +151,7 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     for (const hostileOrigin of ["https://untrusted.example", appOrigin.replace(/^https:/, "http:")]) {
       if (hostileOrigin === appOrigin) continue;
       const denied = await whiteContext.request.post("/api/games", {
-        headers: { Origin: hostileOrigin }, data: { control: "5+0" },
+        headers: previewHeaders({ Origin: hostileOrigin }), data: { control: "5+0" },
       });
       expect(denied.status()).toBe(403);
       expect(await denied.json()).toMatchObject({ error: "Cross-origin action denied" });
@@ -175,7 +194,7 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     await whitePage.getByRole("button", { name: "Light theme", exact: true }).click();
     await whitePage.getByRole("button", { name: "Off", exact: true }).click();
     await expect.poll(async () => {
-      const response = await whiteContext.request.get("/api/preferences");
+      const response = await getPreview(whiteContext, "/api/preferences");
       expect(response.status()).toBe(200);
       return (await response.json()).preferences;
     }).toEqual({ theme: "light", sounds_enabled: false });
@@ -193,13 +212,13 @@ test("two real Supabase users play an authoritative private game", async ({ brow
       .eq("user_id", whiteId).single();
     expect(whitePreferences).toEqual({ theme: "light", sounds_enabled: false });
     await blackPage.goto("/settings");
-    await expect(blackPage.getByRole("button", { name: "Light theme" })).toHaveAttribute("aria-pressed", "false");
+    await expect(blackPage.getByRole("button", { name: "Light theme", exact: true })).toHaveAttribute("aria-pressed", "false");
     await whitePage.getByRole("button", { name: "Use dark theme" }).click();
-    await expect.poll(async () => (await (await whiteContext.request.get("/api/preferences")).json()).preferences.theme)
+    await expect.poll(async () => (await (await getPreview(whiteContext, "/api/preferences")).json()).preferences.theme)
       .toBe("dark");
     // Restore the theme before continuing the multi-client game acceptance.
     await whitePage.getByRole("button", { name: "Light theme", exact: true }).click();
-    await expect.poll(async () => (await (await whiteContext.request.get("/api/preferences")).json()).preferences.theme)
+    await expect.poll(async () => (await (await getPreview(whiteContext, "/api/preferences")).json()).preferences.theme)
       .toBe("light");
 
     // Only the creator may cancel a waiting challenge, including after a
@@ -220,7 +239,7 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     expect((await postGame(whiteContext, `/api/games/${pendingId}/cancel`)).status()).toBe(200);
     expect((await postGame(blackContext, `/api/games/${pendingId}/join`)).status()).toBe(409);
     expect((await gameState(whiteContext, pendingId)).status).toBe("cancelled");
-    const cancelledRead = await blackContext.request.get(`/api/games/${pendingId}`);
+    const cancelledRead = await getPreview(blackContext, `/api/games/${pendingId}`);
     expect(cancelledRead.status()).toBe(403);
     expect((await cancelledRead.json()).joinable).toBe(false);
 
@@ -246,14 +265,14 @@ test("two real Supabase users play an authoritative private game", async ({ brow
     expect(gameId).toMatch(/^[a-f0-9-]{36}$/);
     createdGames.push(gameId);
 
-    const unjoined = await blackContext.request.get(`/api/games/${gameId}`);
+    const unjoined = await getPreview(blackContext, `/api/games/${gameId}`);
     expect(unjoined.status()).toBe(403);
     expect((await unjoined.json()).joinable).toBe(true);
     const joined = await postGame(blackContext, `/api/games/${gameId}/join`);
     expect(joined.status()).toBe(200);
     expect((await gameState(whiteContext, gameId)).status).toBe("active");
     expect((await gameState(blackContext, gameId)).status).toBe("active");
-    expect((await outsiderContext.request.get(`/api/games/${gameId}`)).status()).toBe(403);
+    expect((await getPreview(outsiderContext, `/api/games/${gameId}`)).status()).toBe(403);
     expect((await move(outsiderContext, gameId, "e2", "e4", 0)).status()).toBe(403);
 
     // Verify actual RLS with a third authenticated identity, and GRANT denial
@@ -290,16 +309,16 @@ test("two real Supabase users play an authoritative private game", async ({ brow
 
     // Real authenticated archive reads must expose only the players' games.
     const [whiteArchive, blackArchive, outsiderArchive] = await Promise.all([
-      whiteContext.request.get("/api/games"),
-      blackContext.request.get("/api/games"),
-      outsiderContext.request.get("/api/games"),
+      getPreview(whiteContext, "/api/games"),
+      getPreview(blackContext, "/api/games"),
+      getPreview(outsiderContext, "/api/games"),
     ]);
     expect([whiteArchive.status(), blackArchive.status(), outsiderArchive.status()]).toEqual([200, 200, 200]);
     const archiveFor = async (response: typeof whiteArchive) => (await response.json()).games as { id: string }[];
     expect((await archiveFor(whiteArchive)).map((entry) => entry.id)).toContain(gameId);
     expect((await archiveFor(blackArchive)).map((entry) => entry.id)).toContain(gameId);
     expect((await archiveFor(outsiderArchive)).map((entry) => entry.id)).not.toContain(gameId);
-    expect((await outsiderContext.request.get("/api/games?cursor=invalid")).status()).toBe(400);
+    expect((await getPreview(outsiderContext, "/api/games?cursor=invalid")).status()).toBe(400);
 
     // Both real browser contexts must read the persisted result after a reload.
     await Promise.all([whitePage.goto(`/game/${gameId}`), blackPage.goto(`/game/${gameId}`)]);
@@ -361,7 +380,7 @@ test("two real Supabase users play an authoritative private game", async ({ brow
 
     await whitePage.goto("/play/online");
     await whitePage.getByRole("button", { name: "Sign out" }).first().click();
-    await expect.poll(async () => (await whiteContext.request.get("/api/games")).status()).toBe(401);
+    await expect.poll(async () => (await getPreview(whiteContext, "/api/games")).status()).toBe(401);
     expect(whiteId).not.toBe(blackId);
   } finally {
     await Promise.allSettled(contexts.map((context) => context.close()));
