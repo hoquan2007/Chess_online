@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-11-03, checkpoint 141 — authorized GitHub and protected Preview configuration
+
+- After explicit user authorization, pushed the credential-free checkpoint-140 commit `c292e3853db663ccf18cd44d0fb79efca0f9a892` to GitHub `hoquan2007/Chess_online`, branch `codex/chess-platform-foundation`; verified local branch and remote-tracking SHA match with a clean working tree immediately after push.
+- Created **`SUPABASE_SECRET_KEY` as `sensitive`, `visibility=secret`, target `preview` only** in Vercel project `hnquan/chessonline`; verified presence from non-decrypted environment metadata. No private value or PostgreSQL password was placed in source, documentation or production environment.
+- Exact-commit GitHub workflow lookup returned no runs at verification time. Read-only `vercel ls` failed before any deployment listing because the CLI could not fetch npm dist-tags or user context; there is no evidence yet that a new protected Preview has built with this variable. Real three-identity hosted Auth/RLS and private multiplayer remain untested. **All 20 acceptance gates OPEN; rated OFF; no `main` merge or production release.**
+
 ## 2026-11-03, checkpoint 140 — local Supabase secrets and Windows SQL parity
 
 - Added the three application-required Supabase variables to local Git-ignored `.env.local`: public project URL, public publishable key and **server-only** `SUPABASE_SECRET_KEY`. Confirmed each variable appears exactly once; no values were printed or committed. The app currently does not reference `DATABASE_URL`, so no PostgreSQL connection password was stored. Confirmed the private secret has no literal match in the generated public `.next/static` bundle.

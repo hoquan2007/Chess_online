@@ -1,5 +1,11 @@
 # Test evidence ledger
 
+## 2026-11-03 — checkpoint 141: remote configuration verification
+
+- GitHub development branch accepted commit `c292e3853db663ccf18cd44d0fb79efca0f9a892`; local tracking references matched after push. A commit-specific workflow query returned an empty list, so **new Linux CI not yet verified**.
+- Vercel project `hnquan/chessonline` reports Preview-only `SUPABASE_SECRET_KEY` with sensitive/secret visibility when queried with decryption disabled. Existing public Preview settings remain present. This confirms configuration storage, **not** deployment/runtime Auth or Realtime.
+- Read-only Vercel CLI deployment listing failed during npm dist-tag/user fetch before receiving deployment data; Preview rebuild and HTTPS smoke **unverified**. No hosted acceptance gate was closed.
+
 ## 2026-11-03 — checkpoint 140: local credential provisioning and SQL line-ending compatibility
 
 - Local `.env.local` contains exactly one of each required public URL, public publishable key and confidential server key; Git ignores the file. No database URL was required by the current backend. The built `.next/static` files contained **zero literal occurrences of the private key** in the local scan.
