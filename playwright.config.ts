@@ -16,7 +16,7 @@ export default defineConfig({
   testMatch: externalStaging ? "**/staging-online.spec.ts" : "**/*.spec.ts",
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  use: { ...devices["Desktop Chrome"], channel: process.env.CI ? undefined : "chrome", baseURL: appOrigin, trace: "retain-on-failure" },
+  use: { ...devices["Desktop Chrome"], channel: process.env.CI ? undefined : "chrome", baseURL: appOrigin, trace: stagingEnabled ? "off" : "retain-on-failure" },
   webServer: externalStaging ? undefined : {
     // CI already built the standalone bundle; test its precompiled workers rather
     // than waiting for the dev server's on-demand compilation on first request.

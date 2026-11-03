@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-11-03, checkpoint 142 — protected HTTPS real-user multiplayer acceptance
+
+- Built a Git-linked Vercel **nonproduction Preview** `dpl_B9oECfvArxLL4PbHxyxDeTVtvgkV`, READY with attested source `c48970bbd9486949c7b595dba9c0bcd67f8e5cd0`; authenticated HTML returned HTTP 200. Its server secret is stored only in encrypted Preview configuration.
+- Connected the opt-in Playwright test through Vercel SSO without persisting a Preview access token in traces. Narrowed the OIDC header to same-origin routed browser calls and explicitly scoped Playwright API calls; external Supabase network and WebSocket traffic never receives the browser-context default header. Fixed a strict Playwright theme selector.
+- **1/1 real hosted E2E PASS (2.2 min, exit 0)** using three disposable Supabase Auth accounts. Exercised authentic signed-in HTTPS sessions, user settings/profile RLS, outsider forbidden accesses, Host/Origin, canonical chess moves and stored PGN, concurrent challenges/moves, two authorized Realtime Postgres subscriptions, zero outsider notifications, reconnect, resignation, logout and cleanup. Database read-only structural inspection found **7/7 exposed tables with RLS**, `games` in Realtime publication and no public authenticated privileged Rookline RPC execution.
+- Complete local `npm run check` **PASS**: nine local SQL fingerprint checks, lint, strict types, 202 Vitest and Webpack 17/17 pages. The only pending release work is significant: S2 separate PostgreSQL connections/races/clocks, S3 rated settlement, S4 licensed engine/learning, S5 community/tournaments and S6 independent 20-gate audit. Nine staging migration version identifiers still require backed-up reconciliation before CLI sync. **All 20 gates OPEN, rated OFF; no production/main merge.**
+
 ## 2026-11-03, checkpoint 141 — authorized GitHub and protected Preview configuration
 
 - After explicit user authorization, pushed the credential-free checkpoint-140 commit `c292e3853db663ccf18cd44d0fb79efca0f9a892` to GitHub `hoquan2007/Chess_online`, branch `codex/chess-platform-foundation`; verified local branch and remote-tracking SHA match with a clean working tree immediately after push.
