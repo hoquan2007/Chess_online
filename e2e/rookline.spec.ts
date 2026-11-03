@@ -949,25 +949,42 @@ test("promotion ending a local game restores focus to an available action", asyn
   await expect(page.getByLabel("Move history").getByText("a8=N")).toBeVisible();
 });
 
-test("online service fails clearly without credentials and mobile does not overflow", async ({ page }) => {
+test("online entry explains the available service state and mobile does not overflow", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/play/online");
-  await expect(page.getByText("Online service not configured")).toBeVisible();
+  const unavailable = page.getByRole("heading", { name: "Online service not configured" });
+  const signIn = page.getByRole("heading", { name: "Sign in to play" });
+  await expect(unavailable.or(signIn)).toBeVisible();
+  const serviceUnavailable = await unavailable.isVisible();
+  if (!serviceUnavailable) {
+    await expect(page.getByRole("link", { name: "Sign in", exact: true })
+      .and(page.locator('a[href^="/login?next="]'))).toHaveAttribute("href", /\/login\?next=/);
+  }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await page.goto("/register");
-  await expect(page.getByText("Online accounts are unavailable until Supabase environment variables are configured.")).toBeVisible();
+  if (serviceUnavailable) {
+    await expect(page.getByText("Online accounts are unavailable until Supabase environment variables are configured.")).toBeVisible();
+  } else {
+    await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create account" })).toBeEnabled();
+  }
 });
 
-test("game archive, leaderboard and profile expose truthful unconfigured states", async ({ page }) => {
+test("game archive, leaderboard and profile expose truthful anonymous service states", async ({ page }) => {
   await page.goto("/games");
   await expect(page.getByRole("heading", { name: "Your game archive." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Online history is not configured" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^(Online history is not configured|Sign in to view your games)$/ })).toBeVisible();
   await page.goto("/leaderboard");
   await expect(page.getByRole("heading", { name: "Leaderboard." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Rankings need a connected service" })).toBeVisible();
+  const unconfiguredRankings = page.getByRole("heading", { name: "Rankings need a connected service" });
+  const signInRankings = page.getByRole("heading", { name: "Sign in to see player rankings" });
+  await expect(unconfiguredRankings.or(signInRankings)).toBeVisible();
+  const serviceUnavailable = await unconfiguredRankings.isVisible();
   await page.goto("/profile/rook_test");
-  await expect(page.getByRole("heading", { name: "Profiles need a connected service." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: serviceUnavailable
+    ? "Profiles need a connected service."
+    : "Sign in to browse profiles." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save profile" })).toHaveCount(0);
 });
 
@@ -979,12 +996,14 @@ test("profile update requires same-origin intent and an authenticated service", 
   });
   expect(thirdParty.status()).toBe(403);
   expect(await thirdParty.json()).toMatchObject({ error: "Cross-origin action denied" });
-  const unconfigured = await request.patch("/api/profile", {
+  const anonymous = await request.patch("/api/profile", {
     headers: { Origin: appOrigin, "Content-Type": "application/json" },
     data: { username: "rook_player", display_name: "Player" },
   });
-  expect(unconfigured.status()).toBe(503);
-  expect(await unconfigured.json()).toMatchObject({ error: "Profiles are unavailable" });
+  expect([401, 503]).toContain(anonymous.status());
+  expect(await anonymous.json()).toMatchObject({ error: anonymous.status() === 503
+    ? "Profiles are unavailable"
+    : "Sign in to edit your profile" });
 });
 
 test("server denies cross-origin game mutations before using credentials", async ({ request }) => {

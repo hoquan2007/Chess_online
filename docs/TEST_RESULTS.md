@@ -1,5 +1,14 @@
 # Test evidence ledger
 
+## 2026-11-03 — checkpoint 143: configuration-aware Chromium regressions and live migration versions
+
+- Root cause of **three** prior local Playwright failures: tests hardcoded missing Supabase credentials while the production standalone build bundled configured public Supabase settings and an anonymous user correctly received sign-in prompts (`401` API instead of `503`). Changed only `e2e/rookline.spec.ts` to check both contractually valid configured/unconfigured service states, exact error bodies and invariant cross-origin `403`. Initial focused run found an ambiguous header-vs-lobby "Sign in" locator; narrowed it and reran **focused 3/3 PASS**.
+- Full `npm run check` in authorized local runtime: **exit 0**; **9/9 local SQL snapshots vs historical remote hashes** (no current database SQL-body query); ESLint **PASS**, strict TypeScript **PASS**, Vitest **202/202 PASS** (29 test files), Next.js 16.4.3 Webpack **17/17 generated pages PASS**.
+- Full `ROOKLINE_E2E_PRODUCTION=1 npx playwright test --workers=1` against local standalone Chromium: **101 PASS / 3 SKIP / 0 FAIL, exit 0**, 104 discovered (~1.3 minutes). Skips: opt-in public-auth mock return path, missing-credentials draw claim (this build has Supabase configured), and the separately opt-in real staging three-user scenario. The latter **already passed** at checkpoint 142 on protected hosted Preview, but was **not rerun** in this local suite.
+- Direct **read-only** Supabase staging migration listing for project `tyvczicinpjixmxgjhjn`: exactly nine version IDs `20261029010000`, `020000`, `030000`, `040000`, `050000`, `060000`, `070000`, `080000`, `090000` (full prefix `20261029`), corresponding to all nine local baseline `.sql` files. The tenth `20261030120000_atomic_rated_settlement.sql` remains uninstalled. This supersedes historical notes claiming a version-ID mismatch; this enumeration does not independently attest present remote SQL-body hashes.
+- Initial unprivileged Playwright launch failed before testing due Windows localhost socket permission; terminated and reran through authorized native execution. No app failure was inferred from sandbox socket denial.
+- Local changes pending new-SHA CI/Preview attestation. Hosted **S0/S1** retains checkpoint 142 passing evidence; **S2 independent PG sessions and S3–S6 pending**. All **20** production release gates OPEN, rated OFF; no `main` merge or production.
+
 ## 2026-11-03 — checkpoint 142: genuine protected Preview multiplayer and Supabase RLS
 
 - Git-linked protected **nonproduction** Preview `dpl_B9oECfvArxLL4PbHxyxDeTVtvgkV` reports READY at application SHA `c48970bbd9486949c7b595dba9c0bcd67f8e5cd0`, with authenticated HTML HTTP 200. App endpoint: `https://chessonline-6ar5bozpb-hnquan.vercel.app`. Preview-only secret is stored encrypted on Vercel; no secret was printed, committed or bundled.
