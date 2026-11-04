@@ -120,6 +120,12 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .study-choice:hover { background: var(--color-card); }
 .study-choice.active { border-color: var(--color-accent); outline: 1px solid var(--color-accent); }
 .modal-backdrop { position: fixed; inset: 0; background: color-mix(in oklab, var(--color-paper-3) 78%, transparent); display: grid; place-items: center; z-index: 50; padding: var(--space-lg); }
+.check-indicator { padding: 10px 14px; margin-top: 8px; border: 2px solid #9c2928; border-radius: 10px; background: #ffded8; color: #7f1f1e; font-size: 14px; font-weight: 800; text-align: center; letter-spacing: .01em; }
+.result-card { background: var(--color-card); color: var(--color-card-ink); border: 1px solid var(--color-rule); border-radius: 22px; box-shadow: 0 22px 80px #0004; width: min(100%, 450px); padding: clamp(24px, 5vw, 42px); display: flex; flex-direction: column; align-items: center; gap: 15px; text-align: center; }
+.result-card-icon { width: 70px; height: 70px; display: grid; place-items: center; border-radius: 50%; background: #d1ac62; color: #29220f; }
+.result-card h2 { font-size: clamp(28px, 5vw, 38px); font-weight: 800; line-height: 1.1; }
+.result-card p { margin: 0; }
+.result-card-actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 .promotion-box { background: var(--color-card); padding: var(--space-xl); color: var(--color-card-ink); border-radius: var(--radius-card); display: flex; flex-direction: column; gap: var(--space-lg); text-align: center; }
 .promotion-choices { display: flex; gap: var(--space-sm); }
 .promotion-choices button { font-size: 40px; width: 65px; height: 65px; border-radius: 12px; background: var(--color-paper-3); }

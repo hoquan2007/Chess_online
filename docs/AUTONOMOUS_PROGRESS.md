@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-11-04 — targeted check, terminal-result and authentication release
+
+- Prepared an isolated release branch from the production main baseline containing checked-king highlights/status, a modal for authoritative game outcomes, safer Supabase email callbacks, resend guidance and ordered shared-navigation Auth initialization. Kept unfinished engine/community/tournaments and new SQL migrations out of the release.
+- Isolated verification: 9/9 local migration fingerprints, lint and strict TypeScript PASS, 213/213 Vitest PASS, Next.js 16.4.3 Webpack production build PASS with approved local filesystem permissions, and focused configured Chromium feedback/auth 7/7 PASS. Full unconfigured Chromium regression using the project's serial runner: 106 passed, 5 environment-dependent skips, 0 failed (111 total). Live production inbox verification is tracked separately in the release evidence.
+- Product acceptance remains IN_PROGRESS: all 20 gates OPEN; rated remains OFF. Real production email receipt, confirmation and session persistence require post-deploy acceptance.
+
 ## 2026-11-03, checkpoint 142 — protected HTTPS real-user multiplayer acceptance
 
 - Built a Git-linked Vercel **nonproduction Preview** `dpl_B9oECfvArxLL4PbHxyxDeTVtvgkV`, READY with attested source `c48970bbd9486949c7b595dba9c0bcd67f8e5cd0`; authenticated HTML returned HTTP 200. Its server secret is stored only in encrypted Preview configuration.

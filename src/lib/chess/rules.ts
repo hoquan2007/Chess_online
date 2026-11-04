@@ -89,6 +89,13 @@ export function applyLegalMove(game: Chess, input: MoveInput): Move | null {
   }
 }
 
+/** Locate the king being attacked, including on the final checkmating move. */
+export function checkedKingSquare(game: Chess): Square | null {
+  if (!game.isCheck()) return null;
+  const king = game.board().flat().find((piece) => piece?.type === "k" && piece.color === game.turn());
+  return king?.square ?? null;
+}
+
 export function gameResult(game: Chess): GameResult {
   if (game.isCheckmate()) {
     return { finished: true, label: "Checkmate", winner: game.turn() === "w" ? "b" : "w" };

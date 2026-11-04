@@ -5,11 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, RotateCcw, Undo2, Volume2, VolumeX, Flag } from "lucide-react";
-import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, parseKeyboardMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
+import { applyLegalMove, availableDrawClaims, checkedKingSquare, gameResult, localPgnResult, parseKeyboardMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "@/lib/chess/rules";
 import { advanceLocalClock } from "@/lib/chess/clocks";
 import { createLocalGameId } from "@/lib/chess/local-game-id";
 import type { Difficulty } from "@/lib/chess/bot";
 import { PromotionDialog } from "@/components/PromotionDialog";
+import { GameResultDialog } from "@/components/GameResultDialog";
 import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
 
 type Side = "w" | "b";
@@ -72,6 +73,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   const [keyboardMove, setKeyboardMove] = useState("");
   const [keyboardError, setKeyboardError] = useState("");
   const [manualResult, setManualResult] = useState<string | null>(null);
+  const [dismissedResultKey, setDismissedResultKey] = useState<string | null>(null);
   const [seconds, setSeconds] = useState<Clocks>({ w: 300, b: 300 });
   const clockRef = useRef<Clocks>({ w: 300, b: 300 });
   const [undoClocks, setUndoClocks] = useState<Clocks[]>([]);
@@ -91,6 +93,9 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
   const timedOut = seconds.w <= 0 ? timeoutResult(game, "w") : seconds.b <= 0 ? timeoutResult(game, "b") : null;
   const outcome = manualResult ?? (computed.finished ? computed.label : null) ?? (timedOut ? timedOut.label : null);
   const pgnResult = localPgnResult(manualResult, computed, timedOut);
+  const checkedKing = checkedKingSquare(game);
+  const resultKey = outcome && gameId !== "local-0" ? `${gameId}:${fen}:${outcome}` : null;
+  const winnerLabel = pgnResult === "1-0" ? "White wins" : pgnResult === "0-1" ? "Black wins" : "Draw";
   const botTurn = mode === "computer" && game.turn() !== playingSide;
 
   const sync = useCallback(() => {
@@ -309,10 +314,12 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
         result[move.to] = { backgroundImage: "radial-gradient(circle, color-mix(in oklab, var(--color-accent) 52%, transparent) 22%, transparent 25%)" };
       }
     }
+    if (checkedKing) result[checkedKing] = { backgroundColor: "#d94a43", boxShadow: "inset 0 0 0 5px #7f1f1e, inset 0 0 20px 5px #ffae8b" };
     return result;
   })();
 
   const reset = () => {
+    setDismissedResultKey(null);
     requestId.current++;
     engine.current = new Chess();
     setManualResult(null);
@@ -331,6 +338,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
     if (game.history().length === 0) return;
     // A locally reversible result must not remain in the completed-game archive.
     if (outcome) withdrawFinishedGame(gameId);
+    setDismissedResultKey(null);
     requestId.current++;
     engine.current.undo();
     let undone = 1;
@@ -416,6 +424,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
             onSquareClick: ({ square }) => trySquare(square),
           }} />
         </div>
+        {checkedKing && <div className="check-indicator" role="status" aria-label={`${game.turn() === "w" ? "White" : "Black"} king is in check`}>⚠ {game.turn() === "w" ? "White" : "Black"} king in {game.isCheckmate() ? "checkmate" : "check"}</div>}
         {renderPlayer(orientation === "white" ? "w" : "b")}
       </section>
       <aside className="game-panel" aria-label="Game controls">
@@ -448,6 +457,7 @@ export function GameWorkspace({ mode = "local" }: { mode?: "local" | "computer" 
         </div>
       </aside>
       {pendingPromotion && <PromotionDialog fallbackFocusRef={exportPgnButtonRef} onChoose={(piece) => { completeMove(pendingPromotion.from, pendingPromotion.to, piece); }} onCancel={() => setPendingPromotion(null)} />}
+      {resultKey && resultKey !== dismissedResultKey && !pendingPromotion && <GameResultDialog title={winnerLabel} detail={outcome ?? "Game finished"} onDismiss={() => setDismissedResultKey(resultKey)} onNewGame={reset} fallbackFocusRef={exportPgnButtonRef} />}
     </div>
   );
 }

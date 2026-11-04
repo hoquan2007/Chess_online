@@ -8,8 +8,9 @@ import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
-import { availableDrawClaims, parseKeyboardMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
+import { availableDrawClaims, checkedKingSquare, parseKeyboardMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
+import { GameResultDialog } from "@/components/GameResultDialog";
 import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
 
 type Viewer = "w" | "b";
@@ -38,6 +39,7 @@ export function GameRoom({ id }: { id: string }) {
   const syncButtonRef = useRef<HTMLButtonElement>(null);
   const [keyboardMove, setKeyboardMove] = useState("");
   const [keyboardError, setKeyboardError] = useState("");
+  const [dismissedResultKey, setDismissedResultKey] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
   const [now, setNow] = useState(() => performance.now());
   const [clockSync, setClockSync] = useState(() => ({ serverNow: Date.now(), receivedAt: performance.now() }));
@@ -211,6 +213,7 @@ export function GameRoom({ id }: { id: string }) {
     if (previousPly === null || game.ply > previousPly) lastAudiblePly.current = game.ply;
   }, [game, position.valid]);
   const chess = position.chess;
+  const checkedKing = position.valid ? checkedKingSquare(chess) : null;
   const history = chess.history({ verbose: true });
   const last = history.at(-1);
   const serverNow = estimatedServerTime(clockSync.serverNow, clockSync.receivedAt, disconnectedSince ?? now);
@@ -349,6 +352,7 @@ export function GameRoom({ id }: { id: string }) {
     highlights[selected] = { boxShadow: "inset 0 0 0 3px var(--color-focus)" };
     for (const move of chess.moves({ square: selected, verbose: true })) highlights[move.to] = { backgroundImage: "radial-gradient(circle, var(--color-accent) 19%, transparent 22%)" };
   }
+  if (checkedKing) highlights[checkedKing] = { backgroundColor: "#d94a43", boxShadow: "inset 0 0 0 5px #7f1f1e, inset 0 0 20px 5px #ffae8b" };
 
   async function copyInvite() {
     try { await navigator.clipboard.writeText(window.location.href); setNotice("Invite link copied."); }
@@ -382,6 +386,9 @@ export function GameRoom({ id }: { id: string }) {
     ? (Object.keys(timeControls) as TimeControl[]).find((control) =>
       timeControls[control].base_ms === game.base_ms && timeControls[control].increment_ms === game.increment_ms)
     : undefined;
+  const resultKey = game.status === "completed" ? `${game.id}:${game.result}:${game.winner_id ?? "draw"}` : null;
+  const winnerColor = game.winner_id === game.white_id ? "w" : game.winner_id && game.winner_id === game.black_id ? "b" : null;
+  const resultTitle = winnerColor ? (winnerColor === viewer ? "You won!" : "You lost") : "Draw";
   const playerStrip = (color: Viewer) => <div className="player-strip"><span className="player-name"><span className="player-avatar" aria-hidden="true">{color === "w" ? "♙" : "♟"}</span>{color === viewer ? "You" : color === "w" ? "White opponent" : game.black_id ? "Black opponent" : "Waiting for Black"}</span><span className={`clock ${game.status === "active" && game.turn === color ? "running" : ""}`} aria-label={`${color === "w" ? "White" : "Black"} clock`}>{clockLabel(clocks[color])}</span></div>;
 
   return <section className="stack" onPointerDownCapture={unlockMoveAudio} onKeyDownCapture={unlockMoveAudio}>
@@ -398,6 +405,7 @@ export function GameRoom({ id }: { id: string }) {
         },
         onSquareClick: ({ square }) => squareClick(square),
       }} /></div>
+      {checkedKing && <div className="check-indicator" role="status" aria-label={`${chess.turn() === "w" ? "White" : "Black"} king is in check`}>⚠ {chess.turn() === "w" ? "White" : "Black"} king in {chess.isCheckmate() ? "checkmate" : "check"}</div>}
       {playerStrip(bottom)}
     </section><aside className="game-panel" aria-label="Online game controls">
       <div><h2 className="panel-title">Match details</h2><p className="panel-sub">{Math.round(game.base_ms / 60000)}+{Math.round(game.increment_ms / 1000)} · {game.rated ? "Rated" : "Unrated"} · Playing {viewer === "w" ? "White" : "Black"}</p></div>
@@ -416,5 +424,6 @@ export function GameRoom({ id }: { id: string }) {
       <p className="panel-sub">Clocks are calculated by the server. Live updates use secure snapshots after each move; polling covers network interruptions.</p>
     </aside></div>
     {promotion && <PromotionDialog fallbackFocusRef={syncButtonRef} onChoose={(piece) => void makeMove(promotion.from, promotion.to, piece)} onCancel={() => setPromotion(null)} />}
+    {resultKey && resultKey !== dismissedResultKey && <GameResultDialog title={resultTitle} detail={`Result: ${game.result ?? "Game completed"}`} onDismiss={() => setDismissedResultKey(resultKey)} analysisHref={`/analysis?onlineGame=${encodeURIComponent(game.id)}`} fallbackFocusRef={syncButtonRef} />}
   </section>;
 }

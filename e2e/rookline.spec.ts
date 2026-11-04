@@ -41,6 +41,7 @@ test("local resignation exports a replayable PGN with the correct winner", async
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
   await page.getByRole("button", { name: "Resign" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Black resigned" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "View board" }).click();
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "PGN", exact: true }).click();
   const downloaded = await pending;
@@ -94,6 +95,7 @@ test("undoing a completed local game withdraws its obsolete archive result", asy
   const archiveLength = () => page.evaluate(() => JSON.parse(localStorage.getItem("rookline-history") ?? "[]").length as number);
   await expect.poll(archiveLength).toBe(1);
 
+  await page.getByRole("dialog").getByRole("button", { name: "View board" }).click();
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByLabel("Move history").getByText("e4")).toHaveCount(0);
   await expect(page.getByRole("status").filter({ hasText: "White to move" })).toBeVisible();
@@ -115,7 +117,7 @@ test("rapid new local games retain distinct archive entries within one milliseco
     await expect.poll(() => page.evaluate(() =>
       (JSON.parse(localStorage.getItem("rookline-history") ?? "[]") as unknown[]).length,
     )).toBe(index + 1);
-    if (index === 0) await page.getByRole("button", { name: "New game" }).click();
+    if (index === 0) await page.getByRole("dialog").getByRole("button", { name: "New game" }).click();
   }
 
   const records = await page.evaluate(() => JSON.parse(localStorage.getItem("rookline-history") ?? "[]") as { id: string; pgn: string }[]);
@@ -147,6 +149,7 @@ test("resignation awards a draw when the opponent has only a king", async ({ pag
   await expect(page.getByLabel("Move history").getByText("Kd7")).toBeVisible();
   await page.getByRole("button", { name: "Resign" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Draw: resignation without mating material" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "View board" }).click();
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "PGN", exact: true }).click();
   const exported = new Chess();
@@ -945,6 +948,9 @@ test("promotion ending a local game restores focus to an available action", asyn
   await dialog.getByRole("button", { name: "Promote to knight" }).press("Enter");
   await expect(dialog).toHaveCount(0);
   await expect(input).toBeDisabled();
+  const resultDialog = page.getByRole("dialog");
+  await expect(resultDialog).toBeVisible();
+  await resultDialog.getByRole("button", { name: "View board" }).click();
   await expect(page.getByRole("button", { name: "PGN", exact: true })).toBeFocused();
   await expect(page.getByLabel("Move history").getByText("a8=N")).toBeVisible();
 });
@@ -1774,6 +1780,7 @@ test("resigning while the computer thinks resigns the human side", async ({ page
   await expect(page.getByText("Computer is thinking…")).toBeVisible();
   await page.getByRole("button", { name: "Resign" }).click();
   await expect(page.getByLabel("Game controls").locator('[role="status"]')).toHaveText("White resigned");
+  await page.getByRole("dialog").getByRole("button", { name: "View board" }).click();
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "PGN", exact: true }).click();
   const exported = new Chess();
@@ -2169,6 +2176,7 @@ test("game room never resumes a completed game from a contradictory higher-ply s
   await page.goto(`/game/${id}`);
   await expect(page.getByText("Game finished · Resignation")).toBeVisible();
   await expect(page.getByRole("button", { name: "Resign" })).toBeDisabled();
+  await page.getByRole("dialog").getByRole("button", { name: "View board" }).click();
   await page.getByRole("button", { name: "Sync" }).click();
   await expect.poll(() => requests).toBeGreaterThanOrEqual(2);
   await expect(page.getByText("Game finished · Resignation")).toBeVisible();
@@ -2196,6 +2204,7 @@ test("game room preserves its final result and clock across contradictory same-p
   });
   await page.goto(`/game/${id}`);
   await expect(page.getByText("Game finished · Resignation")).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "View board" }).click();
   for (let i = 2; i <= 4; i++) {
     const completedReply = page.waitForResponse((response) =>
       response.url().endsWith(`/api/games/${id}`) && response.status() === 200);
@@ -2288,6 +2297,7 @@ test("online room exports a parseable PGN with the authoritative result", async 
   }));
   await page.goto(`/game/${id}`);
   await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "View board" }).click();
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export PGN" }).click();
   const download = await pending;
@@ -2425,6 +2435,7 @@ test("finished game creates a fresh private invite at its original time control"
   });
 
   await page.goto(`/game/${previousId}`);
+  await page.getByRole("dialog").getByRole("button", { name: "View board" }).click();
   const another = page.getByRole("button", { name: "Create another 3+2 challenge" });
   await expect(another).toBeVisible();
   await expect(page.getByText("This creates a new private invitation.", { exact: false })).toBeVisible();
