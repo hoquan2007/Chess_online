@@ -6,6 +6,6 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
-    exclude: [...configDefaults.exclude, "**/e2e/**"],
+    exclude: [...configDefaults.exclude, "**/e2e/**", "**/.release-*/**"],
   },
 });

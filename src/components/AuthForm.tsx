@@ -3,9 +3,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { browserSupabase } from "@/lib/supabase/client";
+import { googleOAuthCallbackUrl } from "@/lib/supabase/google-oauth";
 import { safeNext } from "@/lib/online/redirect";
 
-export function AuthForm({ mode, next, confirmationError = false }: { mode: "login" | "register"; next?: string; confirmationError?: boolean }) {
+export function AuthForm({ mode, next, confirmationError = false, googleError = false }: { mode: "login" | "register"; next?: string; confirmationError?: boolean; googleError?: boolean }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -42,6 +43,24 @@ export function AuthForm({ mode, next, confirmationError = false }: { mode: "log
       setMessageIsError(true);
       setMessage(error instanceof Error ? error.message : "Could not resend verification email.");
     } finally {
+      setBusy(false);
+    }
+  }
+  async function signInWithGoogle() {
+    if (!client || busy) return;
+    setBusy(true);
+    setMessage("");
+    setMessageIsError(false);
+    try {
+      const { error } = await client.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: googleOAuthCallbackUrl(window.location.origin, destination) },
+      });
+      if (error) throw error;
+      // The Supabase browser client navigates to Google automatically.
+    } catch (error) {
+      setMessageIsError(true);
+      setMessage(error instanceof Error ? error.message : "Could not start Google sign-in. Please try again.");
       setBusy(false);
     }
   }
@@ -89,7 +108,13 @@ export function AuthForm({ mode, next, confirmationError = false }: { mode: "log
         {isRegister && <label className="label">Confirm password<input className="field" type="password" minLength={8} autoComplete="new-password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} /></label>}
         <button type="submit" disabled={busy} className="btn primary">{busy ? "Working…" : isRegister ? "Create account" : "Sign in"}</button>
       </form>}
-    {(message || confirmationError) && <p className="status" role={messageIsError || (!message && confirmationError) ? "alert" : "status"}>{message || "The confirmation link is invalid or has expired. Please sign in or create a new account."}</p>}
+    {client && <div className="stack" style={{ gap: 8 }}>
+      <p className="panel-sub" style={{ textAlign: "center" }}>Or use your Google account</p>
+      <button type="button" className="btn ghost" disabled={busy} onClick={() => void signInWithGoogle()}>
+        Continue with Google
+      </button>
+    </div>}
+    {(message || confirmationError || googleError) && <p className="status" role={messageIsError || (!message && (confirmationError || googleError)) ? "alert" : "status"}>{message || (googleError ? "Google sign-in was canceled or could not be completed. Please try again." : "The confirmation link is invalid or has expired. Please sign in or create a new account.")}</p>}
     {client && <div className="stack" style={{ gap: 8 }}>
       <p className="panel-sub">Need to confirm your account? Enter your email above, then request a new link.</p>
       <button type="button" className="btn ghost" onClick={() => void resendConfirmation()} disabled={busy || !email.trim() || remainingSeconds > 0}>

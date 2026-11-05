@@ -25,7 +25,7 @@ Server must replay/check legality with `chess.js` before attempting committed mo
 - Hosted play: Supabase Auth session verified on server; player IDs from session only; privileged database mutations executed from trusted server code.
 - Game lifecycle: `waiting` -> `active` -> `completed` or `cancelled`. Completed states are immutable; one rating settlement per game, by transactional unique ledger entries.
 - Timed game: server computes elapsed time from database UTC timestamp with increment applied after a legal accepted move. Client clocks only render an approximation.
-- Challenges, matchmaking, ratings, notifications, tournaments and moderation remain planned until independently validated.
+- Hosted Auth, challenges, legal server-validated moves, archive isolation, player-private Realtime and reconnect were independently verified using three real identities on the protected checkpoint 142 Preview (see `docs/TEST_RESULTS.md`). Dedicated direct-PostgreSQL S2 transaction/clock races remain unverified. Rated matchmaking and settlement, notifications, tournaments and moderation are unfinished.
 
 ## Verification boundaries
 

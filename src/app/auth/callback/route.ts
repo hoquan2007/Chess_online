@@ -7,10 +7,11 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type");
+  const googleProvider = url.searchParams.get("provider") === "google";
   const destination = safeNext(url.searchParams.get("next"));
   // A legacy/implicit confirmation can return credentials in the URL fragment.
   // Fragments never reach the server; let the browser finish that flow safely.
-  if (!code && !tokenHash && !url.searchParams.has("error")) {
+  if (!code && !tokenHash && !url.searchParams.has("error") && !googleProvider) {
     const completion = new URL("/auth/complete", url.origin);
     completion.searchParams.set("next", destination);
     return NextResponse.redirect(completion);
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
     }
   }
   const login = new URL("/login", url.origin);
-  login.searchParams.set("error", "confirmation");
+  login.searchParams.set("error", googleProvider ? "google" : "confirmation");
   login.searchParams.set("next", destination);
   return NextResponse.redirect(login);
 }

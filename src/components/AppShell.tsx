@@ -22,6 +22,7 @@ const extra = [
   { href: "/openings", title: "Openings", icon: Gamepad2 },
   { href: "/games", title: "My games", icon: Castle },
   { href: "/leaderboard", title: "Leaderboard", icon: Trophy },
+  { href: "/friends", title: "Friends", icon: Users },
   { href: "/tournaments", title: "Tournaments", icon: Users },
   { href: "/settings", title: "Settings", icon: Settings },
 ];

@@ -22,6 +22,24 @@ describe("/auth/callback", () => {
     expect(verifyOtp).not.toHaveBeenCalled();
   });
 
+  it("exchanges a Google PKCE code and returns to the original private page", async () => {
+    const response = await GET(new Request("https://rookline.example/auth/callback?provider=google&code=google-code&next=%2Ffriends"));
+    expect(response.headers.get("location")).toBe("https://rookline.example/friends");
+    expect(exchangeCodeForSession).toHaveBeenCalledWith("google-code");
+  });
+
+  it("handles canceled Google consent with a useful error and no external redirect", async () => {
+    const response = await GET(new Request("https://rookline.example/auth/callback?provider=google&error=access_denied&next=https%3A%2F%2Fevil.example"));
+    expect(response.headers.get("location")).toBe("https://rookline.example/login?error=google&next=%2Fplay%2Fonline");
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it("rejects a missing or expired Google authorization code", async () => {
+    exchangeCodeForSession.mockResolvedValueOnce({ error: { message: "invalid code" } });
+    const response = await GET(new Request("https://rookline.example/auth/callback?provider=google&code=expired&next=%2Ffriends"));
+    expect(response.headers.get("location")).toBe("https://rookline.example/login?error=google&next=%2Ffriends");
+  });
+
   it("verifies email token-hash links and prevents an external redirect", async () => {
     const response = await GET(new Request("https://rookline.example/auth/callback?token_hash=hash-value&type=email&next=https%3A%2F%2Fevil.example"));
     expect(response.headers.get("location")).toBe("https://rookline.example/play/online");

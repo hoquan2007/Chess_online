@@ -37,6 +37,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const snapshot = data as OnlineGame;
   const actor = context.user.id;
   if (actor !== snapshot.white_id && actor !== snapshot.black_id) return NextResponse.json({ error: "Not a participant" }, { status: 403 });
+  // Return the committed, server-owned board with the mutation response. This
+  // removes a second browser round trip (including auth and expiry RPC) after
+  // every move; the database remains authoritative for moves and clocks.
+  const committedResponse = async (result: { status: string; ply: number }) => {
+    const latest = await admin.from("games").select("*").eq("id", id).maybeSingle();
+    if (latest.error || !latest.data) {
+      // The client falls back to its normal authenticated GET when a read is
+      // unavailable, without inventing a canonical position or clock.
+      return NextResponse.json(result, { headers: { "Cache-Control": "private, no-store" } });
+    }
+    const game = latest.data as OnlineGame;
+    if (game.white_id !== actor && game.black_id !== actor) {
+      return NextResponse.json({ error: "Not a participant" }, { status: 403 });
+    }
+    return NextResponse.json({ ...result, game, viewerColor: game.white_id === actor ? "w" : "b", serverNow: Date.now() },
+      { headers: { "Cache-Control": "private, no-store" } });
+  };
   const limited = await gameMutationLimit(admin, actor, "move");
   if (limited) return limited;
   const duplicate = await admin.from("moves").select("ply,from_square,to_square,promotion").eq("game_id", id).eq("player_id", actor).eq("idempotency_key", validated.requestId).maybeSingle();
@@ -45,7 +62,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (duplicate.data.ply !== validated.expectedPly + 1 || duplicate.data.from_square !== validated.from || duplicate.data.to_square !== validated.to || (duplicate.data.promotion ?? null) !== (validated.promotion ?? null)) {
       return NextResponse.json({ error: "Request ID already used for another move" }, { status: 409 });
     }
-    return NextResponse.json({ status: "duplicate", ply: duplicate.data.ply });
+    return committedResponse({ status: "duplicate", ply: duplicate.data.ply });
   }
   if (snapshot.status !== "active") return NextResponse.json({ error: "Game is not active" }, { status: 409 });
   if (validated.expectedPly !== snapshot.ply) return NextResponse.json({ error: "Stale game version" }, { status: 409 });
@@ -64,5 +81,5 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     p_game_over: result.finished, p_result: result.finished ? result.label : null, p_winner: winner,
   });
   if (commit.error) return NextResponse.json({ error: "Move conflict or authorization failure; reload game" }, { status: 409 });
-  return NextResponse.json(commit.data, { headers: { "Cache-Control": "no-store" } });
+  return committedResponse(commit.data as { status: string; ply: number });
 }

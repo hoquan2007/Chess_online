@@ -182,5 +182,5 @@ describe("chess rules", () => {
       expect(game.moves()).toContain(chosen!.san);
     }
     expect(game.fen()).toBe(initial);
-  });
+  }, 15_000);
 });

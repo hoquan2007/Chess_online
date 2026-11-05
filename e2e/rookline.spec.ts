@@ -2,6 +2,37 @@ import { expect, test } from "@playwright/test";
 import { Chess } from "chess.js";
 import { readFile } from "node:fs/promises";
 
+test("community pages explain anonymous access and link to the correct sign-in destination", async ({ page }) => {
+  const pages = [
+    { path: "/friends", heading: "Friends and notifications.", prompt: "Friends require an account.", next: "/friends" },
+    { path: "/tournaments", heading: "Tournaments.", prompt: "Sign in to participate.", next: "/tournaments" },
+    { path: "/report", heading: "Report a player.", prompt: "Sign in to report a player.", next: "/report" },
+    { path: "/moderation", heading: "Moderation queue.", prompt: "Moderator sign-in required.", next: "/moderation" },
+  ];
+  for (const entry of pages) {
+    await page.goto(entry.path);
+    await expect(page.getByRole("heading", { name: entry.heading, level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: entry.prompt })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sign in" }).last()).toHaveAttribute(
+      "href", `/login?next=${encodeURIComponent(entry.next)}`,
+    );
+  }
+});
+
+test("community mutation routes deny cross-site writes and reject anonymous users", async ({ request }) => {
+  for (const path of ["/api/social", "/api/private-messages", "/api/tournaments", "/api/reports", "/api/moderation"]) {
+    const crossSite = await request.post(path, {
+      headers: { Origin: "https://attacker.example", "Content-Type": "application/json", "X-Rookline-Account": "fake" },
+      data: { action: "request", username: "another" },
+    });
+    expect(crossSite.status(), `${path} must fail closed on cross-origin requests`).toBe(403);
+
+    const anonymous = await request.get(path);
+    expect([401, 503], `${path} must not expose private records without a verified session`).toContain(anonymous.status());
+    expect(anonymous.headers()["cache-control"]).toContain("no-store");
+  }
+});
+
 test("home navigation and local chess legal moves", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Make every move count." })).toBeVisible();
@@ -223,6 +254,99 @@ test("puzzle solution validates against board rules", async ({ page }) => {
   await page.locator('[data-square="g6"]').click();
   await page.locator('[data-square="g7"]').click();
   await expect(page.getByText("Correct! Qxg7# is the answer.")).toBeVisible();
+});
+
+test("hosted learning sync isolates a second account on a shared browser", async ({ page }) => {
+  const previousAccount = "10000000-0000-4000-8000-000000000001";
+  const currentAccount = "20000000-0000-4000-8000-000000000002";
+  const saved: { account: string | null; ids: string[] }[] = [];
+  await page.addInitScript(({ previousAccount }) => {
+    localStorage.setItem("rookline-puzzles", JSON.stringify(["mate-001"]));
+    localStorage.setItem("rookline-learning-owner:puzzle", previousAccount);
+  }, { previousAccount });
+  await page.route("**/api/learning-progress**", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ accountId: currentAccount, ids: ["mate-002"] }) });
+      return;
+    }
+    const request = route.request();
+    saved.push({ account: request.headers()["x-rookline-account"] ?? null, ids: (request.postDataJSON() as { ids: string[] }).ids });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ saved: 1 }) });
+  });
+  await page.goto("/puzzles");
+  await expect(page.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Progress saved to account")).toBeVisible();
+  const stored = await page.evaluate(() => ({
+    ids: JSON.parse(localStorage.getItem("rookline-puzzles") ?? "[]") as string[],
+    owner: localStorage.getItem("rookline-learning-owner:puzzle"),
+  }));
+  expect(stored).toEqual({ ids: ["mate-002"], owner: currentAccount });
+  expect(saved).toEqual([{ account: currentAccount, ids: ["mate-002"] }]);
+});
+
+test("hosted learning displays cloud progress without uploading old device data when owner writes fail", async ({ page }) => {
+  const previousAccount = "10000000-0000-4000-8000-000000000001";
+  const currentAccount = "20000000-0000-4000-8000-000000000002";
+  const uploaded: string[] = [];
+  await page.addInitScript(({ previousAccount }) => {
+    localStorage.setItem("rookline-puzzles", JSON.stringify(["mate-001"]));
+    localStorage.setItem("rookline-learning-owner:puzzle", previousAccount);
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key === "rookline-learning-owner:puzzle") throw new DOMException("Storage denied", "SecurityError");
+      return originalSetItem.call(this, key, value);
+    };
+  }, { previousAccount });
+  await page.route("**/api/learning-progress**", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ accountId: currentAccount, ids: ["mate-002"] }) });
+      return;
+    }
+    uploaded.push(route.request().postData() ?? "");
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+  await page.goto("/puzzles");
+  await expect(page.getByText("Solved 1 / 23 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Account progress loaded · browser storage unavailable")).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem("rookline-learning-owner:puzzle"))).toBe(previousAccount);
+  expect(uploaded).toEqual([]);
+});
+
+test("signed-out shared browser clears private puzzle progress and practice counters", async ({ page }) => {
+  const previousAccount = "10000000-0000-4000-8000-000000000001";
+  await page.addInitScript(({ previousAccount }) => {
+    localStorage.setItem("rookline-puzzles", JSON.stringify(["mate-001"]));
+    localStorage.setItem("rookline-puzzle-practice", JSON.stringify({ "mate-001": { errors: 3, hints: 1, solves: 1 } }));
+    localStorage.setItem("rookline-learning-owner:puzzle", previousAccount);
+  }, { previousAccount });
+  await page.route("**/api/learning-progress**", (route) =>
+    route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Unauthorized" }) }));
+  await page.goto("/puzzles");
+  await expect(page.getByText("Solved 0 / 23 positions on this device.")).toBeVisible();
+  await expect(page.getByText("Device progress only · sign in to sync")).toBeVisible();
+  expect(await page.evaluate(() => ({
+    completed: JSON.parse(localStorage.getItem("rookline-puzzles") ?? "[]"),
+    practice: localStorage.getItem("rookline-puzzle-practice"),
+    owner: localStorage.getItem("rookline-learning-owner:puzzle"),
+  }))).toEqual({ completed: [], practice: null, owner: null });
+});
+
+test("signed-out shared browser clears mastered study lines", async ({ page }) => {
+  const previousAccount = "10000000-0000-4000-8000-000000000001";
+  await page.addInitScript(({ previousAccount }) => {
+    localStorage.setItem("rookline-study-practice", JSON.stringify(["italian:w"]));
+    localStorage.setItem("rookline-learning-owner:study", previousAccount);
+  }, { previousAccount });
+  await page.route("**/api/learning-progress**", (route) =>
+    route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Unauthorized" }) }));
+  await page.goto("/openings");
+  await page.getByRole("button", { name: "Practice as White" }).click();
+  await expect(page.getByText("Mastered 0 / 10 lines as White on this device.")).toBeVisible();
+  await expect(page.getByText("Device progress only · sign in to sync")).toBeVisible();
+  expect(await page.evaluate(() => ({
+    completed: JSON.parse(localStorage.getItem("rookline-study-practice") ?? "[]"),
+    owner: localStorage.getItem("rookline-learning-owner:study"),
+  }))).toEqual({ completed: [], owner: null });
 });
 
 test("two-move puzzle applies forced reply, rejects a wrong finish, and resets on Retry", async ({ page }) => {
@@ -700,6 +824,18 @@ test("analysis position snapshot follows move navigation and detects mate", asyn
   await expect(insight.getByText(/Legal moves: 0/)).toBeVisible();
 });
 
+test("Stockfish 19 Lite evaluates with a real browser worker and applies a legal candidate", async ({ page }) => {
+  await page.goto("/analysis");
+  const region = page.getByRole("region", { name: "Stockfish engine analysis" });
+  await region.getByRole("button", { name: "Analyze with Stockfish 19" }).click();
+  await expect(region.getByText("Engine analysis complete.")).toBeVisible({ timeout: 35_000 });
+  await expect(region.getByRole("list", { name: "Stockfish variations" }).getByRole("listitem").first()).toBeVisible();
+  const fenBefore = await page.getByRole("textbox", { name: "Current FEN" }).inputValue();
+  await region.getByRole("button", { name: /^Try Stockfish move/ }).first().click();
+  await expect(page.getByRole("textbox", { name: "Current FEN" })).not.toHaveValue(fenBefore);
+  await expect(region.getByText("Engine analysis complete.")).toHaveCount(0);
+});
+
 test("analysis candidate search uses a real worker, follows positions, and handles finished games", async ({ page }) => {
   await page.goto("/analysis");
   const region = page.getByRole("region", { name: "Candidate move analysis" });
@@ -955,25 +1091,42 @@ test("promotion ending a local game restores focus to an available action", asyn
   await expect(page.getByLabel("Move history").getByText("a8=N")).toBeVisible();
 });
 
-test("online service fails clearly without credentials and mobile does not overflow", async ({ page }) => {
+test("online entry explains the available service state and mobile does not overflow", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/play/online");
-  await expect(page.getByText("Online service not configured")).toBeVisible();
+  const unavailable = page.getByRole("heading", { name: "Online service not configured" });
+  const signIn = page.getByRole("heading", { name: "Sign in to play" });
+  await expect(unavailable.or(signIn)).toBeVisible();
+  const serviceUnavailable = await unavailable.isVisible();
+  if (!serviceUnavailable) {
+    await expect(page.getByRole("link", { name: "Sign in", exact: true })
+      .and(page.locator('a[href^="/login?next="]'))).toHaveAttribute("href", /\/login\?next=/);
+  }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await page.goto("/register");
-  await expect(page.getByText("Online accounts are unavailable until Supabase environment variables are configured.")).toBeVisible();
+  if (serviceUnavailable) {
+    await expect(page.getByText("Online accounts are unavailable until Supabase environment variables are configured.")).toBeVisible();
+  } else {
+    await expect(page.getByRole("textbox", { name: "Email" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Create account" })).toBeEnabled();
+  }
 });
 
-test("game archive, leaderboard and profile expose truthful unconfigured states", async ({ page }) => {
+test("game archive, leaderboard and profile expose truthful anonymous service states", async ({ page }) => {
   await page.goto("/games");
   await expect(page.getByRole("heading", { name: "Your game archive." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Online history is not configured" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^(Online history is not configured|Sign in to view your games)$/ })).toBeVisible();
   await page.goto("/leaderboard");
   await expect(page.getByRole("heading", { name: "Leaderboard." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Rankings need a connected service" })).toBeVisible();
+  const unconfiguredRankings = page.getByRole("heading", { name: "Rankings need a connected service" });
+  const signInRankings = page.getByRole("heading", { name: "Sign in to see player rankings" });
+  await expect(unconfiguredRankings.or(signInRankings)).toBeVisible();
+  const serviceUnavailable = await unconfiguredRankings.isVisible();
   await page.goto("/profile/rook_test");
-  await expect(page.getByRole("heading", { name: "Profiles need a connected service." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: serviceUnavailable
+    ? "Profiles need a connected service."
+    : "Sign in to browse profiles." })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save profile" })).toHaveCount(0);
 });
 
@@ -985,12 +1138,14 @@ test("profile update requires same-origin intent and an authenticated service", 
   });
   expect(thirdParty.status()).toBe(403);
   expect(await thirdParty.json()).toMatchObject({ error: "Cross-origin action denied" });
-  const unconfigured = await request.patch("/api/profile", {
+  const anonymous = await request.patch("/api/profile", {
     headers: { Origin: appOrigin, "Content-Type": "application/json" },
     data: { username: "rook_player", display_name: "Player" },
   });
-  expect(unconfigured.status()).toBe(503);
-  expect(await unconfigured.json()).toMatchObject({ error: "Profiles are unavailable" });
+  expect([401, 503]).toContain(anonymous.status());
+  expect(await anonymous.json()).toMatchObject({ error: anonymous.status() === 503
+    ? "Profiles are unavailable"
+    : "Sign in to edit your profile" });
 });
 
 test("server denies cross-origin game mutations before using credentials", async ({ request }) => {
@@ -1019,23 +1174,20 @@ test("server denies cross-origin game mutations before using credentials", async
   expect(siblingSite.status()).toBe(403);
 });
 
-test("draw claims fail closed without hosted chess credentials", async ({ request }) => {
+test("draw claims and cancellation fail closed for anonymous or unconfigured sessions", async ({ request }) => {
   const appOrigin = new URL(test.info().project.use.baseURL!).origin;
-  test.skip(!!(process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY &&
-    (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)),
-  "This fail-closed assertion applies only to an unconfigured local environment.");
   const claim = await request.post("/api/games/00000000-0000-4000-8000-000000000001/claim", {
     headers: { Origin: appOrigin },
     data: { rule: "repetition", expectedPly: 8 },
   });
-  expect(claim.status(), await claim.text()).toBe(503);
-  expect(await claim.json()).toMatchObject({ error: "Chess service is not configured." });
+  expect([401, 503]).toContain(claim.status());
+  const expectedError = claim.status() === 401 ? "Sign in to play online." : "Chess service is not configured.";
+  expect(await claim.json()).toMatchObject({ error: expectedError });
   const cancel = await request.post("/api/games/00000000-0000-4000-8000-000000000001/cancel", {
     headers: { Origin: appOrigin },
   });
-  expect(cancel.status()).toBe(503);
-  expect(await cancel.json()).toMatchObject({ error: "Chess service is not configured." });
+  expect(cancel.status()).toBe(claim.status());
+  expect(await cancel.json()).toMatchObject({ error: expectedError });
 });
 
 test("opening explorer replays a legal line and switches openings", async ({ page }) => {
@@ -2002,7 +2154,9 @@ test("a late move is refused even before a throttled clock interval fires", asyn
 
 test("a local clock charges wall time when monotonic time stops during device sleep", async ({ page }) => {
   await page.goto("/play/local");
-  await page.getByRole("button", { name: "3+2" }).click();
+  const timeControl = page.getByRole("button", { name: "3+2" });
+  await timeControl.click();
+  await expect(timeControl).toHaveAttribute("aria-pressed", "true");
   const entry = page.getByRole("textbox", { name: /Keyboard move/ });
   await entry.fill("e2e4");
   await entry.press("Enter");
@@ -2053,6 +2207,91 @@ test("computer Undo keeps the opening bot move and restores the human clock", as
   await expect(page.getByLabel("Move history").locator(".move-row")).toHaveCount(1);
   await page.reload();
   await expect(page.getByLabel("Black clock")).toHaveText("03:00");
+});
+
+test("accepted online moves update from the POST snapshot before a delayed GET resolves", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000090";
+  const chess = new Chess();
+  const createdAt = new Date().toISOString();
+  const initial = {
+    id, white_id: "white-id", black_id: "black-id", status: "active", pgn: chess.pgn(), fen: chess.fen(),
+    turn: chess.turn(), ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000,
+    black_ms: 300000, clock_anchor_at: createdAt, result: null, winner_id: null,
+    rated: false, created_at: createdAt,
+  };
+  chess.move("e4");
+  const committed = { ...initial, fen: chess.fen(), pgn: chess.pgn(), ply: 1, turn: "b", white_ms: 298000 };
+  let reads = 0;
+  let releaseStale: (() => void) | undefined;
+  let moves = 0;
+  await page.route(`**/api/games/${id}`, async (route) => {
+    reads++;
+    if (reads > 1) {
+      // An unrelated, earlier Sync can be blocked by a slow server. Its 403
+      // response should not overwrite a newer authenticated POST snapshot.
+      await new Promise<void>((resolve) => { releaseStale = resolve; });
+      return route.fulfill({ status: 403, contentType: "application/json", body: '{"error":"Old denial"}' });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      game: initial, viewerColor: "w", serverNow: Date.now(),
+    }) });
+  });
+  await page.route(`**/api/games/${id}/move`, (route) => {
+    moves++;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      status: "accepted", ply: 1, game: committed, viewerColor: "w", serverNow: Date.now(),
+    }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await page.getByRole("button", { name: "Sync", exact: true }).click();
+  await expect.poll(() => reads).toBeGreaterThanOrEqual(2);
+  const moveInput = page.getByRole("textbox", { name: /Keyboard move/ });
+  await moveInput.fill("e2e4");
+  await moveInput.press("Enter");
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  expect(moves).toBe(1);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  releaseStale?.();
+  await page.waitForTimeout(200);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+});
+
+test("automatic online refreshes coalesce while a game read is pending", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000091";
+  const chess = new Chess();
+  const createdAt = new Date().toISOString();
+  const game = {
+    id, white_id: "white-id", black_id: "black-id", status: "active", pgn: "", fen: chess.fen(),
+    turn: "w", ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000,
+    black_ms: 300000, clock_anchor_at: createdAt, result: null, winner_id: null,
+    rated: false, created_at: createdAt,
+  };
+  let reads = 0;
+  let releasePending: (() => void) | undefined;
+  await page.route(`**/api/games/${id}`, async (route) => {
+    reads++;
+    if (reads === 2) await new Promise<void>((resolve) => { releasePending = resolve; });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      game, viewerColor: "w", serverNow: Date.now(),
+    }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => reads).toBe(2);
+
+  // Repeated focus events and a backup poll must share the outstanding read.
+  await page.evaluate(() => { for (let n = 0; n < 5; n++) window.dispatchEvent(new Event("focus")); });
+  await page.waitForTimeout(3300);
+  expect(reads).toBe(2);
+
+  const response = page.waitForResponse((r) => r.url().endsWith(`/api/games/${id}`) && r.status() === 200);
+  releasePending?.();
+  await response;
+  await page.waitForTimeout(100);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => reads).toBe(3);
 });
 
 test("game room ignores an old HTTP snapshot arriving after a newer ply", async ({ page }) => {

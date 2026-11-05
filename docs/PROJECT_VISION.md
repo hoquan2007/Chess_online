@@ -18,4 +18,4 @@ Vercel frontend; Next.js App Router; chess.js for rules; Supabase Postgres/Auth/
 
 ## Launch readiness
 
-This repository currently contains an unverified local prototype and foundations. The production milestone requires independent two-client browser tests, transactional move ordering and clocks, RLS tests, real persistent results, ratings settlement, verified deployment configuration, security and visual audits.
+This repository now has verified local play and an independently exercised three-identity **nonproduction hosted** Auth/RLS/private-Realtime/challenge/game lifecycle slice at checkpoint 142. This is partial product evidence, not a production sign-off. The production milestone still requires two independent direct PostgreSQL sessions for transaction/clock ordering, rated once-only settlement, complete feature scope, production configuration review, security/accessibility/performance/visual audits and all 20 release gates. Checkpoint 143's local test change needs its own exact-SHA hosted/CI checks.
