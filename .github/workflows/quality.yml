@@ -2,7 +2,7 @@ name: Rookline quality
 
 on:
   push:
-    branches: ["codex/**"]
+    branches: ["main", "codex/**"]
   pull_request:
 
 permissions:
