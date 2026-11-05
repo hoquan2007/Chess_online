@@ -10,6 +10,7 @@
 @import "./tokens.css";
 @import "./base.css" layer(base);
 @import "./rookline.css";
+@import "./studio.css";
 
 @custom-variant dark (&:is(.dark *));
 

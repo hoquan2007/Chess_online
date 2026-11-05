@@ -760,6 +760,16 @@ Next: audit another local game/engine edge case while awaiting an isolated Rookl
 
 Next: continue local engine/timing correctness and accessibility review; use dedicated Rookline staging for actual two-account multiplayer verification when available.
 
+## 2026-11-05 — checkpoint 18: Rookline Studio complete frontend redesign
+
+- Created the isolated `codex/frontend-redesign-2026-11-05` branch and documented the design system, implementation slices, routes and acceptance criteria in `docs/FRONTEND_REDESIGN_2026-11-05.md`. Visual identity: original charcoal/ivory/citrus Studio theme, with dark/light tokens and chessboard-first editorial typography.
+- Rebuilt the shared AppShell with grouped navigation, contextual topbar, mobile five-action dock, accessible secondary-route dialog, Escape/Tab handling, focus restoration and skip link. Rebuilt the homepage and four-mode Play selector. The shared stylesheet applies consistent cards, forms, chessboard surrounds, study panels, status blocks and responsiveness throughout existing routes without changing chess, auth or database contracts.
+- Verification: `npm run check` passed migration parity, lint, strict TypeScript and Vitest **313/313 (49 files)**. A native elevated production Webpack build passed with **23/23 generated static pages**; the initial restricted-sandbox build hit a filesystem `EPERM` while creating `.next` directories. Focused frontend Playwright **3/3** passed and the complete browser suite **130/130 passed, four staging-only tests skipped**.
+- Visually audited twelve real Chromium screenshots across desktop (1440px), tablet (820px) and mobile (390px): home, Play selector, local game, analysis, puzzles and settings, including dark and light themes. No horizontal overflow in audited viewports; navigation, board layout and mobile dock remained usable. The screenshots are local under ignored `test-results/ui-audit/`.
+- This frontend slice is verified locally. Dedicated Supabase staging credentials remain absent, so real hosted OAuth, two-player live games, RLS/RPC, rated settlement and production acceptance are **BLOCKED_EXTERNAL**. Full product remains **IN_PROGRESS**; no main merge or deployment was performed in this redesign slice.
+
+Next: review this frontend branch for merge and production release separately; continue hosted multiplayer verification only with dedicated Rookline staging credentials.
+
 ## 2026-10-29, checkpoint 14 — computer turn ownership for resignation and draw claims
 
 - Reproduced two human/computer rule violations in Playwright before implementation: resigning while the computer thought incorrectly reported the computer resigned, and a human could claim a threefold draw on the computer's turn.
