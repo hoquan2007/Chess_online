@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
+import { loadEnvConfig } from "@next/env";
 import { Chess } from "chess.js";
+
+// Use the same public configuration Next loads, including local .env files.
+// UI visibility immediately after navigation can race with hydration in CI.
+loadEnvConfig(process.cwd());
+const browserAuthConfigured = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+);
 
 test("check visibly identifies the attacked king and clears when blocked", async ({ page }) => {
   await page.goto("/play/local");
@@ -63,6 +71,7 @@ test("online completed authoritative result announces win and preserves checkmat
 });
 
 test("register requests a callback to the intended page and offers a cooled-down email resend", async ({ page }) => {
+  test.skip(!browserAuthConfigured, "Public Supabase browser credentials are not configured in this build.");
   const signupRequests: { url: string; body: Record<string, unknown> }[] = [];
   const resendRequests: { url: string; body: Record<string, unknown> }[] = [];
   await page.route((url) => url.pathname.endsWith("/auth/v1/signup"), (route) => {
@@ -79,9 +88,6 @@ test("register requests a callback to the intended page and offers a cooled-down
   });
 
   await page.goto("/register?next=%2Ffriends");
-  if (await page.getByText("Online accounts are unavailable until Supabase environment variables are configured.").isVisible()) {
-    test.skip(true, "Public Supabase browser credentials are not configured in this build.");
-  }
   await page.getByRole("textbox", { name: "Display name" }).fill("QA Player");
   await page.getByRole("textbox", { name: "Email" }).fill("rookline-qa@example.test");
   await page.getByLabel("Password", { exact: true }).fill("one-long-test-password");
@@ -101,6 +107,7 @@ test("register requests a callback to the intended page and offers a cooled-down
 });
 
 test("login explains Supabase's email-not-confirmed failure", async ({ page }) => {
+  test.skip(!browserAuthConfigured, "Public Supabase browser credentials are not configured in this build.");
   let tokenRequests = 0;
   await page.route("**/auth/v1/token?grant_type=password", (route) => {
     tokenRequests++;
@@ -109,9 +116,6 @@ test("login explains Supabase's email-not-confirmed failure", async ({ page }) =
     }) });
   });
   await page.goto("/login?next=%2Ffriends");
-  if (await page.getByText("Online accounts are unavailable until Supabase environment variables are configured.").isVisible()) {
-    test.skip(true, "Public Supabase browser credentials are not configured in this build.");
-  }
   await page.getByRole("textbox", { name: "Email" }).fill("rookline-qa@example.test");
   await page.getByLabel("Password").fill("one-long-test-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -130,10 +134,7 @@ test("fragment confirmation fails safely without a valid session or external ret
 });
 
 test("fragment confirmation establishes a verified Supabase session and clears URL credentials", async ({ page }) => {
-  await page.goto("/register");
-  if (await page.getByText("Online accounts are unavailable until Supabase environment variables are configured.").isVisible()) {
-    test.skip(true, "Public Supabase browser credentials are not configured in this build.");
-  }
+  test.skip(!browserAuthConfigured, "Public Supabase browser credentials are not configured in this build.");
   await page.route((url) => url.pathname.startsWith("/api/"), (route) => route.fulfill({
     status: 503, contentType: "application/json", body: JSON.stringify({ error: "Offline test fixture" }),
   }));
