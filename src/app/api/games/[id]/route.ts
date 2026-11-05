@@ -10,6 +10,31 @@ export async function GET(_request: Request, { params }: RouteContext) {
   if (!validUuid(id)) return NextResponse.json({ error: "Invalid game ID" }, { status: 400 });
   const context = await authenticatedGameContext();
   if (!context.user || !context.admin) return NextResponse.json({ error: context.error }, { status: context.status });
+  // Opt in only after the service-only RPC has been installed and exercised on
+  // staging. One PostgREST call performs the seat check, row-locked clock
+  // expiry and canonical read in one database transaction.
+  if (process.env.ROOKLINE_FAST_GAME_SNAPSHOT === "1") {
+    const result = await context.admin.rpc("rookline_read_player_game", {
+      p_game: id,
+      p_player: context.user.id,
+    });
+    if (result.error || !result.data || typeof result.data !== "object") {
+      return NextResponse.json({ error: "Game unavailable" }, { status: 503 });
+    }
+    const data = result.data as { result?: string; joinable?: boolean; game?: OnlineGame };
+    if (data.result === "not_found") return NextResponse.json({ error: "Game not found" }, { status: 404 });
+    if (data.result === "forbidden") {
+      return NextResponse.json({ error: "You are not a player", joinable: data.joinable === true }, { status: 403 });
+    }
+    const game = data.game;
+    if (data.result !== "ok" || !game || game.id !== id ||
+        (game.white_id !== context.user.id && game.black_id !== context.user.id)) {
+      return NextResponse.json({ error: "Game unavailable" }, { status: 503 });
+    }
+    return NextResponse.json({ game, viewerColor: game.white_id === context.user.id ? "w" : "b", serverNow: Date.now() }, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  }
   const load = () => context.admin!.from("games").select("*").eq("id", id).maybeSingle();
   const first = await load();
   if (first.error || !first.data) return NextResponse.json({ error: "Game not found" }, { status: 404 });

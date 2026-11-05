@@ -9,6 +9,7 @@ import { positionInsight } from "@/lib/chess/insights";
 import { analysisMoveRows, maxAnalysisPgnBytes, parseAnalysisPgn, exportAnalysisVariation } from "@/lib/chess/analysis-pgn";
 import type { analyzeBotPosition } from "@/lib/chess/bot";
 import { PromotionDialog } from "@/components/PromotionDialog";
+import { StockfishAnalysis } from "@/components/StockfishAnalysis";
 import { completedGameAnalysis, validUuid } from "@/lib/online/games";
 
 type Analysis = { start: string; san: string[]; index: number };
@@ -414,6 +415,7 @@ export function AnalysisWorkspace({ initialPgn = "" }: { initialPgn?: string }) 
             </li>)}
           </ol>}
       </section>
+      <StockfishAnalysis fen={boardFen} positionKey={positionKey} onTry={(from, to, piece) => { makeMove(from, to, piece); }} />
       <label className="label">PGN game<textarea className="field" rows={4} value={pgn} onChange={(event) => { userEdited.current = true; pendingPgnFile.current++; setPgn(event.target.value); }} placeholder="1. e4 e5 2. Nf3 Nc6" /></label>
       <button type="button" className="btn primary" onClick={importPgn}>Import PGN</button>
       <label className="label">Choose PGN file (up to 32 KB)<input className="field" type="file" accept=".pgn,application/x-chess-pgn,text/plain" onChange={(event) => { void importPgnFile(event); }} /></label>

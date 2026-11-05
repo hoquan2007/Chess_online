@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local isolated Next build artifacts used for pre-release browser verification.
+    ".release-*/**",
+    // Third-party GPL Stockfish engine is distributed unmodified.
+    "public/engine/stockfish-*.js",
   ]),
 ]);
 

@@ -13,7 +13,11 @@ const productionServer = Boolean(process.env.CI) || process.env.ROOKLINE_E2E_PRO
 export default defineConfig({
   testDir: "./e2e",
   // Explicit hosted runs must never execute local-only mock scenarios against the public staging app.
-  testMatch: externalStaging ? "**/staging-online.spec.ts" : "**/*.spec.ts",
+  // Hosted learning/community checks are opt-in within their own test file.
+  // Keep the file discoverable when a protected Preview URL is supplied.
+  testMatch: externalStaging
+    ? ["**/staging-online.spec.ts", "**/staging-learning-community.spec.ts", "**/staging-latency.spec.ts"]
+    : "**/*.spec.ts",
   timeout: 45_000,
   expect: { timeout: 10_000 },
   use: { ...devices["Desktop Chrome"], channel: process.env.CI ? undefined : "chrome", baseURL: appOrigin, trace: stagingEnabled ? "off" : "retain-on-failure" },

@@ -8,6 +8,8 @@ import { evaluatePracticeMove, practiceNextPly, studyPosition, type PracticeSide
 import { parseCoordinateMove } from "@/lib/chess/rules";
 import { mergeStudyCompletions, readStudyCompletions, recordStudyCompletion, studyProgressKey } from "@/lib/chess/study-progress";
 import { exportStudyProgress, maxStudyBackupBytes, parseStudyProgress } from "@/lib/chess/study-backup";
+import { createLearningCloud } from "@/lib/chess/learning-cloud";
+import { browserSupabase } from "@/lib/supabase/client";
 
 export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
   const [selectedId, setSelectedId] = useState(lines[0].id);
@@ -20,25 +22,44 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
   const [completed, setCompleted] = useState<string[]>([]);
   const [ready, setReady] = useState(false);
   const [backupMessage, setBackupMessage] = useState("");
+  const [cloudMessage, setCloudMessage] = useState("Device progress only");
+  const cloudRef = useRef<ReturnType<typeof createLearningCloud> | null>(null);
   const backupFileRef = useRef<HTMLInputElement>(null);
   const completedRef = useRef<string[]>([]);
   const selected = lines.find((line) => line.id === selectedId) ?? lines[0];
   const chess = useMemo(() => studyPosition(selected.moves, ply), [selected, ply]);
   const finished = mode === "practice" && ply === selected.moves.length;
   const completedKey = `${selected.id}:${side}`;
+  const ownsDeviceProgress = () => cloudRef.current?.ownsDeviceStorage() ?? true;
 
   useEffect(() => {
     const sync = () => {
+      if (!ownsDeviceProgress()) return;
       const merged = mergeStudyCompletions(completedRef.current, readStudyCompletions());
       completedRef.current = merged;
       setCompleted(merged);
     };
     queueMicrotask(() => { sync(); setReady(true); });
     const onStorage = (event: StorageEvent) => {
-      if (event.storageArea === localStorage && (event.key === studyProgressKey || event.key === null)) sync();
+      if (event.storageArea !== localStorage) return;
+      if (event.key === "rookline-learning-owner:study" || event.key === null) cloudRef.current?.onOwnerStorageChanged();
+      if (event.key === studyProgressKey || event.key === null) sync();
     };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    const cloud = createLearningCloud("study", {
+      readLocal: () => mergeStudyCompletions(completedRef.current, readStudyCompletions()),
+      applyMerged: (ids, replace, persist = true) => {
+        const merged = replace ? mergeStudyCompletions(ids) : mergeStudyCompletions(completedRef.current, readStudyCompletions(), ids);
+        completedRef.current = merged;
+        setCompleted(merged);
+        if (persist) try { localStorage.setItem(studyProgressKey, JSON.stringify(merged)); } catch { /* offline state retained */ }
+      },
+      onStatus: setCloudMessage,
+    });
+    cloudRef.current = cloud;
+    const { data: authSubscription } = browserSupabase()?.auth.onAuthStateChange((event, session) => cloud.onAuthEvent(event, session?.user.id)) ?? { data: null };
+    void cloud.connect();
+    return () => { window.removeEventListener("storage", onStorage); authSubscription?.subscription.unsubscribe(); cloud.dispose(); cloudRef.current = null; };
   }, []);
 
   const resetInputs = () => { setKeyboardMove(""); setSelectedSquare(null); setFeedback(""); };
@@ -47,12 +68,15 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
     setMode("practice"); setSide(color); setPly(practiceNextPly(selected, color, 0)); resetInputs();
   };
   const saveCompletion = () => {
-    const next = recordStudyCompletion(completedRef.current, completedKey);
+    const latest = ownsDeviceProgress() ? mergeStudyCompletions(completedRef.current, readStudyCompletions()) : completedRef.current;
+    const next = recordStudyCompletion(latest, completedKey);
     completedRef.current = next;
     setCompleted(next);
+    if (ownsDeviceProgress()) try { localStorage.setItem(studyProgressKey, JSON.stringify(next)); } catch { /* memory only */ }
+    void cloudRef.current?.save(next);
   };
   const downloadProgress = () => {
-    const latest = mergeStudyCompletions(completedRef.current, readStudyCompletions());
+    const latest = ownsDeviceProgress() ? mergeStudyCompletions(completedRef.current, readStudyCompletions()) : completedRef.current;
     const url = URL.createObjectURL(new Blob([exportStudyProgress(latest)], { type: "application/json" }));
     const link = document.createElement("a");
     link.href = url;
@@ -69,11 +93,12 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
       if (file.size > maxStudyBackupBytes) throw new Error("Backup is larger than 64 KB.");
       const imported = parseStudyProgress(await file.text());
       // File reading is asynchronous: preserve newer solves from this tab and others.
-      const merged = mergeStudyCompletions(completedRef.current, readStudyCompletions(), imported);
+      const merged = mergeStudyCompletions(completedRef.current, ownsDeviceProgress() ? readStudyCompletions() : [], imported);
       completedRef.current = merged;
       setCompleted(merged);
+      void cloudRef.current?.save(merged);
       let persisted = true;
-      try { localStorage.setItem(studyProgressKey, JSON.stringify(merged)); }
+      try { if (ownsDeviceProgress()) localStorage.setItem(studyProgressKey, JSON.stringify(merged)); else persisted = false; }
       catch { persisted = false; }
       setBackupMessage(persisted
         ? `Imported study progress: ${merged.length} mastered sides. Existing progress kept.`
@@ -121,6 +146,7 @@ export function StudyExplorer({ lines }: { lines: readonly StudyLine[] }) {
         </div>
         <input ref={backupFileRef} type="file" accept=".json,application/json" hidden aria-label="Choose study backup file" onChange={importProgress} />
         {backupMessage && <p className="panel-sub" role="status">{backupMessage}</p>}
+        <p className="panel-sub" aria-live="polite">{cloudMessage}</p>
       </div>
     </div>
     <section className="stack" aria-labelledby="study-heading">

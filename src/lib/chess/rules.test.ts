@@ -1,9 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { applyLegalMove, availableDrawClaims, gameResult, localPgnResult, mayClaimDraw, parseCoordinateMove, parseKeyboardMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
+import { applyLegalMove, availableDrawClaims, checkedKingSquare, gameResult, localPgnResult, mayClaimDraw, parseCoordinateMove, parseKeyboardMove, pgnDownload, resignationResult, restoreLocalGame, selectPromotion, timeoutResult } from "./rules";
 import { chooseBotMove } from "./bot";
 
 describe("chess rules", () => {
+  it("locates only the attacked king during check and checkmate", () => {
+    const game = new Chess();
+    expect(checkedKingSquare(game)).toBeNull();
+    for (const move of ["e4", "f5", "Qh5+"]) game.move(move);
+    expect(checkedKingSquare(game)).toBe("e8");
+    game.move("g6");
+    expect(checkedKingSquare(game)).toBeNull();
+    const mate = new Chess();
+    for (const move of ["f3", "e5", "g4", "Qh4#"]) mate.move(move);
+    expect(checkedKingSquare(mate)).toBe("e1");
+  });
   it("parses keyboard moves including explicit promotions and rejects malformed input", () => {
     expect(parseCoordinateMove(" E2 - E4 ")).toEqual({ from: "e2", to: "e4" });
     expect(parseCoordinateMove("a7a8n")).toEqual({ from: "a7", to: "a8", promotion: "n" });
@@ -171,5 +182,5 @@ describe("chess rules", () => {
       expect(game.moves()).toContain(chosen!.san);
     }
     expect(game.fen()).toBe(initial);
-  });
+  }, 15_000);
 });

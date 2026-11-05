@@ -8,8 +8,10 @@ import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
 import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
-import { availableDrawClaims, parseKeyboardMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
+import { availableDrawClaims, checkedKingSquare, parseKeyboardMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
+import { GameResultDialog } from "@/components/GameResultDialog";
+import { SpectatorPermission } from "@/components/SpectatorPermission";
 import { moveSoundsEnabled, playMoveSound, setMoveSoundsEnabled, unlockMoveAudio } from "@/lib/chess/sound";
 
 type Viewer = "w" | "b";
@@ -38,6 +40,7 @@ export function GameRoom({ id }: { id: string }) {
   const syncButtonRef = useRef<HTMLButtonElement>(null);
   const [keyboardMove, setKeyboardMove] = useState("");
   const [keyboardError, setKeyboardError] = useState("");
+  const [dismissedResultKey, setDismissedResultKey] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
   const [now, setNow] = useState(() => performance.now());
   const [clockSync, setClockSync] = useState(() => ({ serverNow: Date.now(), receivedAt: performance.now() }));
@@ -51,6 +54,7 @@ export function GameRoom({ id }: { id: string }) {
   const roomEpoch = useRef(0);
   const pendingLoads = useRef(new Set<AbortController>());
   const pendingMutations = useRef(new Set<AbortController>());
+  const autoLoadInFlight = useRef(false);
   const [sound, setSound] = useState(true);
 
   useEffect(() => {
@@ -80,6 +84,24 @@ export function GameRoom({ id }: { id: string }) {
     setSelected(null); setPromotion(null);
     setError("Connection lost. Last verified position is read-only until a fresh sync.");
   }, []);
+
+  const applySnapshot = useCallback((data: { game: OnlineGame; viewerColor: Viewer; serverNow?: number }, receivedAt: number) => {
+    if (!data?.game || data.game.id !== id || (data.viewerColor !== "w" && data.viewerColor !== "b")) return false;
+    if (acceptedGame.current && isOlderGameSnapshot(acceptedGame.current, data.game)) return false;
+    acceptedGame.current = data.game;
+    setGame(data.game);
+    if (typeof data.serverNow === "number" && Number.isSafeInteger(data.serverNow)) {
+      const next = reconcileServerClockSample(acceptedClock.current, { serverNow: data.serverNow, receivedAt });
+      if (next !== acceptedClock.current) {
+        acceptedClock.current = next;
+        setClockSync(next);
+        setNow(receivedAt);
+      }
+    }
+    setViewer(data.viewerColor);
+    setJoinable(false); setUnauthenticated(false); setError(""); setDisconnectedSince(null);
+    return true;
+  }, [id]);
 
   const load = useCallback(async () => {
     const epoch = roomEpoch.current;
@@ -118,19 +140,7 @@ export function GameRoom({ id }: { id: string }) {
       } else {
         // A newer request can still return a stale database snapshot. Reject
         // its clock hint alongside its board, result and lifecycle state.
-        if (acceptedGame.current && isOlderGameSnapshot(acceptedGame.current, data.game)) return;
-        acceptedGame.current = data.game;
-        setGame(data.game);
-        if (typeof data.serverNow === "number" && Number.isSafeInteger(data.serverNow)) {
-          const next = reconcileServerClockSample(acceptedClock.current, { serverNow: data.serverNow, receivedAt });
-          if (next !== acceptedClock.current) {
-            acceptedClock.current = next;
-            setClockSync(next);
-            setNow(receivedAt);
-          }
-        }
-        setViewer(data.viewerColor);
-        setJoinable(false); setUnauthenticated(false); setError(""); setDisconnectedSince(null);
+        applySnapshot(data, receivedAt);
       }
     } catch {
       if (!controller.signal.aborted && epoch === roomEpoch.current && loadId >= lastAppliedLoadId.current) {
@@ -142,21 +152,49 @@ export function GameRoom({ id }: { id: string }) {
       pendingLoads.current.delete(controller);
       if (epoch === roomEpoch.current) setLoading(false);
     }
-  }, [id, invalidateRoom, markDisconnected]);
+  }, [id, applySnapshot, invalidateRoom, markDisconnected]);
 
   useEffect(() => {
     const epochRef = roomEpoch;
     const loadsRef = pendingLoads;
     const mutationsRef = pendingMutations;
     let active = true;
-    queueMicrotask(() => { if (active) void load(); });
-    const interval = window.setInterval(() => void load(), 3000);
+    // Only one automatic GET may be outstanding. Explicit Sync still starts a
+    // new request and retains its out-of-order response protection.
+    const loadAuto = () => {
+      if (!active || autoLoadInFlight.current || mutationsRef.current.size > 0) return;
+      autoLoadInFlight.current = true;
+      void load().finally(() => { autoLoadInFlight.current = false; });
+    };
+    queueMicrotask(loadAuto);
+    let realtimeConnected = false;
+    let pollTimer: number;
+    const poll = () => {
+      pollTimer = window.setTimeout(() => {
+        if (!document.hidden) loadAuto();
+        poll();
+      }, realtimeConnected ? 5000 : 3000);
+    };
+    poll();
     const tick = window.setInterval(() => setNow(performance.now()), 250);
     const client = browserSupabase();
     // Realtime is a wakeup signal only. All visual state is refetched from the authoritative API.
     const channel = client?.channel(`rookline-room-${id}`).on("postgres_changes", {
       event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${id}`,
-    }, () => void load()).subscribe();
+    }, loadAuto);
+    if (client && channel) {
+      // A room mounted immediately after navigation can join before the SSR
+      // browser client restores its signed-in session. An anonymous channel
+      // may report SUBSCRIBED yet receive zero RLS-protected row changes.
+      // Authenticate Realtime before joining the room; use the poll fallback
+      // if there is no valid session or this setup fails.
+      void client.auth.getSession().then(async ({ data: { session } }) => {
+        if (!active || !session?.access_token) return;
+        await client.realtime.setAuth(session.access_token);
+        if (!active) return;
+        channel.subscribe((status) => { realtimeConnected = status === "SUBSCRIBED"; });
+      }).catch(() => { realtimeConnected = false; });
+    }
     let knownUserId: string | null | undefined;
     const { data: { subscription } } = client?.auth.onAuthStateChange((event, session) => {
       const userId = session?.user.id ?? null;
@@ -169,8 +207,9 @@ export function GameRoom({ id }: { id: string }) {
       setLoading(true);
       window.setTimeout(() => { if (active) void load(); }, 0);
     }) ?? { data: { subscription: null } };
-    const onFocus = () => void load();
+    const onFocus = () => loadAuto();
     const onOnline = () => void load();
+    const onVisible = () => { if (!document.hidden) loadAuto(); };
     const onOffline = () => {
       // A response that was already in flight must not re-enable play while
       // the browser is offline, even if that response would otherwise be valid.
@@ -178,6 +217,7 @@ export function GameRoom({ id }: { id: string }) {
       markDisconnected();
     };
     window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
     return () => {
@@ -188,8 +228,9 @@ export function GameRoom({ id }: { id: string }) {
       loadsRef.current.clear();
       for (const controller of mutationsRef.current) controller.abort();
       mutationsRef.current.clear();
-      window.clearInterval(interval); window.clearInterval(tick);
+      window.clearTimeout(pollTimer); window.clearInterval(tick);
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       if (client && channel) void client.removeChannel(channel);
@@ -211,6 +252,7 @@ export function GameRoom({ id }: { id: string }) {
     if (previousPly === null || game.ply > previousPly) lastAudiblePly.current = game.ply;
   }, [game, position.valid]);
   const chess = position.chess;
+  const checkedKing = position.valid ? checkedKingSquare(chess) : null;
   const history = chess.history({ verbose: true });
   const last = history.at(-1);
   const serverNow = estimatedServerTime(clockSync.serverNow, clockSync.receivedAt, disconnectedSince ?? now);
@@ -284,7 +326,25 @@ export function GameRoom({ id }: { id: string }) {
       const result = await response.json();
       if (controller.signal.aborted || epoch !== roomEpoch.current) return;
       if (!response.ok) throw new Error(result.error ?? "Move rejected.");
-      await load();
+      // The move RPC committed before the server read this canonical snapshot.
+      // Apply it directly; a second HTTP GET is necessary only for old servers
+      // or temporarily unavailable post-commit reads.
+      let applied = false;
+      if (["accepted", "duplicate", "timeout"].includes(result.status) &&
+          result.game?.id === id && result.game.ply >= result.ply &&
+          (result.viewerColor === "w" || result.viewerColor === "b")) {
+        try {
+          replayGame(result.game);
+          applied = applySnapshot(result, performance.now());
+        } catch { /* Fetch the authoritative snapshot below. */ }
+      }
+      if (applied) {
+        // Fence GETs started before this mutation; their delayed errors or
+        // old snapshots must not undo the newly committed board.
+        lastAppliedLoadId.current = ++nextLoadId.current;
+      } else if (epoch === roomEpoch.current) {
+        await load();
+      }
     } catch (caught) {
       if (!controller.signal.aborted && epoch === roomEpoch.current) {
         setError(caught instanceof Error ? caught.message : "Move failed. Reload game state.");
@@ -349,6 +409,7 @@ export function GameRoom({ id }: { id: string }) {
     highlights[selected] = { boxShadow: "inset 0 0 0 3px var(--color-focus)" };
     for (const move of chess.moves({ square: selected, verbose: true })) highlights[move.to] = { backgroundImage: "radial-gradient(circle, var(--color-accent) 19%, transparent 22%)" };
   }
+  if (checkedKing) highlights[checkedKing] = { backgroundColor: "#d94a43", boxShadow: "inset 0 0 0 5px #7f1f1e, inset 0 0 20px 5px #ffae8b" };
 
   async function copyInvite() {
     try { await navigator.clipboard.writeText(window.location.href); setNotice("Invite link copied."); }
@@ -382,6 +443,9 @@ export function GameRoom({ id }: { id: string }) {
     ? (Object.keys(timeControls) as TimeControl[]).find((control) =>
       timeControls[control].base_ms === game.base_ms && timeControls[control].increment_ms === game.increment_ms)
     : undefined;
+  const resultKey = game.status === "completed" ? `${game.id}:${game.result}:${game.winner_id ?? "draw"}` : null;
+  const winnerColor = game.winner_id === game.white_id ? "w" : game.winner_id && game.winner_id === game.black_id ? "b" : null;
+  const resultTitle = winnerColor ? (winnerColor === viewer ? "You won!" : "You lost") : "Draw";
   const playerStrip = (color: Viewer) => <div className="player-strip"><span className="player-name"><span className="player-avatar" aria-hidden="true">{color === "w" ? "♙" : "♟"}</span>{color === viewer ? "You" : color === "w" ? "White opponent" : game.black_id ? "Black opponent" : "Waiting for Black"}</span><span className={`clock ${game.status === "active" && game.turn === color ? "running" : ""}`} aria-label={`${color === "w" ? "White" : "Black"} clock`}>{clockLabel(clocks[color])}</span></div>;
 
   return <section className="stack" onPointerDownCapture={unlockMoveAudio} onKeyDownCapture={unlockMoveAudio}>
@@ -398,6 +462,7 @@ export function GameRoom({ id }: { id: string }) {
         },
         onSquareClick: ({ square }) => squareClick(square),
       }} /></div>
+      {checkedKing && <div className="check-indicator" role="status" aria-label={`${chess.turn() === "w" ? "White" : "Black"} king is in check`}>⚠ {chess.turn() === "w" ? "White" : "Black"} king in {chess.isCheckmate() ? "checkmate" : "check"}</div>}
       {playerStrip(bottom)}
     </section><aside className="game-panel" aria-label="Online game controls">
       <div><h2 className="panel-title">Match details</h2><p className="panel-sub">{Math.round(game.base_ms / 60000)}+{Math.round(game.increment_ms / 1000)} · {game.rated ? "Rated" : "Unrated"} · Playing {viewer === "w" ? "White" : "Black"}</p></div>
@@ -412,9 +477,12 @@ export function GameRoom({ id }: { id: string }) {
       <div className="game-actions"><button ref={syncButtonRef} className="btn ghost" type="button" onClick={() => void load()}>Sync</button>{game.status === "waiting" && viewer === "w" && <button className="btn ghost" disabled={busy || disconnectedSince !== null} type="button" onClick={() => void action("cancel")}>Cancel challenge</button>}<button className="btn ghost" disabled={busy || disconnectedSince !== null || game.status !== "active"} type="button" onClick={() => void action("resign")}><Flag size={16} /> Resign</button><Link className="btn ghost" href="/play/online">My games</Link></div>
       {anotherControl && <div className="stack"><button className="btn primary" type="button" disabled={busy || disconnectedSince !== null} onClick={() => void createAnother(anotherControl)}>{busy ? "Creating challenge…" : `Create another ${anotherControl} challenge`}</button><p className="panel-sub">This creates a new private invitation. Share its link for another game.</p></div>}
       <div className="game-actions" aria-label="Draw claim controls"><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.repetition} onClick={() => void claimDraw("repetition")}>Claim threefold draw</button><button className="btn ghost" type="button" disabled={busy || !myTurn || !drawClaims.fiftyMoves} onClick={() => void claimDraw("fiftyMoves")}>Claim 50-move draw</button></div>
+      {!game.rated && (game.status === 'active' || game.status === 'completed') && viewer &&
+        <SpectatorPermission key={`${id}:${viewer}`} gameId={id} accountId={viewer === 'w' ? game.white_id : game.black_id!} />}
       {error && <p className="status" role="alert">{error}</p>}{notice && <p className="status" role="status">{notice}</p>}
       <p className="panel-sub">Clocks are calculated by the server. Live updates use secure snapshots after each move; polling covers network interruptions.</p>
     </aside></div>
     {promotion && <PromotionDialog fallbackFocusRef={syncButtonRef} onChoose={(piece) => void makeMove(promotion.from, promotion.to, piece)} onCancel={() => setPromotion(null)} />}
+    {resultKey && resultKey !== dismissedResultKey && <GameResultDialog title={resultTitle} detail={`Result: ${game.result ?? "Game completed"}`} onDismiss={() => setDismissedResultKey(resultKey)} analysisHref={`/analysis?onlineGame=${encodeURIComponent(game.id)}`} fallbackFocusRef={syncButtonRef} />}
   </section>;
 }

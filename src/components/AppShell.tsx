@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { BookOpen, Brain, Castle, Gamepad2, Home, LogIn, LogOut, Moon, Puzzle, Settings, Sun, Swords, Trophy, Users, ChartNoAxesCombined, UserRound } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
+import { createAuthBootstrap } from "@/lib/supabase/auth-bootstrap";
 import { RooklineMark } from "@/components/RooklineMark";
 import { moveSoundsEnabled, setMoveSoundsEnabled } from "@/lib/chess/sound";
 import { createPreferenceSync } from "@/lib/profile/preference-sync";
@@ -21,6 +22,7 @@ const extra = [
   { href: "/openings", title: "Openings", icon: Gamepad2 },
   { href: "/games", title: "My games", icon: Castle },
   { href: "/leaderboard", title: "Leaderboard", icon: Trophy },
+  { href: "/friends", title: "Friends", icon: Users },
   { href: "/tournaments", title: "Tournaments", icon: Users },
   { href: "/settings", title: "Settings", icon: Settings },
 ];
@@ -33,12 +35,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     const client = browserSupabase();
     if (!client) return;
-    let alive = true;
-    void client.auth.getUser().then(({ data }) => { if (alive) setAccount(data.user?.email ?? null); });
-    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
-      if (alive) setAccount(session?.user.email ?? null);
+    const auth = createAuthBootstrap(setAccount);
+    const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
+      auth.onEvent(event, session?.user.email ?? null);
     });
-    return () => { alive = false; subscription.unsubscribe(); };
+    void client.auth.getUser().then(({ data }) => auth.onVerified(data.user?.email ?? null)).catch(() => auth.onVerified(null));
+    return () => { auth.dispose(); subscription.unsubscribe(); };
   }, []);
   useEffect(() => {
     const client = browserSupabase();

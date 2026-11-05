@@ -7,10 +7,13 @@ import { ArrowRight, Download, Lightbulb, RotateCcw, Upload } from "lucide-react
 import { evaluatePuzzleMove, nextAdaptivePuzzleIndex, nextPracticePuzzleIndex, puzzleIndicesForTheme, puzzles, puzzleThemes, readPuzzleCompletions, readPuzzlePractice, recordPuzzlePractice, type PuzzlePractice, type PuzzlePracticeEvent, type PuzzleTheme } from "@/lib/chess/puzzles";
 import { exportPuzzleProgress, maxPuzzleBackupBytes, mergePuzzleProgress, parsePuzzleProgress } from "@/lib/chess/puzzle-backup";
 import { parseKeyboardMove, selectPromotion } from "@/lib/chess/rules";
+import { createLearningCloud } from "@/lib/chess/learning-cloud";
+import { browserSupabase } from "@/lib/supabase/client";
 import { PromotionDialog } from "@/components/PromotionDialog";
 
 const completedKey = "rookline-puzzles";
 const practiceKey = "rookline-puzzle-practice";
+const ownerKey = "rookline-learning-owner:puzzle";
 
 function storedCompletions(): string[] | null {
   try { return readPuzzleCompletions(JSON.parse(localStorage.getItem(completedKey) || "[]")); }
@@ -39,6 +42,8 @@ export function PuzzleTrainer() {
   const [ready, setReady] = useState(false);
   const [practice, setPractice] = useState<PuzzlePractice>({});
   const [backupMessage, setBackupMessage] = useState("");
+  const [cloudMessage, setCloudMessage] = useState("Device progress only");
+  const cloudRef = useRef<ReturnType<typeof createLearningCloud> | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<{ from: Square; to: Square } | null>(null);
   const retryButtonRef = useRef<HTMLButtonElement>(null);
   const backupFileRef = useRef<HTMLInputElement>(null);
@@ -46,9 +51,11 @@ export function PuzzleTrainer() {
   const practiceRef = useRef<PuzzlePractice>({});
   const current = puzzles[active];
   const visible = puzzleIndicesForTheme(theme);
+  const ownsDeviceProgress = () => cloudRef.current?.ownsDeviceStorage() ?? true;
 
   useEffect(() => {
     const syncFromStorage = (key?: string | null) => {
+      if (!ownsDeviceProgress()) return;
       // Re-read the current value rather than trusting a queued storage event:
       // another tab may have completed a newer puzzle since it was dispatched.
       if (key === undefined || key === null || key === completedKey) {
@@ -69,18 +76,40 @@ export function PuzzleTrainer() {
       setReady(true);
     });
     const onStorage = (event: StorageEvent) => {
-      if (event.storageArea === localStorage) syncFromStorage(event.key);
+      if (event.storageArea !== localStorage) return;
+      if (event.key === ownerKey || event.key === null) cloudRef.current?.onOwnerStorageChanged();
+      if (event.key !== ownerKey) syncFromStorage(event.key);
     };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    const cloud = createLearningCloud("puzzle", {
+      readLocal: () => readPuzzleCompletions([...completeRef.current, ...(storedCompletions() ?? [])]),
+      applyMerged: (ids, replace, persist = true) => {
+        const merged = readPuzzleCompletions(replace ? ids : [...completeRef.current, ...(storedCompletions() ?? []), ...ids]);
+        completeRef.current = merged;
+        setComplete(merged);
+        if (persist) try { localStorage.setItem(completedKey, JSON.stringify(merged)); } catch { /* device state retained */ }
+      },
+      onAccountReset: (memoryOnly = false) => {
+        // Practice counters are device-local and must not follow a different
+        // account on a shared browser even though completions sync to cloud.
+        practiceRef.current = {};
+        setPractice({});
+        if (!memoryOnly) try { localStorage.removeItem(practiceKey); } catch { /* storage unavailable */ }
+      },
+      onStatus: setCloudMessage,
+    });
+    cloudRef.current = cloud;
+    const { data: authSubscription } = browserSupabase()?.auth.onAuthStateChange((event, session) => cloud.onAuthEvent(event, session?.user.id)) ?? { data: null };
+    void cloud.connect();
+    return () => { window.removeEventListener("storage", onStorage); authSubscription?.subscription.unsubscribe(); cloud.dispose(); cloudRef.current = null; };
   }, []);
 
   const record = (event: PuzzlePracticeEvent) => {
     // Merge with the most recent cross-tab write before increasing a counter.
-    const next = recordPuzzlePractice(storedPractice() ?? practiceRef.current, current.id, event);
+    const next = recordPuzzlePractice((ownsDeviceProgress() ? storedPractice() : null) ?? practiceRef.current, current.id, event);
     practiceRef.current = next;
     setPractice(next);
-    try { localStorage.setItem(practiceKey, JSON.stringify(next)); }
+    try { if (ownsDeviceProgress()) localStorage.setItem(practiceKey, JSON.stringify(next)); }
     catch { /* Practice works when storage is disabled. */ }
   };
 
@@ -127,10 +156,11 @@ export function PuzzleTrainer() {
     setKeyboardMove("");
     setFeedback(`Correct! ${result.san} is the answer.`);
     // A second tab can solve a different puzzle while this tab remains open.
-    const next = readPuzzleCompletions([...completeRef.current, ...(storedCompletions() ?? []), current.id]);
+    const next = readPuzzleCompletions([...completeRef.current, ...(ownsDeviceProgress() ? storedCompletions() ?? [] : []), current.id]);
     completeRef.current = next;
     setComplete(next);
-    try { localStorage.setItem(completedKey, JSON.stringify(next)); }
+    void cloudRef.current?.save(next);
+    try { if (ownsDeviceProgress()) localStorage.setItem(completedKey, JSON.stringify(next)); }
     catch { /* Private browsing or quota restrictions must not block practice. */ }
     return true;
   };
@@ -144,8 +174,8 @@ export function PuzzleTrainer() {
 
   const chooseTheme = (value: PuzzleTheme) => {
     setTheme(value);
-    const latestComplete = storedCompletions() ?? complete;
-    const latestPractice = storedPractice() ?? practice;
+    const latestComplete = (ownsDeviceProgress() ? storedCompletions() : null) ?? complete;
+    const latestPractice = (ownsDeviceProgress() ? storedPractice() : null) ?? practice;
     open(adaptive ? nextAdaptivePuzzleIndex(-1, value, latestComplete, latestPractice) : nextPracticePuzzleIndex(-1, value, latestComplete));
   };
 
@@ -155,8 +185,8 @@ export function PuzzleTrainer() {
 
   const downloadProgress = () => {
     const payload = exportPuzzleProgress({
-      completed: readPuzzleCompletions([...completeRef.current, ...(storedCompletions() ?? [])]),
-      practice: mergePuzzleProgress({ completed: [], practice: practiceRef.current }, { completed: [], practice: storedPractice() ?? {} }).practice,
+      completed: readPuzzleCompletions([...completeRef.current, ...(ownsDeviceProgress() ? storedCompletions() ?? [] : [])]),
+      practice: mergePuzzleProgress({ completed: [], practice: practiceRef.current }, { completed: [], practice: ownsDeviceProgress() ? storedPractice() ?? {} : {} }).practice,
     });
     const url = URL.createObjectURL(new Blob([payload], { type: "application/json" }));
     const link = document.createElement("a");
@@ -178,17 +208,21 @@ export function PuzzleTrainer() {
       const merged = mergePuzzleProgress({
         // Re-read refs and device storage after the async file read: playing
         // another puzzle during import must not lose its latest progress.
-        completed: readPuzzleCompletions([...completeRef.current, ...(storedCompletions() ?? [])]),
-        practice: mergePuzzleProgress({ completed: [], practice: practiceRef.current }, { completed: [], practice: storedPractice() ?? {} }).practice,
+        completed: readPuzzleCompletions([...completeRef.current, ...(ownsDeviceProgress() ? storedCompletions() ?? [] : [])]),
+        practice: mergePuzzleProgress({ completed: [], practice: practiceRef.current }, { completed: [], practice: ownsDeviceProgress() ? storedPractice() ?? {} : {} }).practice,
       }, imported);
       completeRef.current = merged.completed;
       setComplete(merged.completed);
+      void cloudRef.current?.save(merged.completed);
       practiceRef.current = merged.practice;
       setPractice(merged.practice);
       let persisted = true;
       try {
-        localStorage.setItem(completedKey, JSON.stringify(merged.completed));
-        localStorage.setItem(practiceKey, JSON.stringify(merged.practice));
+        if (!ownsDeviceProgress()) persisted = false;
+        else {
+          localStorage.setItem(completedKey, JSON.stringify(merged.completed));
+          localStorage.setItem(practiceKey, JSON.stringify(merged.practice));
+        }
       } catch { persisted = false; }
       setBackupMessage(persisted
         ? `Imported puzzle progress: ${merged.completed.length} solved. Existing progress kept.`
@@ -216,8 +250,8 @@ export function PuzzleTrainer() {
       </label>
       <div className="stack" style={{ gap: 5 }}>
         <button type="button" className={`btn ${adaptive ? "primary" : "ghost"}`} aria-pressed={adaptive} disabled={!ready}
-          onClick={() => { const enabled = !adaptive; const latestComplete = storedCompletions() ?? complete; setAdaptive(enabled); open(enabled
-            ? nextAdaptivePuzzleIndex(-1, theme, latestComplete, storedPractice() ?? practice)
+          onClick={() => { const enabled = !adaptive; const latestComplete = (ownsDeviceProgress() ? storedCompletions() : null) ?? complete; setAdaptive(enabled); open(enabled
+            ? nextAdaptivePuzzleIndex(-1, theme, latestComplete, (ownsDeviceProgress() ? storedPractice() : null) ?? practice)
             : nextPracticePuzzleIndex(-1, theme, latestComplete)); }}>
           Adaptive review {adaptive ? "on" : "off"}
         </button>
@@ -242,6 +276,7 @@ export function PuzzleTrainer() {
         </div>
         <input ref={backupFileRef} type="file" accept=".json,application/json" hidden aria-label="Choose puzzle backup file" onChange={importProgress} />
         {backupMessage && <p className="panel-sub" role="status">{backupMessage}</p>}
+        <p className="panel-sub" aria-live="polite">{cloudMessage}</p>
       </div>
       <div className="game-actions" style={{ marginTop: "auto" }}>
         <button type="button" className="btn ghost" disabled={!ready} onClick={() => { if (!solved) record("hint"); setFeedback(current.hint); }}><Lightbulb size={16} /> Hint</button>

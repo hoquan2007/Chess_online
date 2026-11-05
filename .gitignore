@@ -1,5 +1,6 @@
 node_modules/
 .next/
+.release-*/
 .env
 .env.local
 .env.*.local
@@ -13,3 +14,4 @@ test-results/
 lint-results.json
 
 .vercel/
+.vercel
