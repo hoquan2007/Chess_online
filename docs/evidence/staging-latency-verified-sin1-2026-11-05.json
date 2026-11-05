@@ -1,0 +1,516 @@
+{
+  "recordedAt": "2026-11-05T01:32:36.541Z",
+  "startedAt": "2026-11-05T01:31:58.927Z",
+  "outcome": "completed",
+  "origin": "https://chessonline-kotyvnzx0-hnquan.vercel.app",
+  "testLocation": "Windows Codex runner (local host; browser contexts share this machine)",
+  "moveCountRequested": 32,
+  "movesRecorded": 32,
+  "percentiles": {
+    "post": {
+      "n": 32,
+      "p50": 450,
+      "p95": 646,
+      "max": 651
+    },
+    "senderBoard": {
+      "n": 32,
+      "p50": 457,
+      "p95": 652,
+      "max": 656
+    },
+    "opponentBoard": {
+      "n": 32,
+      "p50": 998,
+      "p95": 1120,
+      "max": 1160
+    },
+    "whiteRealtime": {
+      "n": 32,
+      "p50": 665,
+      "p95": 722,
+      "max": 747
+    },
+    "blackRealtime": {
+      "n": 32,
+      "p50": 665,
+      "p95": 738,
+      "max": 747
+    }
+  },
+  "realtimeDelivery": {
+    "white": 32,
+    "black": 32,
+    "status": [
+      [
+        "SUBSCRIBED"
+      ],
+      [
+        "SUBSCRIBED"
+      ]
+    ]
+  },
+  "browserRoomRealtime": [
+    {
+      "opens": 1,
+      "joins": 1,
+      "joinOk": 1,
+      "changes": 32,
+      "closed": 0,
+      "joinBindings": [
+        1
+      ],
+      "joinHasAuth": [
+        true
+      ],
+      "replyBindings": [
+        1
+      ],
+      "replyStatuses": [
+        "ok"
+      ],
+      "allChangeFrames": 32,
+      "authFramesSent": 0
+    },
+    {
+      "opens": 1,
+      "joins": 1,
+      "joinOk": 1,
+      "changes": 32,
+      "closed": 0,
+      "joinBindings": [
+        1
+      ],
+      "joinHasAuth": [
+        true
+      ],
+      "replyBindings": [
+        1
+      ],
+      "replyStatuses": [
+        "ok"
+      ],
+      "allChangeFrames": 32,
+      "authFramesSent": 0
+    }
+  ],
+  "canonicalResponses": 32,
+  "samples": [
+    {
+      "ply": 1,
+      "san": "e4",
+      "postMs": 646,
+      "senderBoardMs": 651,
+      "opponentBoardMs": 927,
+      "whiteRealtimeMs": 569,
+      "blackRealtimeMs": 569,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 577,
+      "opponentFirstGetResponseMs": 922
+    },
+    {
+      "ply": 2,
+      "san": "e5",
+      "postMs": 437,
+      "senderBoardMs": 442,
+      "opponentBoardMs": 1059,
+      "whiteRealtimeMs": 647,
+      "blackRealtimeMs": 647,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 656,
+      "opponentFirstGetResponseMs": 1056
+    },
+    {
+      "ply": 3,
+      "san": "Nf3",
+      "postMs": 631,
+      "senderBoardMs": 635,
+      "opponentBoardMs": 957,
+      "whiteRealtimeMs": 621,
+      "blackRealtimeMs": 621,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 622,
+      "opponentFirstGetResponseMs": 950
+    },
+    {
+      "ply": 4,
+      "san": "Nc6",
+      "postMs": 495,
+      "senderBoardMs": 502,
+      "opponentBoardMs": 980,
+      "whiteRealtimeMs": 653,
+      "blackRealtimeMs": 653,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 656,
+      "opponentFirstGetResponseMs": 976
+    },
+    {
+      "ply": 5,
+      "san": "Bb5",
+      "postMs": 477,
+      "senderBoardMs": 481,
+      "opponentBoardMs": 1051,
+      "whiteRealtimeMs": 687,
+      "blackRealtimeMs": 686,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 688,
+      "opponentFirstGetResponseMs": 1047
+    },
+    {
+      "ply": 6,
+      "san": "a6",
+      "postMs": 405,
+      "senderBoardMs": 410,
+      "opponentBoardMs": 962,
+      "whiteRealtimeMs": 640,
+      "blackRealtimeMs": 640,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 645,
+      "opponentFirstGetResponseMs": 958
+    },
+    {
+      "ply": 7,
+      "san": "Ba4",
+      "postMs": 494,
+      "senderBoardMs": 501,
+      "opponentBoardMs": 974,
+      "whiteRealtimeMs": 687,
+      "blackRealtimeMs": 687,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 648,
+      "opponentFirstGetResponseMs": 966
+    },
+    {
+      "ply": 8,
+      "san": "Nf6",
+      "postMs": 651,
+      "senderBoardMs": 656,
+      "opponentBoardMs": 1118,
+      "whiteRealtimeMs": 722,
+      "blackRealtimeMs": 738,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 724,
+      "opponentFirstGetResponseMs": 1113
+    },
+    {
+      "ply": 9,
+      "san": "O-O",
+      "postMs": 643,
+      "senderBoardMs": 652,
+      "opponentBoardMs": 941,
+      "whiteRealtimeMs": 635,
+      "blackRealtimeMs": 635,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 636,
+      "opponentFirstGetResponseMs": 933
+    },
+    {
+      "ply": 10,
+      "san": "Be7",
+      "postMs": 440,
+      "senderBoardMs": 445,
+      "opponentBoardMs": 999,
+      "whiteRealtimeMs": 695,
+      "blackRealtimeMs": 695,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 697,
+      "opponentFirstGetResponseMs": 993
+    },
+    {
+      "ply": 11,
+      "san": "Re1",
+      "postMs": 463,
+      "senderBoardMs": 468,
+      "opponentBoardMs": 1040,
+      "whiteRealtimeMs": 706,
+      "blackRealtimeMs": 706,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 707,
+      "opponentFirstGetResponseMs": 1034
+    },
+    {
+      "ply": 12,
+      "san": "b5",
+      "postMs": 522,
+      "senderBoardMs": 528,
+      "opponentBoardMs": 817,
+      "whiteRealtimeMs": 682,
+      "blackRealtimeMs": 682,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 495,
+      "opponentFirstGetResponseMs": 812
+    },
+    {
+      "ply": 13,
+      "san": "Bb3",
+      "postMs": 446,
+      "senderBoardMs": 450,
+      "opponentBoardMs": 678,
+      "whiteRealtimeMs": 371,
+      "blackRealtimeMs": 371,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 372,
+      "opponentFirstGetResponseMs": 674
+    },
+    {
+      "ply": 14,
+      "san": "d6",
+      "postMs": 434,
+      "senderBoardMs": 439,
+      "opponentBoardMs": 1011,
+      "whiteRealtimeMs": 708,
+      "blackRealtimeMs": 710,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 711,
+      "opponentFirstGetResponseMs": 1006
+    },
+    {
+      "ply": 15,
+      "san": "c3",
+      "postMs": 458,
+      "senderBoardMs": 463,
+      "opponentBoardMs": 1042,
+      "whiteRealtimeMs": 709,
+      "blackRealtimeMs": 709,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 714,
+      "opponentFirstGetResponseMs": 1035
+    },
+    {
+      "ply": 16,
+      "san": "O-O",
+      "postMs": 447,
+      "senderBoardMs": 455,
+      "opponentBoardMs": 1050,
+      "whiteRealtimeMs": 679,
+      "blackRealtimeMs": 679,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 685,
+      "opponentFirstGetResponseMs": 1043
+    },
+    {
+      "ply": 17,
+      "san": "Ba4",
+      "postMs": 428,
+      "senderBoardMs": 436,
+      "opponentBoardMs": 926,
+      "whiteRealtimeMs": 643,
+      "blackRealtimeMs": 644,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 646,
+      "opponentFirstGetResponseMs": 920
+    },
+    {
+      "ply": 18,
+      "san": "Rb8",
+      "postMs": 400,
+      "senderBoardMs": 409,
+      "opponentBoardMs": 1070,
+      "whiteRealtimeMs": 721,
+      "blackRealtimeMs": 721,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 728,
+      "opponentFirstGetResponseMs": 1062
+    },
+    {
+      "ply": 19,
+      "san": "Bxb5",
+      "postMs": 453,
+      "senderBoardMs": 460,
+      "opponentBoardMs": 970,
+      "whiteRealtimeMs": 658,
+      "blackRealtimeMs": 658,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 665,
+      "opponentFirstGetResponseMs": 960
+    },
+    {
+      "ply": 20,
+      "san": "Rb7",
+      "postMs": 450,
+      "senderBoardMs": 457,
+      "opponentBoardMs": 1052,
+      "whiteRealtimeMs": 708,
+      "blackRealtimeMs": 708,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 712,
+      "opponentFirstGetResponseMs": 1047
+    },
+    {
+      "ply": 21,
+      "san": "Bxa6",
+      "postMs": 416,
+      "senderBoardMs": 423,
+      "opponentBoardMs": 998,
+      "whiteRealtimeMs": 665,
+      "blackRealtimeMs": 665,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 666,
+      "opponentFirstGetResponseMs": 989
+    },
+    {
+      "ply": 22,
+      "san": "Bd7",
+      "postMs": 437,
+      "senderBoardMs": 443,
+      "opponentBoardMs": 1160,
+      "whiteRealtimeMs": 694,
+      "blackRealtimeMs": 694,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 696,
+      "opponentFirstGetResponseMs": 1154
+    },
+    {
+      "ply": 23,
+      "san": "Bxb7",
+      "postMs": 438,
+      "senderBoardMs": 446,
+      "opponentBoardMs": 914,
+      "whiteRealtimeMs": 542,
+      "blackRealtimeMs": 542,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 543,
+      "opponentFirstGetResponseMs": 909
+    },
+    {
+      "ply": 24,
+      "san": "Qe8",
+      "postMs": 403,
+      "senderBoardMs": 412,
+      "opponentBoardMs": 979,
+      "whiteRealtimeMs": 638,
+      "blackRealtimeMs": 639,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 647,
+      "opponentFirstGetResponseMs": 972
+    },
+    {
+      "ply": 25,
+      "san": "Ba8",
+      "postMs": 402,
+      "senderBoardMs": 412,
+      "opponentBoardMs": 991,
+      "whiteRealtimeMs": 670,
+      "blackRealtimeMs": 670,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 671,
+      "opponentFirstGetResponseMs": 985
+    },
+    {
+      "ply": 26,
+      "san": "Qd8",
+      "postMs": 426,
+      "senderBoardMs": 434,
+      "opponentBoardMs": 1051,
+      "whiteRealtimeMs": 689,
+      "blackRealtimeMs": 688,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 694,
+      "opponentFirstGetResponseMs": 1041
+    },
+    {
+      "ply": 27,
+      "san": "Bb7",
+      "postMs": 456,
+      "senderBoardMs": 464,
+      "opponentBoardMs": 933,
+      "whiteRealtimeMs": 652,
+      "blackRealtimeMs": 652,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 561,
+      "opponentFirstGetResponseMs": 924
+    },
+    {
+      "ply": 28,
+      "san": "Qe8",
+      "postMs": 511,
+      "senderBoardMs": 520,
+      "opponentBoardMs": 1120,
+      "whiteRealtimeMs": 747,
+      "blackRealtimeMs": 747,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 748,
+      "opponentFirstGetResponseMs": 1112
+    },
+    {
+      "ply": 29,
+      "san": "Ba8",
+      "postMs": 499,
+      "senderBoardMs": 507,
+      "opponentBoardMs": 1031,
+      "whiteRealtimeMs": 654,
+      "blackRealtimeMs": 654,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 664,
+      "opponentFirstGetResponseMs": 1023
+    },
+    {
+      "ply": 30,
+      "san": "Qd8",
+      "postMs": 497,
+      "senderBoardMs": 509,
+      "opponentBoardMs": 1004,
+      "whiteRealtimeMs": 661,
+      "blackRealtimeMs": 661,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 663,
+      "opponentFirstGetResponseMs": 994
+    },
+    {
+      "ply": 31,
+      "san": "Bxc6",
+      "postMs": 433,
+      "senderBoardMs": 441,
+      "opponentBoardMs": 1083,
+      "whiteRealtimeMs": 676,
+      "blackRealtimeMs": 676,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 677,
+      "opponentFirstGetResponseMs": 1075
+    },
+    {
+      "ply": 32,
+      "san": "Qe8",
+      "postMs": 526,
+      "senderBoardMs": 535,
+      "opponentBoardMs": 807,
+      "whiteRealtimeMs": 616,
+      "blackRealtimeMs": 616,
+      "responseHasSnapshot": true,
+      "opponentGetCount": 1,
+      "opponentFirstGetStartMs": 312,
+      "opponentFirstGetResponseMs": 796
+    }
+  ]
+}
