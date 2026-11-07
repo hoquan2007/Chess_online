@@ -211,7 +211,9 @@ export function GameRoom({ id }: { id: string }) {
       loadAuto();
     };
     flushQueuedRefresh.current = () => {
-      if (autoLoadQueued) loadAuto();
+      // Once a pending mutation settles, its queued hint supersedes any
+      // automatic GET that started before the move was committed.
+      if (autoLoadQueued) loadFresh();
     };
     queueMicrotask(loadAuto);
     let realtimeConnected = false;

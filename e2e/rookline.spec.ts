@@ -2380,6 +2380,58 @@ test("an opponent update during a pending move refreshes immediately after the c
   expect(reads).toBe(2);
 });
 
+test("a completed move bypasses an obsolete automatic read when a refresh was queued", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000096";
+  const chess = new Chess();
+  const createdAt = new Date().toISOString();
+  const initial = {
+    id, white_id: "white-id", black_id: "black-id", status: "active", pgn: "", fen: chess.fen(),
+    turn: "w", ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000,
+    black_ms: 300000, clock_anchor_at: createdAt, result: null, winner_id: null,
+    rated: false, created_at: createdAt,
+  };
+  chess.move("e4");
+  const afterWhite = { ...initial, fen: chess.fen(), pgn: chess.pgn(), ply: 1, turn: "b" };
+  chess.move("e5");
+  const afterBlack = { ...initial, fen: chess.fen(), pgn: chess.pgn(), ply: 2, turn: "w" };
+  let reads = 0;
+  let releaseOld: (() => void) | undefined;
+  let releaseMove: (() => void) | undefined;
+  await page.route(`**/api/games/${id}`, async (route) => {
+    const requestNumber = ++reads;
+    if (requestNumber === 2) await new Promise<void>((resolve) => { releaseOld = resolve; });
+    try {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        game: requestNumber >= 3 ? afterBlack : initial, viewerColor: "w", serverNow: Date.now(),
+      }) });
+    } catch { /* The obsolete read was aborted after the mutation. */ }
+  });
+  await page.route(`**/api/games/${id}/move`, async (route) => {
+    await new Promise<void>((resolve) => { releaseMove = resolve; });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      status: "accepted", ply: 1, game: afterWhite, viewerColor: "w", serverNow: Date.now(),
+    }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => reads).toBe(2);
+
+  const moveInput = page.getByRole("textbox", { name: /Keyboard move/ });
+  await moveInput.fill("e2e4");
+  await moveInput.press("Enter");
+  await expect.poll(() => Boolean(releaseMove)).toBe(true);
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  expect(reads).toBe(2);
+
+  releaseMove?.();
+  // The catch-up GET must start without waiting for the old read to finish.
+  await expect.poll(() => reads).toBe(3);
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
+  releaseOld?.();
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
+});
+
 test("game room ignores an old HTTP snapshot arriving after a newer ply", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000001";
   const chess = new Chess();
