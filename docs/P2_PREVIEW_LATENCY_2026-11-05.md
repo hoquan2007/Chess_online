@@ -1,5 +1,9 @@
 # P2 — measured protected-Preview multiplayer latency
 
+## Checkpoint 163: local healthy-game GET fast path (2026-11-08)
+
+The default GET handler now avoids expiry RPC plus a second game SELECT for **unrated active** games whose server-estimated remaining clock exceeds 60 seconds. The first authenticated, participant-checked SELECT still supplies the canonical database state, and the server alone derives its expiry-path decision. Near-expiry games, invalid clock anchors and any rated game still take the existing locked `rookline_expire_game` route with a second SELECT. The database remains authoritative for accepted moves, timeouts and results. The route's new common-case call-count assertion and near-deadline/rated regression pass locally, alongside 316 unit and 132 executable Chromium tests. **No new hosted p95 has been measured** at this SHA. The 2026-11-05 opponent p95 of 1,120 ms below is historical and the <800 ms target remains unverified. Before claiming an improvement, run the same 32-ply two-real-account Preview scenario and compare GET and opponent-visible p50/p95. Server wall-clock skew is a residual consideration in this conservative shortcut; S2 independently tested database clock/lock ordering remains mandatory before rated enablement.
+
 ## Checkpoint 153: opponent update latency decomposed (2026-11-05)
 
 Recomputed **paired per-move** differences from all 32 unchanged optimized-Preview samples in `evidence/staging-latency-verified-sin1-2026-11-05.json`. The timing origin is still the local browser's Move click. Opponent Realtime here is the **independent authenticated Node test subscriber** for the opponent's color, not an instrumented timestamp inside the browser room.

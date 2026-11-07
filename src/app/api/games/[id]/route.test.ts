@@ -37,6 +37,35 @@ describe("GET online game canonical state", () => {
     delete process.env.ROOKLINE_FAST_GAME_SNAPSHOT;
   });
 
+  it("uses one authenticated read when an unrated clock is comfortably running", async () => {
+    const running = snapshot({ clock_anchor_at: new Date(Date.now() - 5000).toISOString() });
+    const { maybeSingle, rpc } = setup([running]);
+
+    const response = await GET(request, params);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ game: running, viewerColor: "w" });
+    expect(maybeSingle).toHaveBeenCalledOnce();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("keeps PostgreSQL expiry and fresh reads for near-deadline and rated games", async () => {
+    const nearDeadline = snapshot({
+      clock_anchor_at: new Date(Date.now() - 5000).toISOString(), white_ms: 64_000,
+    });
+    const { maybeSingle, rpc } = setup([nearDeadline, nearDeadline]);
+    expect((await GET(request, params)).status).toBe(200);
+    expect(maybeSingle).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenCalledWith("rookline_expire_game", { p_game: id });
+
+    const rated = snapshot({
+      clock_anchor_at: new Date(Date.now() - 5000).toISOString(), rated: true,
+    });
+    const ratedChecks = setup([rated, rated]);
+    expect((await GET(request, params)).status).toBe(200);
+    expect(ratedChecks.maybeSingle).toHaveBeenCalledTimes(2);
+    expect(ratedChecks.rpc).toHaveBeenCalledWith("rookline_expire_game", { p_game: id });
+  });
+
   it("reloads a completed game after the expiry RPC waited for a resignation", async () => {
     const completed = snapshot({ status: "completed", result: "Resignation", winner_id: "black-id" });
     const { maybeSingle, rpc } = setup([snapshot({ ply: 4 }), completed], { status: "completed" });

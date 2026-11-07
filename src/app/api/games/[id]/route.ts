@@ -42,7 +42,19 @@ export async function GET(_request: Request, { params }: RouteContext) {
   if (game.white_id !== context.user.id && game.black_id !== context.user.id) {
     return NextResponse.json({ error: "You are not a player", joinable: game.status === "waiting" }, { status: 403 });
   }
-  if (game.status === "active") {
+  // A healthy unrated clock does not need two extra network round trips just
+  // to confirm it has not expired. Keep a generous boundary before the
+  // deadline, and always let PostgreSQL settle near-timeout or rated games.
+  // This estimate only selects the read path; move/clock authority stays in
+  // the locked database transaction.
+  const sampledAt = Date.now();
+  const anchor = game.clock_anchor_at ? Date.parse(game.clock_anchor_at) : NaN;
+  const turnRemaining = game.turn === "w" ? game.white_ms : game.black_ms;
+  const healthyUnratedClock = game.status === "active" && !game.rated &&
+    Number.isFinite(anchor) && anchor <= sampledAt &&
+    Number.isSafeInteger(turnRemaining) && turnRemaining > 0 &&
+    anchor + turnRemaining - sampledAt > 60_000;
+  if (game.status === "active" && !healthyUnratedClock) {
     const settled = await context.admin.rpc("rookline_expire_game", { p_game: id });
     if (settled.error) return NextResponse.json({ error: "Cannot validate clock" }, { status: 503 });
     // The RPC may wait behind a move or resignation. Its returned status does
