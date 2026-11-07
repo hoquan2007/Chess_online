@@ -36,6 +36,12 @@ export function sameGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
   return keys.length === Object.keys(incoming).length && keys.every((key) => current[key] === incoming[key]);
 }
 
+/** Realtime only avoids a GET when its complete row exactly matches a previously verified HTTP snapshot. */
+export function canSkipRealtimeSnapshotRead(current: OnlineGame | null, incoming: unknown) {
+  return !!current && !!incoming && typeof incoming === "object" && !Array.isArray(incoming) &&
+    sameGameSnapshot(current, incoming as OnlineGame);
+}
+
 /** Avoid applying an older or contradictory HTTP response after an accepted game snapshot.
  * A game can only advance in ply, then in lifecycle phase at the same ply.
  */

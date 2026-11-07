@@ -7,7 +7,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
-import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
+import { canSkipRealtimeSnapshotRead, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
 import { availableDrawClaims, checkedKingSquare, parseKeyboardMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { GameResultDialog } from "@/components/GameResultDialog";
@@ -69,6 +69,7 @@ export function GameRoom({ id }: { id: string }) {
   const acceptedGame = useRef<OnlineGame | null>(null);
   const acceptedViewer = useRef<Viewer | null>(null);
   const acceptedClock = useRef<ServerClockSample | null>(null);
+  const readDisconnected = useRef(false);
   const nextLoadId = useRef(0);
   const lastAppliedLoadId = useRef(0);
   const lastAudiblePly = useRef<number | null>(null);
@@ -95,6 +96,7 @@ export function GameRoom({ id }: { id: string }) {
     acceptedGame.current = null;
     acceptedViewer.current = null;
     acceptedClock.current = null;
+    readDisconnected.current = false;
     lastAudiblePly.current = null;
     setGame(null); setViewer(null); setJoinable(false); setUnauthenticated(false);
     setDisconnectedSince(null);
@@ -103,6 +105,7 @@ export function GameRoom({ id }: { id: string }) {
   }, []);
 
   const markDisconnected = useCallback(() => {
+    readDisconnected.current = true;
     setDisconnectedSince((previous) => previous ?? performance.now());
     setSelected(null); setPromotion(null);
     setError("Connection lost. Last verified position is read-only until a fresh sync.");
@@ -126,6 +129,7 @@ export function GameRoom({ id }: { id: string }) {
     }
     setViewer(data.viewerColor);
     setJoinable(false); setUnauthenticated(false); setError(""); setDisconnectedSince(null);
+    readDisconnected.current = false;
     restartPolling.current();
     return true;
   }, [id]);
@@ -243,10 +247,15 @@ export function GameRoom({ id }: { id: string }) {
     };
     poll();
     const client = browserSupabase();
-    // Realtime is a wakeup signal only. All visual state is refetched from the authoritative API.
+    // Realtime is a wakeup signal, never a source of board or clock authority.
+    // A full row already verified by our own HTTP snapshot needs no extra GET.
+    // Partial/different rows and disconnected rooms still fetch the server.
     const channel = client?.channel(`rookline-room-${id}`).on("postgres_changes", {
       event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${id}`,
-    }, loadFresh);
+    }, (payload) => {
+      if (!readDisconnected.current && canSkipRealtimeSnapshotRead(acceptedGame.current, payload.new)) return;
+      loadFresh();
+    });
     if (client && channel) {
       // A room mounted immediately after navigation can join before the SSR
       // browser client restores its signed-in session. An anonymous channel

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { completedGameAnalysis, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, type OnlineGame, validSquare, validUuid } from "./games";
+import { canSkipRealtimeSnapshotRead, completedGameAnalysis, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, type OnlineGame, validSquare, validUuid } from "./games";
 import { safeNext } from "./redirect";
 
 function snapshot(override: Partial<OnlineGame> = {}): OnlineGame {
@@ -20,6 +20,18 @@ function played(moves: string[], override: Partial<OnlineGame> = {}): OnlineGame
 }
 
 describe("server snapshot replay", () => {
+  it("skips a redundant full Realtime row only after an authenticated identical snapshot", () => {
+    const game = played(["e4"]);
+    expect(canSkipRealtimeSnapshotRead(game, { ...game })).toBe(true);
+    expect(canSkipRealtimeSnapshotRead(game, Object.fromEntries(Object.entries(game).reverse()))).toBe(true);
+    expect(canSkipRealtimeSnapshotRead(game, { ...game, ply: game.ply + 1 })).toBe(false);
+    expect(canSkipRealtimeSnapshotRead(game, { ...game, status: "completed" })).toBe(false);
+    expect(canSkipRealtimeSnapshotRead(game, { ...game, white_ms: game.white_ms - 1 })).toBe(false);
+    expect(canSkipRealtimeSnapshotRead(game, { id: game.id, ply: game.ply })).toBe(false);
+    expect(canSkipRealtimeSnapshotRead(null, game)).toBe(false);
+    expect(canSkipRealtimeSnapshotRead(game, null)).toBe(false);
+    expect(canSkipRealtimeSnapshotRead(game, [])).toBe(false);
+  });
   it("recognizes identical canonical game rows despite key order and detects every changed field", () => {
     const game = played(["e4"]);
     expect(sameGameSnapshot(game, { ...game })).toBe(true);
