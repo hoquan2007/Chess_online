@@ -54,9 +54,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ ...result, game, viewerColor: game.white_id === actor ? "w" : "b", serverNow: Date.now() },
       { headers: { "Cache-Control": "private, no-store" } });
   };
-  const limited = await gameMutationLimit(admin, actor, "move");
+  // These independent checks can share the same network wait. The limiter
+  // still decides first, including on duplicate/retried requests.
+  const [limited, duplicate] = await Promise.all([
+    gameMutationLimit(admin, actor, "move"),
+    admin.from("moves").select("ply,from_square,to_square,promotion")
+      .eq("game_id", id).eq("player_id", actor).eq("idempotency_key", validated.requestId).maybeSingle(),
+  ]);
   if (limited) return limited;
-  const duplicate = await admin.from("moves").select("ply,from_square,to_square,promotion").eq("game_id", id).eq("player_id", actor).eq("idempotency_key", validated.requestId).maybeSingle();
   if (duplicate.error) return NextResponse.json({ error: "Unable to validate request" }, { status: 503 });
   if (duplicate.data) {
     if (duplicate.data.ply !== validated.expectedPly + 1 || duplicate.data.from_square !== validated.from || duplicate.data.to_square !== validated.to || (duplicate.data.promotion ?? null) !== (validated.promotion ?? null)) {

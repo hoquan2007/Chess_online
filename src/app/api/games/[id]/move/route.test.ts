@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NextResponse } from "next/server";
 import { Chess } from "chess.js";
 import { authenticatedGameContext } from "@/lib/supabase/server";
+import { gameMutationLimit } from "@/lib/online/rate-limit";
 import type { OnlineGame } from "@/lib/online/games";
 import { POST } from "./route";
 
@@ -85,6 +87,21 @@ describe("POST move committed snapshot", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ status: "duplicate", ply: 1, game: committed });
     expect(gameRead).toHaveBeenCalledTimes(2);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("starts duplicate lookup while rate limiting is pending and still honors denial", async () => {
+    let finishLimit: ((value: NextResponse | null) => void) | undefined;
+    vi.mocked(gameMutationLimit).mockImplementationOnce(() => new Promise<NextResponse | null>((resolve) => {
+      finishLimit = resolve;
+    }));
+    const { moveRead, rpc } = setup({ games: [game()] });
+    const pending = POST(request(), params);
+    await vi.waitFor(() => expect(moveRead).toHaveBeenCalledOnce());
+    expect(rpc).not.toHaveBeenCalled();
+    finishLimit!(NextResponse.json({ error: "Too many requests" }, { status: 429 }));
+    const response = await pending;
+    expect(response.status).toBe(429);
     expect(rpc).not.toHaveBeenCalled();
   });
 
