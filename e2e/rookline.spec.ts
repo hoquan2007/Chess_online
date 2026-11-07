@@ -2296,6 +2296,43 @@ test("automatic online refreshes coalesce while a game read is pending", async (
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 
+test("online recovery bypasses an obsolete pending automatic game read", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000095";
+  const chess = new Chess();
+  const createdAt = new Date().toISOString();
+  const initial = {
+    id, white_id: "white-id", black_id: "black-id", status: "active", pgn: "", fen: chess.fen(),
+    turn: "w", ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000,
+    black_ms: 300000, clock_anchor_at: createdAt, result: null, winner_id: null,
+    rated: false, created_at: createdAt,
+  };
+  chess.move("e4");
+  const moved = { ...initial, fen: chess.fen(), pgn: chess.pgn(), ply: 1, turn: "b" };
+  let reads = 0;
+  let releaseOld: (() => void) | undefined;
+  await page.route(`**/api/games/${id}`, async (route) => {
+    const requestNumber = ++reads;
+    if (requestNumber === 2) await new Promise<void>((resolve) => { releaseOld = resolve; });
+    try {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        game: requestNumber >= 3 ? moved : initial, viewerColor: "w", serverNow: Date.now(),
+      }) });
+    } catch { /* The stale request was deliberately aborted. */ }
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect.poll(() => reads).toBe(2);
+
+  // An old GET is still waiting. Reconnection must start a newer read before
+  // that response settles, and the obsolete result must never replace it.
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect.poll(() => reads).toBe(3);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  releaseOld?.();
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+});
+
 test("an opponent update during a pending move refreshes immediately after the commit", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000094";
   const chess = new Chess();

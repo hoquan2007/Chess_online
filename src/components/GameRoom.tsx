@@ -122,10 +122,9 @@ export function GameRoom({ id }: { id: string }) {
     return true;
   }, [id]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (controller = new AbortController()) => {
     const epoch = roomEpoch.current;
     const loadId = ++nextLoadId.current;
-    const controller = new AbortController();
     pendingLoads.current.add(controller);
     try {
       const response = await fetch(`/api/games/${id}`, { cache: "no-store", signal: controller.signal });
@@ -181,23 +180,35 @@ export function GameRoom({ id }: { id: string }) {
     // Keep one automatic GET in flight, but remember a Realtime/focus hint
     // arriving during that read. The response can predate the committed move,
     // so dropping the hint would delay the opponent until the next poll.
-    let autoLoadInFlight = false;
+    let autoLoadController: AbortController | null = null;
     let autoLoadQueued = false;
     const loadAuto = () => {
       if (!active) return;
-      if (mutationsRef.current.size > 0 || autoLoadInFlight) {
+      if (mutationsRef.current.size > 0 || autoLoadController) {
         autoLoadQueued = true;
         return;
       }
       autoLoadQueued = false;
-      autoLoadInFlight = true;
-      void load().finally(() => {
-        autoLoadInFlight = false;
+      const controller = new AbortController();
+      autoLoadController = controller;
+      void load(controller).finally(() => {
+        if (autoLoadController !== controller) return;
+        autoLoadController = null;
         if (active && autoLoadQueued) {
           autoLoadQueued = false;
           loadAuto();
         }
       });
+    };
+    const loadFresh = () => {
+      // A committed Realtime update or restored connection makes an older
+      // automatic read obsolete. Start the new canonical GET immediately,
+      // without waiting for the old network request to time out.
+      if (autoLoadController && mutationsRef.current.size === 0) {
+        autoLoadController.abort();
+        autoLoadController = null;
+      }
+      loadAuto();
     };
     flushQueuedRefresh.current = () => {
       if (autoLoadQueued) loadAuto();
@@ -216,7 +227,7 @@ export function GameRoom({ id }: { id: string }) {
     // Realtime is a wakeup signal only. All visual state is refetched from the authoritative API.
     const channel = client?.channel(`rookline-room-${id}`).on("postgres_changes", {
       event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${id}`,
-    }, loadAuto);
+    }, loadFresh);
     if (client && channel) {
       // A room mounted immediately after navigation can join before the SSR
       // browser client restores its signed-in session. An anonymous channel
@@ -233,7 +244,7 @@ export function GameRoom({ id }: { id: string }) {
           if (realtimeConnected) {
             // Changes committed while the socket was disconnected need a
             // fresh canonical snapshot immediately after resubscription.
-            if (subscribedBefore) loadAuto();
+            if (subscribedBefore) loadFresh();
             subscribedBefore = true;
           }
         });
@@ -252,7 +263,7 @@ export function GameRoom({ id }: { id: string }) {
       window.setTimeout(() => { if (active) void load(); }, 0);
     }) ?? { data: { subscription: null } };
     const onFocus = () => loadAuto();
-    const onOnline = () => loadAuto();
+    const onOnline = () => loadFresh();
     const onVisible = () => { if (!document.hidden) loadAuto(); };
     const onOffline = () => {
       // A response that was already in flight must not re-enable play while
