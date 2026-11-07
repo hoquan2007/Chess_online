@@ -46,6 +46,7 @@ describe("GET online game canonical state", () => {
     expect(await response.json()).toMatchObject({ game: running, viewerColor: "w" });
     expect(maybeSingle).toHaveBeenCalledOnce();
     expect(rpc).not.toHaveBeenCalled();
+    expect(response.headers.get("Server-Timing")).toMatch(/^auth;dur=\d+\.\d, snapshot;dur=\d+\.\d$/);
   });
 
   it("keeps PostgreSQL expiry and fresh reads for near-deadline and rated games", async () => {
@@ -77,6 +78,7 @@ describe("GET online game canonical state", () => {
     expect(payload.serverNow).toEqual(expect.any(Number));
     expect(Math.abs(Date.now() - payload.serverNow)).toBeLessThan(2000);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(response.headers.get("Server-Timing")).toMatch(/^auth;dur=\d+\.\d, snapshot;dur=\d+\.\d$/);
     expect(rpc).toHaveBeenCalledWith("rookline_expire_game", { p_game: id });
     expect(maybeSingle).toHaveBeenCalledTimes(2);
   });

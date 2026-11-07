@@ -29,7 +29,16 @@ type MoveSample = {
   opponentGetCount?: number;
   opponentFirstGetStartMs?: number | null;
   opponentFirstGetResponseMs?: number | null;
+  opponentGetServerAuthMs?: number | null;
+  opponentGetServerSnapshotMs?: number | null;
 };
+
+function serverDuration(header: string | undefined, metric: "auth" | "snapshot") {
+  const value = header?.split(",").map((part) => part.trim())
+    .find((part) => part.startsWith(`${metric};dur=`))?.slice(`${metric};dur=`.length);
+  if (!value || !/^\d+(?:\.\d+)?$/.test(value)) return null;
+  return Number(value);
+}
 
 function percentiles(values: number[]) {
   if (values.length === 0) return { n: 0, p50: null, p95: null, max: null };
@@ -244,7 +253,9 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
         response.request().method() === "POST" && response.url().endsWith(`/api/games/${gameId}/move`), { timeout: 25_000 });
       // Record only anonymous timings, to distinguish missed Realtime wakeups
       // from a slow canonical read on the opponent's browser.
-      const opponentReads: Array<{ request: Request; start: number; response?: number }> = [];
+      const opponentReads: Array<{
+        request: Request; start: number; response?: number; serverAuthMs?: number | null; serverSnapshotMs?: number | null;
+      }> = [];
       const readTarget = `/api/games/${gameId}`;
       const onOpponentRequest = (request: Request) => {
         if (request.method() === "GET" && new URL(request.url()).pathname === readTarget) {
@@ -253,7 +264,12 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
       };
       const onOpponentResponse = (response: Response) => {
         const entry = opponentReads.find((item) => item.request === response.request());
-        if (entry) entry.response = performance.now();
+        if (entry) {
+          entry.response = performance.now();
+          const serverTiming = response.headers()["server-timing"];
+          entry.serverAuthMs = serverDuration(serverTiming, "auth");
+          entry.serverSnapshotMs = serverDuration(serverTiming, "snapshot");
+        }
       };
       opponent.on("request", onOpponentRequest);
       opponent.on("response", onOpponentResponse);
@@ -284,6 +300,8 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
         opponentGetCount: opponentReads.length,
         opponentFirstGetStartMs: opponentReads[0] ? Math.round(opponentReads[0].start - start) : null,
         opponentFirstGetResponseMs: opponentReads[0]?.response ? Math.round(opponentReads[0].response - start) : null,
+        opponentGetServerAuthMs: opponentReads[0]?.serverAuthMs ?? null,
+        opponentGetServerSnapshotMs: opponentReads[0]?.serverSnapshotMs ?? null,
       });
     }
     outcome = "completed";
@@ -306,6 +324,10 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
         opponentGet: percentiles(samples.flatMap((s) =>
           s.opponentFirstGetStartMs == null || s.opponentFirstGetResponseMs == null
             ? [] : [s.opponentFirstGetResponseMs - s.opponentFirstGetStartMs])),
+        opponentGetServerAuth: percentiles(samples.flatMap((s) =>
+          s.opponentGetServerAuthMs == null ? [] : [s.opponentGetServerAuthMs])),
+        opponentGetServerSnapshot: percentiles(samples.flatMap((s) =>
+          s.opponentGetServerSnapshotMs == null ? [] : [s.opponentGetServerSnapshotMs])),
         opponentAfterRealtime: percentiles(samples.flatMap((s) => {
           const realtime = s.ply % 2 === 1 ? s.blackRealtimeMs : s.whiteRealtimeMs;
           return realtime == null ? [] : [s.opponentBoardMs - realtime];
