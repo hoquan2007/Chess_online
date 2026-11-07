@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { canSkipRealtimeSnapshotRead, completedGameAnalysis, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, type OnlineGame, validSquare, validUuid } from "./games";
+import { canSkipRealtimeSnapshotRead, completedGameAnalysis, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, queuedRealtimeCoveredBySnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, type OnlineGame, validSquare, validUuid } from "./games";
 import { safeNext } from "./redirect";
 
 function snapshot(override: Partial<OnlineGame> = {}): OnlineGame {
@@ -20,6 +20,17 @@ function played(moves: string[], override: Partial<OnlineGame> = {}): OnlineGame
 }
 
 describe("server snapshot replay", () => {
+  it("uses the verified move POST snapshot for queued identical Realtime updates only", () => {
+    const committed = played(["e4"]);
+    const next = played(["e4", "e5"]);
+    expect(queuedRealtimeCoveredBySnapshot(committed, [{ ...committed }], false)).toBe(true);
+    expect(queuedRealtimeCoveredBySnapshot(committed, [{ ...committed }, { ...committed }], false)).toBe(true);
+    expect(queuedRealtimeCoveredBySnapshot(committed, [], false)).toBe(false);
+    expect(queuedRealtimeCoveredBySnapshot(committed, [{ ...committed }], true)).toBe(false);
+    expect(queuedRealtimeCoveredBySnapshot(committed, [{ ...committed }, next], false)).toBe(false);
+    expect(queuedRealtimeCoveredBySnapshot(committed, [{ id: committed.id, ply: committed.ply }], false)).toBe(false);
+    expect(queuedRealtimeCoveredBySnapshot(null, [committed], false)).toBe(false);
+  });
   it("skips a redundant full Realtime row only after an authenticated identical snapshot", () => {
     const game = played(["e4"]);
     expect(canSkipRealtimeSnapshotRead(game, { ...game })).toBe(true);

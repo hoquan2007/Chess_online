@@ -7,7 +7,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
-import { canSkipRealtimeSnapshotRead, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
+import { canSkipRealtimeSnapshotRead, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, queuedRealtimeCoveredBySnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
 import { availableDrawClaims, checkedKingSquare, parseKeyboardMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { GameResultDialog } from "@/components/GameResultDialog";
@@ -76,7 +76,7 @@ export function GameRoom({ id }: { id: string }) {
   const roomEpoch = useRef(0);
   const pendingLoads = useRef(new Set<AbortController>());
   const pendingMutations = useRef(new Set<AbortController>());
-  const flushQueuedRefresh = useRef<() => void>(() => {});
+  const flushQueuedRefresh = useRef<(postSnapshotApplied?: boolean) => void>(() => {});
   const restartPolling = useRef<() => void>(() => {});
   const [sound, setSound] = useState(true);
 
@@ -194,13 +194,19 @@ export function GameRoom({ id }: { id: string }) {
     // so dropping the hint would delay the opponent until the next poll.
     let autoLoadController: AbortController | null = null;
     let autoLoadQueued = false;
-    const loadAuto = () => {
+    let queuedOpaqueHint = false;
+    let queuedRealtimeRows: unknown[] = [];
+    const loadAuto = (realtimeRow?: unknown) => {
       if (!active) return;
       if (mutationsRef.current.size > 0 || autoLoadController) {
         autoLoadQueued = true;
+        if (realtimeRow === undefined || queuedRealtimeRows.length >= 8) queuedOpaqueHint = true;
+        else queuedRealtimeRows.push(realtimeRow);
         return;
       }
       autoLoadQueued = false;
+      queuedOpaqueHint = false;
+      queuedRealtimeRows = [];
       const controller = new AbortController();
       autoLoadController = controller;
       void load(controller).finally(() => {
@@ -212,7 +218,7 @@ export function GameRoom({ id }: { id: string }) {
         }
       });
     };
-    const loadFresh = () => {
+    const loadFresh = (realtimeRow?: unknown) => {
       // A committed Realtime update or restored connection makes an older
       // automatic read obsolete. Start the new canonical GET immediately,
       // without waiting for the old network request to time out.
@@ -220,12 +226,21 @@ export function GameRoom({ id }: { id: string }) {
         autoLoadController.abort();
         autoLoadController = null;
       }
-      loadAuto();
+      loadAuto(realtimeRow);
     };
-    flushQueuedRefresh.current = () => {
+    flushQueuedRefresh.current = (postSnapshotApplied = false) => {
       // Once a pending mutation settles, its queued hint supersedes any
       // automatic GET that started before the move was committed.
-      if (autoLoadQueued) loadFresh();
+      if (!autoLoadQueued) return;
+      // A committed POST snapshot already covers identical, full Realtime rows.
+      // Focus/reconnect hints and newer or partial rows must still catch up.
+      if (postSnapshotApplied && !readDisconnected.current &&
+          queuedRealtimeCoveredBySnapshot(acceptedGame.current, queuedRealtimeRows, queuedOpaqueHint)) {
+        autoLoadQueued = false;
+        queuedRealtimeRows = [];
+        return;
+      }
+      loadFresh();
     };
     queueMicrotask(loadAuto);
     let realtimeConnected = false;
@@ -254,7 +269,7 @@ export function GameRoom({ id }: { id: string }) {
       event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${id}`,
     }, (payload) => {
       if (!readDisconnected.current && canSkipRealtimeSnapshotRead(acceptedGame.current, payload.new)) return;
-      loadFresh();
+      loadFresh(payload.new);
     });
     if (client && channel) {
       // A room mounted immediately after navigation can join before the SSR
@@ -403,6 +418,7 @@ export function GameRoom({ id }: { id: string }) {
     const controller = new AbortController();
     pendingMutations.current.add(controller);
     setBusy(true); setError(""); setSelected(null); setPromotion(null);
+    let appliedPostSnapshot = false;
     try {
       const response = await fetch(`/api/games/${id}/move`, {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: controller.signal,
@@ -414,16 +430,15 @@ export function GameRoom({ id }: { id: string }) {
       // The move RPC committed before the server read this canonical snapshot.
       // Apply it directly; a second HTTP GET is necessary only for old servers
       // or temporarily unavailable post-commit reads.
-      let applied = false;
       if (["accepted", "duplicate", "timeout"].includes(result.status) &&
           result.game?.id === id && result.game.ply >= result.ply &&
           (result.viewerColor === "w" || result.viewerColor === "b")) {
         try {
           replayGame(result.game);
-          applied = applySnapshot(result, performance.now());
+          appliedPostSnapshot = applySnapshot(result, performance.now());
         } catch { /* Fetch the authoritative snapshot below. */ }
       }
-      if (applied) {
+      if (appliedPostSnapshot) {
         // Fence GETs started before this mutation; their delayed errors or
         // old snapshots must not undo the newly committed board.
         lastAppliedLoadId.current = ++nextLoadId.current;
@@ -437,7 +452,7 @@ export function GameRoom({ id }: { id: string }) {
       }
     } finally {
       pendingMutations.current.delete(controller);
-      if (epoch === roomEpoch.current) flushQueuedRefresh.current();
+      if (epoch === roomEpoch.current) flushQueuedRefresh.current(appliedPostSnapshot);
       if (epoch === roomEpoch.current) setBusy(false);
     }
   }

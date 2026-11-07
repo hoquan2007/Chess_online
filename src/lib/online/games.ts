@@ -42,6 +42,11 @@ export function canSkipRealtimeSnapshotRead(current: OnlineGame | null, incoming
     sameGameSnapshot(current, incoming as OnlineGame);
 }
 
+/** A committed HTTP response covers queued Realtime updates only when every hint is that exact row. */
+export function queuedRealtimeCoveredBySnapshot(current: OnlineGame | null, rows: unknown[], hasOpaqueHint: boolean) {
+  return !hasOpaqueHint && rows.length > 0 && rows.every((row) => canSkipRealtimeSnapshotRead(current, row));
+}
+
 /** Avoid applying an older or contradictory HTTP response after an accepted game snapshot.
  * A game can only advance in ply, then in lifecycle phase at the same ply.
  */
