@@ -71,6 +71,7 @@ describe("POST move committed snapshot", () => {
     expect(payload).toMatchObject({ status: "accepted", ply: 1, game: committed, viewerColor: "w" });
     expect(Math.abs(payload.serverNow - Date.now())).toBeLessThan(2000);
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(response.headers.get("Server-Timing")).toMatch(/^auth;dur=\d+\.\d, game;dur=\d+\.\d, checks;dur=\d+\.\d, rules;dur=\d+\.\d, rpc;dur=\d+\.\d, snapshot;dur=\d+\.\d$/);
     expect(gameRead).toHaveBeenCalledTimes(2);
     expect(rpc).toHaveBeenCalledWith("rookline_commit_move", expect.objectContaining({
       p_game: id, p_player: "white-id", p_expected_ply: 0, p_request: requestId,
@@ -86,6 +87,8 @@ describe("POST move committed snapshot", () => {
     const response = await POST(request(), params);
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ status: "duplicate", ply: 1, game: committed });
+    expect(response.headers.get("Server-Timing")).toContain("snapshot;dur=");
+    expect(response.headers.get("Server-Timing")).not.toContain("rpc;dur=");
     expect(gameRead).toHaveBeenCalledTimes(2);
     expect(rpc).not.toHaveBeenCalled();
   });
@@ -118,6 +121,8 @@ describe("POST move committed snapshot", () => {
     const response = await POST(request(), params);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "accepted", ply: 1 });
+    expect(response.headers.get("Server-Timing")).toContain("rpc;dur=");
+    expect(response.headers.get("Server-Timing")).toContain("snapshot;dur=");
   });
 
   it("does not disclose a game if participant access changes after the RPC", async () => {

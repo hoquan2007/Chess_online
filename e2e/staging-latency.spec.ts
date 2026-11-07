@@ -21,6 +21,12 @@ type MoveSample = {
   ply: number;
   san: string;
   postMs: number;
+  postServerAuthMs?: number | null;
+  postServerGameMs?: number | null;
+  postServerChecksMs?: number | null;
+  postServerRulesMs?: number | null;
+  postServerRpcMs?: number | null;
+  postServerSnapshotMs?: number | null;
   senderBoardMs: number;
   opponentBoardMs: number;
   whiteRealtimeMs: number | null;
@@ -33,7 +39,7 @@ type MoveSample = {
   opponentGetServerSnapshotMs?: number | null;
 };
 
-function serverDuration(header: string | undefined, metric: "auth" | "snapshot") {
+function serverDuration(header: string | undefined, metric: "auth" | "game" | "checks" | "rules" | "rpc" | "snapshot") {
   const value = header?.split(",").map((part) => part.trim())
     .find((part) => part.startsWith(`${metric};dur=`))?.slice(`${metric};dur=`.length);
   if (!value || !/^\d+(?:\.\d+)?$/.test(value)) return null;
@@ -286,12 +292,19 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
       expect(response.status(), `move ${ply} (${move.san})`).toBe(200);
       const body = await response.json();
       expect(body.status, `move ${ply} (${move.san})`).toBe("accepted");
+      const postServerTiming = response.headers()["server-timing"];
       await expect.poll(() => received.every((side) => side.has(ply)), {
         timeout: 3_000, intervals: [50, 100, 200],
       }).toBe(true).catch(() => undefined);
       samples.push({
         ply, san: move.san,
         postMs: Math.round(responseAt - start),
+        postServerAuthMs: serverDuration(postServerTiming, "auth"),
+        postServerGameMs: serverDuration(postServerTiming, "game"),
+        postServerChecksMs: serverDuration(postServerTiming, "checks"),
+        postServerRulesMs: serverDuration(postServerTiming, "rules"),
+        postServerRpcMs: serverDuration(postServerTiming, "rpc"),
+        postServerSnapshotMs: serverDuration(postServerTiming, "snapshot"),
         senderBoardMs: Math.round(senderAt - start),
         opponentBoardMs: Math.round(opponentAt - start),
         whiteRealtimeMs: received[0].has(ply) ? Math.round(received[0].get(ply)! - start) : null,
@@ -316,6 +329,12 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
       moveCountRequested: moveCount, movesRecorded: samples.length,
       percentiles: {
         post: percentiles(samples.map((s) => s.postMs)),
+        postServerAuth: percentiles(samples.flatMap((s) => s.postServerAuthMs == null ? [] : [s.postServerAuthMs])),
+        postServerGame: percentiles(samples.flatMap((s) => s.postServerGameMs == null ? [] : [s.postServerGameMs])),
+        postServerChecks: percentiles(samples.flatMap((s) => s.postServerChecksMs == null ? [] : [s.postServerChecksMs])),
+        postServerRules: percentiles(samples.flatMap((s) => s.postServerRulesMs == null ? [] : [s.postServerRulesMs])),
+        postServerRpc: percentiles(samples.flatMap((s) => s.postServerRpcMs == null ? [] : [s.postServerRpcMs])),
+        postServerSnapshot: percentiles(samples.flatMap((s) => s.postServerSnapshotMs == null ? [] : [s.postServerSnapshotMs])),
         senderBoard: percentiles(samples.map((s) => s.senderBoardMs)),
         opponentBoard: percentiles(samples.map((s) => s.opponentBoardMs)),
         whiteRealtime: percentiles(samples.map((s) => s.whiteRealtimeMs).filter((v): v is number => v !== null)),
