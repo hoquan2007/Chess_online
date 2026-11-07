@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { resolveStagingAppOrigin } from "./staging-target";
+import { redactedPreviewRequest, requireFreshPreviewOidcToken } from "./staging-preview-auth";
 
 loadEnvConfig(process.cwd(), true);
 const enabled = process.env.ROOKLINE_STAGING_E2E === "1" && process.env.ROOKLINE_STAGING_LATENCY_E2E === "1";
@@ -88,6 +89,7 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
   if (!supabaseUrl || new URL(supabaseUrl).hostname !== `${stagingProject}.supabase.co` || !anon || !secret) {
     throw new Error(`Latency test requires the dedicated ${stagingProject} staging credentials.`);
   }
+  requireFreshPreviewOidcToken(previewToken);
 
   const admin = createClient(supabaseUrl, secret, { auth: { persistSession: false, autoRefreshToken: false } });
   const nonce = randomBytes(9).toString("hex");
@@ -129,8 +131,9 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
     // Probe the exact deployment before creating remote users or game fixtures.
     const probe = await browser.newContext({ baseURL: previewOrigin });
     contexts.push(probe);
-    const landing = await probe.request.get("/login", { headers: previewHeaders, timeout: 12_000 });
-    const landingHtml = await landing.text();
+    const landing = await redactedPreviewRequest("login preflight", () =>
+      probe.request.get("/login", { headers: previewHeaders, timeout: 12_000 }));
+    const landingHtml = await redactedPreviewRequest("login body read", () => landing.text());
     if (landing.status() !== 200 || !landingHtml.includes("Rookline")) {
       const title = landingHtml.match(/<title[^>]*>([^<]{0,100})<\/title>/i)?.[1] ?? "unknown";
       const path = new URL(landing.url()).pathname;
@@ -159,14 +162,14 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
       }
     }
     const [white, black] = await Promise.all([signIn(contexts[0], emails[0]), signIn(contexts[1], emails[1])]);
-    const created = await contexts[0].request.post("/api/games", {
+    const created = await redactedPreviewRequest("game creation", () => contexts[0].request.post("/api/games", {
       headers: { ...previewHeaders, Origin: previewOrigin }, data: { control: "10+0" },
-    });
+    }));
     expect(created.status(), "staging game create").toBe(201);
     gameId = (await created.json()).id as string;
-    const joined = await contexts[1].request.post(`/api/games/${gameId}/join`, {
+    const joined = await redactedPreviewRequest("game join", () => contexts[1].request.post(`/api/games/${gameId}/join`, {
       headers: { ...previewHeaders, Origin: previewOrigin },
-    });
+    }));
     expect(joined.status(), "staging game join").toBe(200);
 
     for (const [index, page] of [white, black].entries()) {

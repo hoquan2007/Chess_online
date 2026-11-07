@@ -1,5 +1,12 @@
 # Autonomous progress ledger
 
+## 2026-11-08 — checkpoint 177, staging latency measurement guard
+
+- Added early Preview OIDC expiry validation and redacted failed authenticated Playwright preflight, game-create and game-join requests, preventing failed network requests from echoing authorization headers into test logs.
+- Verified two focused new tests, 320 total Vitest, 9 local migration fingerprints, lint, strict TypeScript, independently permitted 23-page production build and 136 real production Chromium passes with four guarded hosted skips.
+- Confirmed the configured Preview token is expired in an actual staging benchmark attempt. No staging fixtures were created and no fresh latency measurement was produced. Read-only GitHub remote lookup could not resolve `github.com`.
+- Continue publication to development branch, same-SHA GitHub CI/protected Vercel staging checks, then 32-ply two-real-user latency proof once supported OIDC and DNS work. Historical opponent p95 1120 ms exceeds required 800 ms. Independent S2 DB races and S3–S6/20 acceptance gates remain open, rated disabled, production NO-GO.
+
 ## 2026-11-05 — authorized main-merge release verification
 
 - Resolved seven conflicts between main's checkmate/email-confirmation hotfix and the developed Google OAuth, online latency, spectator-consent and community features. Preserved both email verification/resend and Google PKCE/error handling, plus the completed-game dialog and spectator panel.
