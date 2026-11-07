@@ -54,7 +54,6 @@ export function GameRoom({ id }: { id: string }) {
   const roomEpoch = useRef(0);
   const pendingLoads = useRef(new Set<AbortController>());
   const pendingMutations = useRef(new Set<AbortController>());
-  const autoLoadInFlight = useRef(false);
   const [sound, setSound] = useState(true);
 
   useEffect(() => {
@@ -159,12 +158,22 @@ export function GameRoom({ id }: { id: string }) {
     const loadsRef = pendingLoads;
     const mutationsRef = pendingMutations;
     let active = true;
-    // Only one automatic GET may be outstanding. Explicit Sync still starts a
-    // new request and retains its out-of-order response protection.
+    // Keep one automatic GET in flight, but remember a Realtime/focus hint
+    // arriving during that read. The response can predate the committed move,
+    // so dropping the hint would delay the opponent until the next poll.
+    let autoLoadInFlight = false;
+    let autoLoadQueued = false;
     const loadAuto = () => {
-      if (!active || autoLoadInFlight.current || mutationsRef.current.size > 0) return;
-      autoLoadInFlight.current = true;
-      void load().finally(() => { autoLoadInFlight.current = false; });
+      if (!active || mutationsRef.current.size > 0) return;
+      if (autoLoadInFlight) { autoLoadQueued = true; return; }
+      autoLoadInFlight = true;
+      void load().finally(() => {
+        autoLoadInFlight = false;
+        if (active && autoLoadQueued) {
+          autoLoadQueued = false;
+          loadAuto();
+        }
+      });
     };
     queueMicrotask(loadAuto);
     let realtimeConnected = false;

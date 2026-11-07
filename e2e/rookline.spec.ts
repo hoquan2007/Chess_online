@@ -2267,13 +2267,15 @@ test("automatic online refreshes coalesce while a game read is pending", async (
     black_ms: 300000, clock_anchor_at: createdAt, result: null, winner_id: null,
     rated: false, created_at: createdAt,
   };
+  chess.move("e4");
+  const moved = { ...game, fen: chess.fen(), pgn: chess.pgn(), ply: 1, turn: "b" };
   let reads = 0;
   let releasePending: (() => void) | undefined;
   await page.route(`**/api/games/${id}`, async (route) => {
-    reads++;
-    if (reads === 2) await new Promise<void>((resolve) => { releasePending = resolve; });
+    const requestNumber = ++reads;
+    if (requestNumber === 2) await new Promise<void>((resolve) => { releasePending = resolve; });
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-      game, viewerColor: "w", serverNow: Date.now(),
+      game: requestNumber >= 3 ? moved : game, viewerColor: "w", serverNow: Date.now(),
     }) });
   });
   await page.goto(`/game/${id}`);
@@ -2281,17 +2283,17 @@ test("automatic online refreshes coalesce while a game read is pending", async (
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect.poll(() => reads).toBe(2);
 
-  // Repeated focus events and a backup poll must share the outstanding read.
+  // Repeated hints and the backup poll must share the outstanding read.
+  // That read may have sampled the old board before the opponent committed.
   await page.evaluate(() => { for (let n = 0; n < 5; n++) window.dispatchEvent(new Event("focus")); });
   await page.waitForTimeout(3300);
   expect(reads).toBe(2);
 
-  const response = page.waitForResponse((r) => r.url().endsWith(`/api/games/${id}`) && r.status() === 200);
   releasePending?.();
-  await response;
-  await page.waitForTimeout(100);
-  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  // A queued catch-up read must start automatically, without another hint or
+  // waiting for the next 3/5-second poll.
   await expect.poll(() => reads).toBe(3);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 
 test("game room ignores an old HTTP snapshot arriving after a newer ply", async ({ page }) => {
