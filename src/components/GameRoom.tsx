@@ -54,6 +54,7 @@ export function GameRoom({ id }: { id: string }) {
   const roomEpoch = useRef(0);
   const pendingLoads = useRef(new Set<AbortController>());
   const pendingMutations = useRef(new Set<AbortController>());
+  const flushQueuedRefresh = useRef<() => void>(() => {});
   const [sound, setSound] = useState(true);
 
   useEffect(() => {
@@ -164,8 +165,12 @@ export function GameRoom({ id }: { id: string }) {
     let autoLoadInFlight = false;
     let autoLoadQueued = false;
     const loadAuto = () => {
-      if (!active || mutationsRef.current.size > 0) return;
-      if (autoLoadInFlight) { autoLoadQueued = true; return; }
+      if (!active) return;
+      if (mutationsRef.current.size > 0 || autoLoadInFlight) {
+        autoLoadQueued = true;
+        return;
+      }
+      autoLoadQueued = false;
       autoLoadInFlight = true;
       void load().finally(() => {
         autoLoadInFlight = false;
@@ -174,6 +179,9 @@ export function GameRoom({ id }: { id: string }) {
           loadAuto();
         }
       });
+    };
+    flushQueuedRefresh.current = () => {
+      if (autoLoadQueued) loadAuto();
     };
     queueMicrotask(loadAuto);
     let realtimeConnected = false;
@@ -201,7 +209,16 @@ export function GameRoom({ id }: { id: string }) {
         if (!active || !session?.access_token) return;
         await client.realtime.setAuth(session.access_token);
         if (!active) return;
-        channel.subscribe((status) => { realtimeConnected = status === "SUBSCRIBED"; });
+        let subscribedBefore = false;
+        channel.subscribe((status) => {
+          realtimeConnected = status === "SUBSCRIBED";
+          if (realtimeConnected) {
+            // Changes committed while the socket was disconnected need a
+            // fresh canonical snapshot immediately after resubscription.
+            if (subscribedBefore) loadAuto();
+            subscribedBefore = true;
+          }
+        });
       }).catch(() => { realtimeConnected = false; });
     }
     let knownUserId: string | null | undefined;
@@ -217,7 +234,7 @@ export function GameRoom({ id }: { id: string }) {
       window.setTimeout(() => { if (active) void load(); }, 0);
     }) ?? { data: { subscription: null } };
     const onFocus = () => loadAuto();
-    const onOnline = () => void load();
+    const onOnline = () => loadAuto();
     const onVisible = () => { if (!document.hidden) loadAuto(); };
     const onOffline = () => {
       // A response that was already in flight must not re-enable play while
@@ -231,6 +248,7 @@ export function GameRoom({ id }: { id: string }) {
     window.addEventListener("offline", onOffline);
     return () => {
       active = false;
+      flushQueuedRefresh.current = () => {};
       subscription?.unsubscribe();
       epochRef.current++;
       for (const controller of loadsRef.current) controller.abort();
@@ -286,6 +304,7 @@ export function GameRoom({ id }: { id: string }) {
       if (!controller.signal.aborted && epoch === roomEpoch.current) setError(caught instanceof Error ? caught.message : "Request failed.");
     } finally {
       pendingMutations.current.delete(controller);
+      if (epoch === roomEpoch.current) flushQueuedRefresh.current();
       if (epoch === roomEpoch.current) setBusy(false);
     }
   }
@@ -361,6 +380,7 @@ export function GameRoom({ id }: { id: string }) {
       }
     } finally {
       pendingMutations.current.delete(controller);
+      if (epoch === roomEpoch.current) flushQueuedRefresh.current();
       if (epoch === roomEpoch.current) setBusy(false);
     }
   }
@@ -383,7 +403,13 @@ export function GameRoom({ id }: { id: string }) {
       if (!controller.signal.aborted && epoch === roomEpoch.current) setError(caught instanceof Error ? caught.message : "Could not claim a draw.");
     } finally {
       pendingMutations.current.delete(controller);
-      if (epoch === roomEpoch.current) { await load(); if (epoch === roomEpoch.current) setBusy(false); }
+      if (epoch === roomEpoch.current) {
+        await load();
+        if (epoch === roomEpoch.current) {
+          flushQueuedRefresh.current();
+          setBusy(false);
+        }
+      }
     }
   }
 

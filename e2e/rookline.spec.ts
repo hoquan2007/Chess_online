@@ -2296,6 +2296,53 @@ test("automatic online refreshes coalesce while a game read is pending", async (
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 
+test("an opponent update during a pending move refreshes immediately after the commit", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000094";
+  const chess = new Chess();
+  const createdAt = new Date().toISOString();
+  const game = {
+    id, white_id: "white-id", black_id: "black-id", status: "active", pgn: "", fen: chess.fen(),
+    turn: "w", ply: 0, base_ms: 300000, increment_ms: 0, white_ms: 300000,
+    black_ms: 300000, clock_anchor_at: createdAt, result: null, winner_id: null,
+    rated: false, created_at: createdAt,
+  };
+  chess.move("e4");
+  const afterWhite = { ...game, fen: chess.fen(), pgn: chess.pgn(), ply: 1, turn: "b" };
+  chess.move("e5");
+  const afterBlack = { ...game, fen: chess.fen(), pgn: chess.pgn(), ply: 2, turn: "w" };
+  let reads = 0;
+  let releaseMove: (() => void) | undefined;
+  await page.route(`**/api/games/${id}`, (route) => {
+    reads++;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      game: reads === 1 ? game : afterBlack, viewerColor: "w", serverNow: Date.now(),
+    }) });
+  });
+  await page.route(`**/api/games/${id}/move`, async (route) => {
+    await new Promise<void>((resolve) => { releaseMove = resolve; });
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      status: "accepted", ply: 1, game: afterWhite, viewerColor: "w", serverNow: Date.now(),
+    }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  const moveInput = page.getByRole("textbox", { name: /Keyboard move/ });
+  await moveInput.fill("e2e4");
+  await moveInput.press("Enter");
+  await expect.poll(() => Boolean(releaseMove)).toBe(true);
+
+  // Realtime/focus hints can arrive while the sender's POST is still pending.
+  // The opponent's immediate reply must not wait for the 3/5-second poll.
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("focus"));
+  });
+  expect(reads).toBe(1);
+  releaseMove?.();
+  await expect(page.getByLabel("Move history").getByText("e5"), "catch up before polling").toBeVisible({ timeout: 2000 });
+  expect(reads).toBe(2);
+});
+
 test("game room ignores an old HTTP snapshot arriving after a newer ply", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000001";
   const chess = new Chess();
