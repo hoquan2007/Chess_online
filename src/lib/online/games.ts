@@ -30,6 +30,12 @@ export type OnlineGame = {
 export const validUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 export const validSquare = (value: unknown): value is string => typeof value === "string" && /^[a-h][1-8]$/.test(value);
 
+/** Compare the complete canonical row so periodic identical reads do not repaint the board. */
+export function sameGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
+  const keys = Object.keys(current) as (keyof OnlineGame)[];
+  return keys.length === Object.keys(incoming).length && keys.every((key) => current[key] === incoming[key]);
+}
+
 /** Avoid applying an older or contradictory HTTP response after an accepted game snapshot.
  * A game can only advance in ply, then in lifecycle phase at the same ply.
  */
@@ -62,11 +68,7 @@ export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
   // A committed state at the same lifecycle phase and ply is immutable. SQL
   // mutations either advance the ply or transition the lifecycle phase.
   // Compare values by key so equivalent object key order remains valid.
-  const sameSnapshot = () => {
-    const keys = Object.keys(current) as (keyof OnlineGame)[];
-    return keys.length === Object.keys(incoming).length && keys.every((key) => current[key] === incoming[key]);
-  };
-  if (current.status === "completed" || current.status === "cancelled") return !sameSnapshot();
+  if (current.status === "completed" || current.status === "cancelled") return !sameGameSnapshot(current, incoming);
   const phase: Record<OnlineGame["status"], number> = {
     waiting: 0, active: 1, completed: 2, cancelled: 2,
   };
@@ -88,7 +90,7 @@ export function isOlderGameSnapshot(current: OnlineGame, incoming: OnlineGame) {
       return false;
     } catch { return true; }
   }
-  if (sameSnapshot()) return false;
+  if (sameGameSnapshot(current, incoming)) return false;
   // A malformed server ledger may have been rendered in a fail-closed state.
   // Let a later verified record repair it without permitting valid records
   // to be rewritten by contradictory same-ply responses.

@@ -7,7 +7,7 @@ import { Chess, type Square } from "chess.js";
 import { Chessboard } from "react-chessboard";
 import { ArrowDownToLine, ArrowLeftRight, ClipboardCopy, Flag, Volume2, VolumeX } from "lucide-react";
 import { browserSupabase } from "@/lib/supabase/client";
-import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
+import { displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, timeControls, validUuid, type OnlineGame, type ServerClockSample, type TimeControl } from "@/lib/online/games";
 import { availableDrawClaims, checkedKingSquare, parseKeyboardMove, selectPromotion, type DrawClaim } from "@/lib/chess/rules";
 import { PromotionDialog } from "@/components/PromotionDialog";
 import { GameResultDialog } from "@/components/GameResultDialog";
@@ -111,14 +111,17 @@ export function GameRoom({ id }: { id: string }) {
   const applySnapshot = useCallback((data: { game: OnlineGame; viewerColor: Viewer; serverNow?: number }, receivedAt: number) => {
     if (!data?.game || data.game.id !== id || (data.viewerColor !== "w" && data.viewerColor !== "b")) return false;
     if (acceptedGame.current && isOlderGameSnapshot(acceptedGame.current, data.game)) return false;
-    acceptedGame.current = data.game;
+    const changed = !acceptedGame.current || !sameGameSnapshot(acceptedGame.current, data.game);
+    if (changed) acceptedGame.current = data.game;
     acceptedViewer.current = data.viewerColor;
-    setGame(data.game);
+    if (changed) setGame(data.game);
     if (typeof data.serverNow === "number" && Number.isSafeInteger(data.serverNow)) {
       const next = reconcileServerClockSample(acceptedClock.current, { serverNow: data.serverNow, receivedAt });
       if (next !== acceptedClock.current) {
         acceptedClock.current = next;
-        setClockSync(next);
+        // Clock interpolation already uses monotonic time. An identical row
+        // needs no full-room render just to update a server-time baseline.
+        if (changed) setClockSync(next);
       }
     }
     setViewer(data.viewerColor);

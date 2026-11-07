@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
-import { completedGameAnalysis, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, type OnlineGame, validSquare, validUuid } from "./games";
+import { completedGameAnalysis, displayedClock, estimatedServerTime, exportOnlinePgn, isOlderGameSnapshot, reconcileServerClockSample, replayGame, sameGameSnapshot, type OnlineGame, validSquare, validUuid } from "./games";
 import { safeNext } from "./redirect";
 
 function snapshot(override: Partial<OnlineGame> = {}): OnlineGame {
@@ -20,6 +20,14 @@ function played(moves: string[], override: Partial<OnlineGame> = {}): OnlineGame
 }
 
 describe("server snapshot replay", () => {
+  it("recognizes identical canonical game rows despite key order and detects every changed field", () => {
+    const game = played(["e4"]);
+    expect(sameGameSnapshot(game, { ...game })).toBe(true);
+    expect(sameGameSnapshot(game, Object.fromEntries(Object.entries(game).reverse()) as OnlineGame)).toBe(true);
+    expect(sameGameSnapshot(game, { ...game, black_ms: game.black_ms - 1000 })).toBe(false);
+    expect(sameGameSnapshot(game, { ...game, ply: game.ply + 1 })).toBe(false);
+    expect(sameGameSnapshot(game, { ...game, unexpected: true } as OnlineGame)).toBe(false);
+  });
   it("replays the canonical PGN and retains move history", () => {
     const game = new Chess();
     game.move("e4"); game.move("e5"); game.move("Nf3");
