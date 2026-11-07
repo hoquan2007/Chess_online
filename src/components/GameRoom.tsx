@@ -67,6 +67,7 @@ export function GameRoom({ id }: { id: string }) {
   // Keep the accepted game and clock in refs so concurrent fetch completions
   // cannot use a stale React state closure to decide which response wins.
   const acceptedGame = useRef<OnlineGame | null>(null);
+  const acceptedViewer = useRef<Viewer | null>(null);
   const acceptedClock = useRef<ServerClockSample | null>(null);
   const nextLoadId = useRef(0);
   const lastAppliedLoadId = useRef(0);
@@ -75,6 +76,7 @@ export function GameRoom({ id }: { id: string }) {
   const pendingLoads = useRef(new Set<AbortController>());
   const pendingMutations = useRef(new Set<AbortController>());
   const flushQueuedRefresh = useRef<() => void>(() => {});
+  const restartPolling = useRef<() => void>(() => {});
   const [sound, setSound] = useState(true);
 
   useEffect(() => {
@@ -91,6 +93,7 @@ export function GameRoom({ id }: { id: string }) {
     for (const controller of pendingMutations.current) controller.abort();
     pendingMutations.current.clear();
     acceptedGame.current = null;
+    acceptedViewer.current = null;
     acceptedClock.current = null;
     lastAudiblePly.current = null;
     setGame(null); setViewer(null); setJoinable(false); setUnauthenticated(false);
@@ -109,6 +112,7 @@ export function GameRoom({ id }: { id: string }) {
     if (!data?.game || data.game.id !== id || (data.viewerColor !== "w" && data.viewerColor !== "b")) return false;
     if (acceptedGame.current && isOlderGameSnapshot(acceptedGame.current, data.game)) return false;
     acceptedGame.current = data.game;
+    acceptedViewer.current = data.viewerColor;
     setGame(data.game);
     if (typeof data.serverNow === "number" && Number.isSafeInteger(data.serverNow)) {
       const next = reconcileServerClockSample(acceptedClock.current, { serverNow: data.serverNow, receivedAt });
@@ -119,6 +123,7 @@ export function GameRoom({ id }: { id: string }) {
     }
     setViewer(data.viewerColor);
     setJoinable(false); setUnauthenticated(false); setError(""); setDisconnectedSince(null);
+    restartPolling.current();
     return true;
   }, [id]);
 
@@ -219,10 +224,19 @@ export function GameRoom({ id }: { id: string }) {
     let realtimeConnected = false;
     let pollTimer: number;
     const poll = () => {
+      const currentGame = acceptedGame.current;
+      // If a socket update goes missing, the waiting player should see the
+      // opponent's move promptly instead of depending on a five-second poll.
+      const waitingForOpponent = currentGame?.status === "active" &&
+        acceptedViewer.current !== null && currentGame.turn !== acceptedViewer.current;
       pollTimer = window.setTimeout(() => {
         if (!document.hidden) loadAuto();
         poll();
-      }, realtimeConnected ? 5000 : 3000);
+      }, waitingForOpponent ? 1200 : realtimeConnected ? 5000 : 3000);
+    };
+    restartPolling.current = () => {
+      window.clearTimeout(pollTimer);
+      poll();
     };
     poll();
     const client = browserSupabase();
@@ -243,6 +257,7 @@ export function GameRoom({ id }: { id: string }) {
         let subscribedBefore = false;
         channel.subscribe((status) => {
           realtimeConnected = status === "SUBSCRIBED";
+          restartPolling.current();
           if (realtimeConnected) {
             // Changes committed while the socket was disconnected need a
             // fresh canonical snapshot immediately after resubscription.
@@ -280,6 +295,7 @@ export function GameRoom({ id }: { id: string }) {
     return () => {
       active = false;
       flushQueuedRefresh.current = () => {};
+      restartPolling.current = () => {};
       subscription?.unsubscribe();
       epochRef.current++;
       for (const controller of loadsRef.current) controller.abort();

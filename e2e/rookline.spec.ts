@@ -2296,6 +2296,34 @@ test("automatic online refreshes coalesce while a game read is pending", async (
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 
+test("a missed opponent Realtime event recovers through the short waiting-turn poll", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000097";
+  const chess = new Chess();
+  chess.move("e4");
+  const createdAt = new Date().toISOString();
+  const waiting = {
+    id, white_id: "white-id", black_id: "black-id", status: "active", pgn: chess.pgn(), fen: chess.fen(),
+    turn: "b", ply: 1, base_ms: 300000, increment_ms: 0, white_ms: 300000,
+    black_ms: 300000, clock_anchor_at: createdAt, result: null, winner_id: null,
+    rated: false, created_at: createdAt,
+  };
+  chess.move("e5");
+  const replied = { ...waiting, pgn: chess.pgn(), fen: chess.fen(), turn: "w", ply: 2 };
+  let reads = 0;
+  await page.route(`**/api/games/${id}`, (route) => {
+    reads++;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      game: reads === 1 ? waiting : replied, viewerColor: "w", serverNow: Date.now(),
+    }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  // No socket event, focus or reconnect hint is fired. The old 3-second
+  // fallback misses this deadline; the waiting-turn recovery should not.
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible({ timeout: 2500 });
+  expect(reads).toBeGreaterThanOrEqual(2);
+});
+
 test("online recovery bypasses an obsolete pending automatic game read", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000095";
   const chess = new Chess();
