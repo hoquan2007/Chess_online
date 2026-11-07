@@ -2532,6 +2532,27 @@ test("online clock uses server time even when the device clock is an hour fast",
   await expect(page.getByLabel("White clock")).toHaveText(/^0[45]:[0-5]\d$/);
 });
 
+test("online clock ticks without changing the inactive player's time or board", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000095";
+  const anchor = new Date().toISOString();
+  const game = { id, white_id: "white-id", black_id: "black-id", status: "active",
+    pgn: "", fen: new Chess().fen(), turn: "w", ply: 0,
+    base_ms: 300000, increment_ms: 0, white_ms: 30000, black_ms: 300000,
+    clock_anchor_at: anchor, result: null, winner_id: null, rated: false, created_at: anchor };
+
+  await page.route(`**/api/games/${id}`, (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({ game, viewerColor: "w", serverNow: Date.now() }),
+  }));
+  await page.goto(`/game/${id}`);
+  await expect(page.getByRole("heading", { name: "Your game room" })).toBeVisible();
+  const initialClock = await page.getByLabel("White clock").textContent();
+  await expect.poll(() => page.getByLabel("White clock").textContent()).not.toBe(initialClock);
+  await expect(page.getByLabel("Black clock")).toHaveText("05:00");
+  await expect(page.locator('[data-square="e2"]')).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /Keyboard move/ })).toBeEnabled();
+});
+
 test("an outdated game snapshot or server timestamp cannot rewind the online display clock", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000012";
   const sample = Date.now();

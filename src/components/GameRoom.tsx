@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Chess, type Square } from "chess.js";
@@ -22,6 +22,27 @@ function clockLabel(milliseconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
+// Only the running clock ticks. A 250 ms clock update should not re-render
+// the board, move history or controls on the parent game room.
+const GameClock = memo(function GameClock({ game, color, clockSync, disconnectedSince }: {
+  game: OnlineGame;
+  color: Viewer;
+  clockSync: ServerClockSample;
+  disconnectedSince: number | null;
+}) {
+  const [now, setNow] = useState(() => performance.now());
+  useEffect(() => {
+    if (game.status !== "active" || game.turn !== color || disconnectedSince !== null) return;
+    const timer = window.setInterval(() => setNow(performance.now()), 250);
+    return () => window.clearInterval(timer);
+  }, [game.status, game.turn, color, disconnectedSince]);
+
+  const serverNow = estimatedServerTime(clockSync.serverNow, clockSync.receivedAt, disconnectedSince ?? now);
+  const remaining = displayedClock(game, serverNow)[color];
+  return <span className={`clock ${game.status === "active" && game.turn === color ? "running" : ""}`}
+    aria-label={`${color === "w" ? "White" : "Black"} clock`}>{clockLabel(remaining)}</span>;
+});
+
 export function GameRoom({ id }: { id: string }) {
   const router = useRouter();
   const [game, setGame] = useState<OnlineGame | null>(null);
@@ -42,7 +63,6 @@ export function GameRoom({ id }: { id: string }) {
   const [keyboardError, setKeyboardError] = useState("");
   const [dismissedResultKey, setDismissedResultKey] = useState<string | null>(null);
   const [flipped, setFlipped] = useState(false);
-  const [now, setNow] = useState(() => performance.now());
   const [clockSync, setClockSync] = useState(() => ({ serverNow: Date.now(), receivedAt: performance.now() }));
   // Keep the accepted game and clock in refs so concurrent fetch completions
   // cannot use a stale React state closure to decide which response wins.
@@ -95,7 +115,6 @@ export function GameRoom({ id }: { id: string }) {
       if (next !== acceptedClock.current) {
         acceptedClock.current = next;
         setClockSync(next);
-        setNow(receivedAt);
       }
     }
     setViewer(data.viewerColor);
@@ -193,7 +212,6 @@ export function GameRoom({ id }: { id: string }) {
       }, realtimeConnected ? 5000 : 3000);
     };
     poll();
-    const tick = window.setInterval(() => setNow(performance.now()), 250);
     const client = browserSupabase();
     // Realtime is a wakeup signal only. All visual state is refetched from the authoritative API.
     const channel = client?.channel(`rookline-room-${id}`).on("postgres_changes", {
@@ -255,7 +273,7 @@ export function GameRoom({ id }: { id: string }) {
       loadsRef.current.clear();
       for (const controller of mutationsRef.current) controller.abort();
       mutationsRef.current.clear();
-      window.clearTimeout(pollTimer); window.clearInterval(tick);
+      window.clearTimeout(pollTimer);
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", onOnline);
@@ -280,12 +298,10 @@ export function GameRoom({ id }: { id: string }) {
   }, [game, position.valid]);
   const chess = position.chess;
   const checkedKing = position.valid ? checkedKingSquare(chess) : null;
-  const history = chess.history({ verbose: true });
+  const history = useMemo(() => chess.history({ verbose: true }), [chess]);
   const last = history.at(-1);
-  const serverNow = estimatedServerTime(clockSync.serverNow, clockSync.receivedAt, disconnectedSince ?? now);
-  const clocks = game ? displayedClock(game, serverNow) : { w: 0, b: 0 };
   const myTurn = disconnectedSince === null && !!game && game.status === "active" && game.turn === viewer && position.valid;
-  const drawClaims = availableDrawClaims(chess);
+  const drawClaims = useMemo(() => availableDrawClaims(chess), [chess]);
   const orientation = (flipped ? viewer === "w" ? "black" : "white" : viewer === "b" ? "black" : "white") as "white" | "black";
 
   async function action(kind: "join" | "resign" | "cancel") {
@@ -481,7 +497,7 @@ export function GameRoom({ id }: { id: string }) {
   const resultKey = game.status === "completed" ? `${game.id}:${game.result}:${game.winner_id ?? "draw"}` : null;
   const winnerColor = game.winner_id === game.white_id ? "w" : game.winner_id && game.winner_id === game.black_id ? "b" : null;
   const resultTitle = winnerColor ? (winnerColor === viewer ? "You won!" : "You lost") : "Draw";
-  const playerStrip = (color: Viewer) => <div className="player-strip"><span className="player-name"><span className="player-avatar" aria-hidden="true">{color === "w" ? "♙" : "♟"}</span>{color === viewer ? "You" : color === "w" ? "White opponent" : game.black_id ? "Black opponent" : "Waiting for Black"}</span><span className={`clock ${game.status === "active" && game.turn === color ? "running" : ""}`} aria-label={`${color === "w" ? "White" : "Black"} clock`}>{clockLabel(clocks[color])}</span></div>;
+  const playerStrip = (color: Viewer) => <div className="player-strip"><span className="player-name"><span className="player-avatar" aria-hidden="true">{color === "w" ? "♙" : "♟"}</span>{color === viewer ? "You" : color === "w" ? "White opponent" : game.black_id ? "Black opponent" : "Waiting for Black"}</span><GameClock game={game} color={color} clockSync={clockSync} disconnectedSince={disconnectedSince} /></div>;
 
   return <section className="stack" onPointerDownCapture={unlockMoveAudio} onKeyDownCapture={unlockMoveAudio}>
     <div><p className="overline">Private online chess · Unrated</p><h1 className="page-title">Your game room</h1><p className="muted">{disconnectedSince !== null ? "Disconnected · Viewing last verified position" : game.status === "waiting" ? "Invite an opponent to begin." : game.status === "active" ? `${game.turn === viewer ? "Your turn" : "Opponent’s turn"} · ${game.ply} half-moves played` : game.status === "cancelled" ? "Challenge cancelled" : `Game finished · ${game.result ?? "Finished"}`}</p></div>
