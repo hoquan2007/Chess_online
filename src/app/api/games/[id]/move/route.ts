@@ -35,13 +35,28 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   };
   const admin = context.admin;
   const gameReadStartedAt = performance.now();
-  const { data, error } = await admin.from("games").select("*").eq("id", id).maybeSingle();
-  const gameReadMs = performance.now() - gameReadStartedAt;
+  let gameReadMs = 0;
+  const gameRead = Promise.resolve(admin.from("games").select("*").eq("id", id).maybeSingle()).then((result) => {
+    gameReadMs = performance.now() - gameReadStartedAt;
+    return result;
+  });
+  // Independent authenticated reads and rate limiting can overlap. The game
+  // row still decides participant access before any move result is disclosed.
+  const checksStartedAt = performance.now();
+  let checksMs = 0;
+  const checks = Promise.all([
+    gameMutationLimit(admin, context.user.id, "move"),
+    admin.from("moves").select("ply,from_square,to_square,promotion")
+      .eq("game_id", id).eq("player_id", context.user.id).eq("idempotency_key", validated.requestId).maybeSingle(),
+  ]).then((result) => {
+    checksMs = performance.now() - checksStartedAt;
+    return result;
+  });
+  const [{ data, error }, [limited, duplicate]] = await Promise.all([gameRead, checks]);
   if (error || !data) return NextResponse.json({ error: "Game not found" }, { status: 404 });
   const snapshot = data as OnlineGame;
   const actor = context.user.id;
   if (actor !== snapshot.white_id && actor !== snapshot.black_id) return NextResponse.json({ error: "Not a participant" }, { status: 403 });
-  let checksMs = 0;
   let rulesMs: number | null = null;
   let rpcMs: number | null = null;
   // Return the committed, server-owned board with the mutation response. This
@@ -72,15 +87,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ ...result, game, viewerColor: game.white_id === actor ? "w" : "b", serverNow: Date.now() },
       { headers });
   };
-  // These independent checks can share the same network wait. The limiter
-  // still decides first, including on duplicate/retried requests.
-  const checksStartedAt = performance.now();
-  const [limited, duplicate] = await Promise.all([
-    gameMutationLimit(admin, actor, "move"),
-    admin.from("moves").select("ply,from_square,to_square,promotion")
-      .eq("game_id", id).eq("player_id", actor).eq("idempotency_key", validated.requestId).maybeSingle(),
-  ]);
-  checksMs = performance.now() - checksStartedAt;
+  // The limiter still decides first, including on duplicate/retried requests.
   if (limited) return limited;
   if (duplicate.error) return NextResponse.json({ error: "Unable to validate request" }, { status: 503 });
   if (duplicate.data) {

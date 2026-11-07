@@ -108,6 +108,33 @@ describe("POST move committed snapshot", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  it("overlaps the initial game read, duplicate lookup and limiter without committing early", async () => {
+    let releaseGame: ((value: { data: OnlineGame; error: null }) => void) | undefined;
+    const { gameRead, moveRead, rpc } = setup({ games: [game()] });
+    gameRead.mockImplementationOnce(() => new Promise((resolve) => { releaseGame = resolve; }));
+
+    const pending = POST(request(), params);
+    await vi.waitFor(() => {
+      expect(gameRead).toHaveBeenCalledOnce();
+      expect(moveRead).toHaveBeenCalledOnce();
+      expect(gameMutationLimit).toHaveBeenCalledOnce();
+    });
+    expect(rpc).not.toHaveBeenCalled();
+    releaseGame!({ data: game(), error: null });
+
+    const response = await pending;
+    expect(response.status).toBe(200);
+    expect(rpc).toHaveBeenCalledOnce();
+  });
+
+  it("still rejects nonparticipants before accepting any concurrent check results", async () => {
+    const { rpc } = setup({ games: [game({ white_id: "other", black_id: "other-two" })] });
+    const response = await POST(request(), params);
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({ error: "Not a participant" });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it("delivers the database's timeout result rather than a speculative moved position", async () => {
     const timeout = game({ status: "completed", result: "timeout", winner_id: "black-id", white_ms: 0, clock_anchor_at: null });
     setup({ games: [game(), timeout], commit: { status: "timeout", ply: 0 } });
