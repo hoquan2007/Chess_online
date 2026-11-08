@@ -2566,10 +2566,14 @@ test("game room rejects malformed future plies and divergent lines before accept
   const valid = { ...accepted, pgn: chess.pgn(), fen: chess.fen(), turn: chess.turn(), ply: 2, white_ms: 290000 };
   const divergentChess = new Chess(); divergentChess.move("d4"); divergentChess.move("d5");
   const divergent = { ...valid, pgn: divergentChess.pgn(), fen: divergentChess.fen() };
-  const replies = [accepted, { ...valid, ply: 42 }, divergent, valid];
+  const rejectedReplies = [accepted, { ...valid, ply: 42 }, divergent];
+  let allowValid = false;
   let requests = 0;
   await page.route(`**/api/games/${id}`, (route) => {
-    const game = replies[Math.min(requests++, replies.length - 1)];
+    // Faster backup polls may run between manual Sync clicks. Keep every
+    // reply invalid until both rejection checks have completed.
+    const game = allowValid ? valid : rejectedReplies[Math.min(requests, rejectedReplies.length - 1)];
+    requests++;
     return route.fulfill({ status: 200, contentType: "application/json",
       body: JSON.stringify({ game, viewerColor: "w" }) });
   });
@@ -2584,6 +2588,7 @@ test("game room rejects malformed future plies and divergent lines before accept
     await expect(page.getByLabel("Move history").getByText("d4")).toHaveCount(0);
     await expect(page.getByLabel("White clock")).toHaveText("05:00");
   }
+  allowValid = true;
   await page.getByRole("button", { name: "Sync", exact: true }).click();
   await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
   // White's clock starts ticking after ...e5, so avoid asserting frozen time.
