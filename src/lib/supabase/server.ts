@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { validUuid } from "@/lib/online/games";
 
 export function hasSupabaseConfig() {
   return !!(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY && (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY));
@@ -37,4 +38,20 @@ export async function authenticatedGameContext() {
   const { data: { user }, error } = await client.auth.getUser();
   if (error || !user) return { user: null, admin: null, status: 401, error: "Sign in to play online." } as const;
   return { user, admin, status: 200, error: null } as const;
+}
+
+// High-frequency, read-only game snapshots only need a verified player ID.
+// getClaims validates the signed JWT and can use locally cached asymmetric
+// signing keys, avoiding a remote Auth user lookup on warmed instances.
+// Game mutations continue to use authenticatedGameContext/getUser.
+export async function authenticatedGameReadContext() {
+  const client = await serverSupabase();
+  const admin = adminSupabase();
+  if (!client || !admin) return { user: null, admin: null, status: 503, error: "Chess service is not configured." } as const;
+  const { data, error } = await client.auth.getClaims();
+  const id = data?.claims?.sub;
+  if (error || typeof id !== "string" || !validUuid(id)) {
+    return { user: null, admin: null, status: 401, error: "Sign in to play online." } as const;
+  }
+  return { user: { id }, admin, status: 200, error: null } as const;
 }

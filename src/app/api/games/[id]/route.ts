@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authenticatedGameContext } from "@/lib/supabase/server";
+import { authenticatedGameReadContext } from "@/lib/supabase/server";
 import { type OnlineGame, validUuid } from "@/lib/online/games";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -9,7 +9,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   const startedAt = performance.now();
   const { id } = await params;
   if (!validUuid(id)) return NextResponse.json({ error: "Invalid game ID" }, { status: 400 });
-  const context = await authenticatedGameContext();
+  const context = await authenticatedGameReadContext();
   if (!context.user || !context.admin) return NextResponse.json({ error: context.error }, { status: context.status });
   const authenticatedAt = performance.now();
   const snapshotHeaders = () => ({

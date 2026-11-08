@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Chess } from "chess.js";
-import { authenticatedGameContext } from "@/lib/supabase/server";
+import { authenticatedGameReadContext } from "@/lib/supabase/server";
 import type { OnlineGame } from "@/lib/online/games";
 import { GET } from "./route";
 
-vi.mock("@/lib/supabase/server", () => ({ authenticatedGameContext: vi.fn() }));
+vi.mock("@/lib/supabase/server", () => ({ authenticatedGameReadContext: vi.fn() }));
 
 const id = "00000000-0000-4000-8000-000000000001";
 
@@ -25,9 +25,9 @@ function setup(snapshots: OnlineGame[], rpcResult: { status: string } = { status
   const maybeSingle = vi.fn().mockImplementation(async () => ({ data: snapshots.shift() ?? null, error: null }));
   const rpc = vi.fn().mockResolvedValue({ data: rpcResult, error: null });
   const admin = { from: vi.fn(() => ({ select: () => ({ eq: () => ({ maybeSingle }) }) })), rpc };
-  vi.mocked(authenticatedGameContext).mockResolvedValue({
+  vi.mocked(authenticatedGameReadContext).mockResolvedValue({
     user: { id: "white-id" }, admin, status: 200, error: null,
-  } as unknown as Awaited<ReturnType<typeof authenticatedGameContext>>);
+  } as unknown as Awaited<ReturnType<typeof authenticatedGameReadContext>>);
   return { maybeSingle, rpc };
 }
 
