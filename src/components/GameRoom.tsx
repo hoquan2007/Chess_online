@@ -213,8 +213,17 @@ export function GameRoom({ id }: { id: string }) {
         if (autoLoadController !== controller) return;
         autoLoadController = null;
         if (active && autoLoadQueued) {
+          // A Realtime row may arrive while the GET is in flight, yet that
+          // response can already contain the same committed row. Avoid a
+          // second network read when the accepted snapshot covers every
+          // queued complete row. Focus, reconnect and partial hints still
+          // require a fresh read because their timing cannot be proven.
+          const alreadyCurrent = !readDisconnected.current &&
+            queuedRealtimeCoveredBySnapshot(acceptedGame.current, queuedRealtimeRows, queuedOpaqueHint);
           autoLoadQueued = false;
-          loadAuto();
+          queuedOpaqueHint = false;
+          queuedRealtimeRows = [];
+          if (!alreadyCurrent) loadAuto();
         }
       });
     };
