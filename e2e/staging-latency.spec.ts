@@ -13,9 +13,12 @@ loadEnvConfig(process.cwd(), true);
 const enabled = process.env.ROOKLINE_STAGING_E2E === "1" && process.env.ROOKLINE_STAGING_LATENCY_E2E === "1";
 const stagingProject = "tyvczicinpjixmxgjhjn";
 const previewOrigin = enabled ? resolveStagingAppOrigin(process.env.ROOKLINE_STAGING_APP_ORIGIN) : "http://127.0.0.1:3100";
-// `vercel env run` injects a short-lived development OIDC token for protected Preview access.
-// Send it to this deployment origin only; never attach it to Supabase requests or reports.
-const previewToken = process.env.ROOKLINE_STAGING_VERCEL_OIDC_TOKEN || process.env.VERCEL_OIDC_TOKEN;
+// A temporary Vercel share link establishes a browser session cookie for the
+// exact protected deployment. Never persist or report the link itself.
+const previewShareUrl = process.env.ROOKLINE_STAGING_VERCEL_SHARE_URL;
+// Otherwise use the short-lived, same-project OIDC token for protected Preview.
+// Send it to this deployment origin only; never attach it to Supabase requests.
+const previewToken = previewShareUrl ? undefined : process.env.ROOKLINE_STAGING_VERCEL_OIDC_TOKEN || process.env.VERCEL_OIDC_TOKEN;
 const previewHeaders: Record<string, string> = previewToken ? { "x-vercel-trusted-oidc-idp-token": previewToken } : {};
 const moveCount = process.env.ROOKLINE_STAGING_LATENCY_DEBUG_MOVES === "4" ? 4 : 32;
 
@@ -86,6 +89,12 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
   if (!origin || !/^chessonline-[a-z0-9]+-hnquan\.vercel\.app$/.test(new URL(origin).hostname)) {
     throw new Error("Latency test requires an explicit immutable chessonline Preview deployment origin.");
   }
+  if (previewShareUrl) {
+    const share = new URL(previewShareUrl);
+    if (share.origin !== previewOrigin || share.pathname !== "/" || !share.searchParams.get("_vercel_share") || share.hash) {
+      throw new Error("Preview share access must target the exact staging origin and include a valid share parameter.");
+    }
+  }
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -104,6 +113,7 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
   const samples: MoveSample[] = [];
   const received: Array<Map<number, number>> = [new Map(), new Map()];
   const browserRoomReceived: Array<Map<number, number>> = [new Map(), new Map()];
+  const moveStartedAt = new Map<number, number>();
   const socketStatus: string[][] = [[], []];
   const browserRoomRealtime = Array.from({ length: 2 }, () => ({
     opens: 0, joins: 0, joinOk: 0, changes: 0, closed: 0,
@@ -124,6 +134,17 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
     return page;
   }
 
+  async function establishPreviewAccess(context: BrowserContext) {
+    if (!previewShareUrl) return;
+    // The request and browser share a cookie jar. This redirects through the
+    // protected Preview and installs its short-lived _vercel_jwt cookie.
+    const response = await redactedPreviewRequest("share access", () =>
+      context.request.get(previewShareUrl, { timeout: 15_000 }));
+    if (response.status() !== 200 || new URL(response.url()).origin !== previewOrigin) {
+      throw new Error("Preview share access could not establish a staging session.");
+    }
+  }
+
   function countBoardMoves(page: Page, ply: number) {
     return page.waitForFunction((expected) => {
       const history = document.querySelector('[aria-label="Move history"]');
@@ -135,6 +156,7 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
     // Probe the exact deployment before creating remote users or game fixtures.
     const probe = await browser.newContext({ baseURL: previewOrigin });
     contexts.push(probe);
+    await establishPreviewAccess(probe);
     const landing = await redactedPreviewRequest("login preflight", () =>
       probe.request.get("/login", { headers: previewHeaders, timeout: 12_000 }));
     const landingHtml = await redactedPreviewRequest("login body read", () => landing.text());
@@ -158,6 +180,7 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
     for (let i = 0; i < 2; i += 1) {
       const context = await browser.newContext({ baseURL: previewOrigin });
       contexts.push(context);
+      await establishPreviewAccess(context);
       if (previewToken) {
         await context.route("**/*", (route) => {
           if (new URL(route.request().url()).origin !== previewOrigin) return route.continue();
@@ -316,6 +339,7 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
       opponent.on("request", onOpponentRequest);
       opponent.on("response", onOpponentResponse);
       const start = performance.now();
+      moveStartedAt.set(ply, start);
       const responsePromise = responseReady.then((response) => ({ response, at: performance.now() }));
       const senderBoard = countBoardMoves(sender, ply).then(() => performance.now());
       const opponentBoard = countBoardMoves(opponent, ply).then(() => performance.now());
@@ -359,12 +383,25 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
         opponentGetServerSnapshotMs: canonicalRead?.serverSnapshotMs ?? null,
       });
     }
-    outcome = "completed";
+    // A browser can render the new canonical board before its Realtime frame
+    // arrives. Give late frames a bounded interval before reporting delivery.
+    await expect.poll(() => browserRoomReceived.every((side) => side.size >= moveCount), {
+      timeout: 3_000, intervals: [100, 200, 500],
+    }).toBe(true).catch(() => undefined);
+    for (const sample of samples) {
+      const eventAt = browserRoomReceived[sample.ply % 2].get(sample.ply);
+      const started = moveStartedAt.get(sample.ply);
+      if (eventAt !== undefined && started !== undefined) {
+        sample.opponentBrowserRealtimeMs = Math.round(eventAt - started);
+      }
+    }
     expect(samples).toHaveLength(moveCount);
-    expect(browserRoomRealtime.every((room) => room.changes === moveCount),
+    expect(browserRoomReceived.every((side) =>
+      Array.from({ length: moveCount }, (_, index) => side.has(index + 1)).every(Boolean)),
       "both browser game rooms must receive every authorized move update").toBe(true);
     expect(samples.every((sample) => sample.opponentBrowserRealtimeMs !== null),
       "every opponent browser must expose a parseable Realtime ply before reporting latency").toBe(true);
+    outcome = "completed";
   } finally {
     // Only timings and build information are persisted: never credentials, emails or user IDs.
     const report = {
@@ -407,6 +444,7 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
       },
       realtimeDelivery: { white: received[0].size, black: received[1].size, status: socketStatus },
       browserRoomRealtime,
+      browserRoomRealtimePlys: browserRoomReceived.map((side) => [...side.keys()].sort((a, b) => a - b)),
       canonicalResponses: samples.filter((s) => s.responseHasSnapshot).length,
       // No matching GET means the timing is unknown, not zero. In-flight
       // requests started before this ply's sampling window are not attributed.

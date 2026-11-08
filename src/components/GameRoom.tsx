@@ -130,7 +130,9 @@ export function GameRoom({ id }: { id: string }) {
     setViewer(data.viewerColor);
     setJoinable(false); setUnauthenticated(false); setError(""); setDisconnectedSince(null);
     readDisconnected.current = false;
-    restartPolling.current();
+    // Keep the backup poll on a predictable cadence while a waiting player
+    // receives unchanged rows. Reset it only when the game actually advances.
+    if (changed) restartPolling.current();
     return true;
   }, [id]);
 
@@ -263,9 +265,12 @@ export function GameRoom({ id }: { id: string }) {
       const waitingForOpponent = currentGame?.status === "active" &&
         acceptedViewer.current !== null && currentGame.turn !== acceptedViewer.current;
       pollTimer = window.setTimeout(() => {
-        if (!document.hidden) loadAuto();
+        // Poll reads are speculative. If a read is already in flight, the
+        // next tick will retry without queueing another full HTTP round trip.
+        // Explicit Realtime, focus and reconnect hints still queue/interrupt.
+        if (!document.hidden && !autoLoadController && mutationsRef.current.size === 0) loadAuto();
         poll();
-      }, waitingForOpponent ? 500 : realtimeConnected ? 5000 : 3000);
+      }, waitingForOpponent ? 250 : realtimeConnected ? 5000 : 3000);
     };
     restartPolling.current = () => {
       window.clearTimeout(pollTimer);
