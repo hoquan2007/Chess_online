@@ -1657,7 +1657,7 @@ test("computer worker plays a legal first move when player chooses Black", async
   await expect(page.getByText("Black to move")).toBeVisible();
   await page.locator('[data-square="e7"]').click();
   await page.locator('[data-square="e5"]').click();
-  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible();
+  await expect(page.getByLabel("Move history").getByText("e5", { exact: true })).toBeVisible();
 });
 
 test("computer strength survives reload and a new game without losing the saved board", async ({ page }) => {
