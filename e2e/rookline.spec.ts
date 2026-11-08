@@ -2226,14 +2226,14 @@ test("accepted online moves update from the POST snapshot before a delayed GET r
   let moves = 0;
   await page.route(`**/api/games/${id}`, async (route) => {
     reads++;
-    if (reads > 1) {
-      // An unrelated, earlier Sync can be blocked by a slow server. Its 403
-      // response should not overwrite a newer authenticated POST snapshot.
+    if (reads === 2) {
+      // Only the pre-move Sync is stale. Once the POST commits, later backup
+      // polls must return its canonical snapshot instead of a new 403.
       await new Promise<void>((resolve) => { releaseStale = resolve; });
       return route.fulfill({ status: 403, contentType: "application/json", body: '{"error":"Old denial"}' });
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-      game: initial, viewerColor: "w", serverNow: Date.now(),
+      game: moves > 0 ? committed : initial, viewerColor: "w", serverNow: Date.now(),
     }) });
   });
   await page.route(`**/api/games/${id}/move`, (route) => {
