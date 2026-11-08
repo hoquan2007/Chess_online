@@ -2271,9 +2271,11 @@ test("automatic online refreshes coalesce while a game read is pending", async (
   const moved = { ...game, fen: chess.fen(), pgn: chess.pgn(), ply: 1, turn: "b" };
   let reads = 0;
   let releasePending: (() => void) | undefined;
+  let releaseCatchUp: (() => void) | undefined;
   await page.route(`**/api/games/${id}`, async (route) => {
     const requestNumber = ++reads;
     if (requestNumber === 2) await new Promise<void>((resolve) => { releasePending = resolve; });
+    if (requestNumber === 3) await new Promise<void>((resolve) => { releaseCatchUp = resolve; });
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
       game: requestNumber >= 3 ? moved : game, viewerColor: "w", serverNow: Date.now(),
     }) });
@@ -2291,8 +2293,12 @@ test("automatic online refreshes coalesce while a game read is pending", async (
 
   releasePending?.();
   // A queued catch-up read must start automatically, without another hint or
-  // waiting for the next 3/5-second poll.
+  // waiting for the next 3/5-second poll. Hold that request so the backup
+  // polling cadence cannot race an exact lifetime request-count assertion.
   await expect.poll(() => reads).toBe(3);
+  await page.waitForTimeout(400);
+  expect(reads).toBe(3);
+  releaseCatchUp?.();
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 
