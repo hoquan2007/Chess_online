@@ -2344,7 +2344,7 @@ test("unchanged waiting-turn snapshots preserve the fast backup polling cadence"
   });
   await page.goto(`/game/${id}`);
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
-  // Each identical canonical response must leave the 250 ms timer running.
+  // Each identical canonical response must leave the 125 ms timer running.
   // Re-arming after every GET makes this take significantly longer.
   await expect.poll(() => reads, { timeout: 1250, intervals: [25, 50] }).toBeGreaterThanOrEqual(4);
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();

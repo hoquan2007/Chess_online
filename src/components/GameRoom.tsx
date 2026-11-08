@@ -270,7 +270,7 @@ export function GameRoom({ id }: { id: string }) {
         // Explicit Realtime, focus and reconnect hints still queue/interrupt.
         if (!document.hidden && !autoLoadController && mutationsRef.current.size === 0) loadAuto();
         poll();
-      }, waitingForOpponent ? 250 : realtimeConnected ? 5000 : 3000);
+      }, waitingForOpponent ? 125 : realtimeConnected ? 5000 : 3000);
     };
     restartPolling.current = () => {
       window.clearTimeout(pollTimer);
