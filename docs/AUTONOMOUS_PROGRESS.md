@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-11-08 — checkpoint 205, verified protected multiplayer latency campaign
+
+- **Source and hosted evidence:** `e03cb3d859b6f2b3d0ec90bb29f90a63854de3f5` development branch, GitHub Actions [42452035895](https://github.com/hoquan2007/Chess_online/actions/runs/42452035895) SUCCESS, protected Vercel `staging`/`sin1` deployment `dpl_BgXWCK2EadMi8NyuNYJnUyMufV1m` READY on the same SHA.
+- **Three verified sessions:** 32/32 accepted plies, correlated canonical GETs and full two-client plus independent Supabase Realtime receipt per run. Opponent-visible p95 **718, 802, 669 ms**; opponent GET totals **60, 56, 52**. All three temporary games/users were cleaned up. Evidence `docs/evidence/staging-latency-checkpoint205-run{1,2,3}-2026-11-08.json` was screened for credential strings.
+- **Assessment:** measured improvement over prior app p95 **1041 ms**, but **<800 ms fails in 1 of 3 runs**. The single-Windows-machine tests cannot prove cross-device or cross-region latency. P0 remains OPEN. Investigate first-move and late-Realtime tails, control poll amplification, repeat full on-host and distributed benchmarks. Then complete independent S2 PostgreSQL contention proof, CH-09, S3–S6 and 20 release gates. Rated and candidate fast RPC remain OFF; `main`/production NO-GO.
+
 ## 2026-11-08 — checkpoint 177, staging latency measurement guard
 
 - Added early Preview OIDC expiry validation and redacted failed authenticated Playwright preflight, game-create and game-join requests, preventing failed network requests from echoing authorization headers into test logs.
