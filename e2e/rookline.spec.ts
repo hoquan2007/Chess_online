@@ -2344,10 +2344,42 @@ test("unchanged waiting-turn snapshots preserve the fast backup polling cadence"
   });
   await page.goto(`/game/${id}`);
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
-  // Each identical canonical response must leave the 125 ms timer running.
+  // Each identical canonical response must leave the active timer running.
   // Re-arming after every GET makes this take significantly longer.
   await expect.poll(() => reads, { timeout: 1250, intervals: [25, 50] }).toBeGreaterThanOrEqual(4);
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+});
+
+test("a long opponent think reduces backup reads while retaining missed-event recovery", async ({ page }) => {
+  const id = "00000000-0000-4000-8000-000000000093";
+  const chess = new Chess();
+  chess.move("e4");
+  const createdAt = new Date().toISOString();
+  const waiting = {
+    id, white_id: "white-id", black_id: "black-id", status: "active", pgn: chess.pgn(), fen: chess.fen(),
+    turn: "b", ply: 1, base_ms: 300000, increment_ms: 0, white_ms: 300000,
+    black_ms: 300000, clock_anchor_at: createdAt, result: null, winner_id: null,
+    rated: false, created_at: createdAt,
+  };
+  chess.move("e5");
+  const replied = { ...waiting, pgn: chess.pgn(), fen: chess.fen(), turn: "w", ply: 2 };
+  let reads = 0;
+  let opponentMoved = false;
+  await page.route(`**/api/games/${id}`, (route) => {
+    reads++;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      game: opponentMoved ? replied : waiting, viewerColor: "w", serverNow: Date.now(),
+    }) });
+  });
+  await page.goto(`/game/${id}`);
+  await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
+  const initialReads = reads;
+  await page.waitForTimeout(2700);
+  // A constant 125 ms cadence makes about 21 speculative GETs in this window.
+  // The fast first half-second must not turn into unlimited background traffic.
+  expect(reads - initialReads).toBeLessThan(17);
+  opponentMoved = true;
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible({ timeout: 1100 });
 });
 
 test("unchanged opponent-turn snapshots keep the clock running and later moves visible", async ({ page }) => {

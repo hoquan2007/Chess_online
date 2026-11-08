@@ -256,21 +256,30 @@ export function GameRoom({ id }: { id: string }) {
     queueMicrotask(loadAuto);
     let realtimeConnected = false;
     let pollTimer: number;
+    let waitingTurnKey: string | null = null;
+    let waitingSince = performance.now();
     const poll = () => {
       const currentGame = acceptedGame.current;
-      // If a socket update goes missing or arrives slowly, the player waiting
-      // for their opponent needs a faster canonical read. Only visible,
-      // active opponent turns use this cadence; other states keep the slower
-      // backup polling schedule. Realtime events still trigger immediate GETs.
+      // Start with a short burst after each new opponent turn. Back off during
+      // a long think to avoid continually reading the same canonical row.
+      // Realtime hints still trigger an immediate authoritative refresh.
       const waitingForOpponent = currentGame?.status === "active" &&
         acceptedViewer.current !== null && currentGame.turn !== acceptedViewer.current;
+      const turnKey = waitingForOpponent ? `${currentGame.id}:${currentGame.ply}` : null;
+      if (turnKey !== waitingTurnKey) {
+        waitingTurnKey = turnKey;
+        waitingSince = performance.now();
+      }
+      const waitingMs = performance.now() - waitingSince;
+      const delay = waitingForOpponent ? waitingMs < 500 ? 75 : waitingMs < 1500 ? 250 : 350
+        : realtimeConnected ? 5000 : 3000;
       pollTimer = window.setTimeout(() => {
         // Poll reads are speculative. If a read is already in flight, the
         // next tick will retry without queueing another full HTTP round trip.
         // Explicit Realtime, focus and reconnect hints still queue/interrupt.
         if (!document.hidden && !autoLoadController && mutationsRef.current.size === 0) loadAuto();
         poll();
-      }, waitingForOpponent ? 125 : realtimeConnected ? 5000 : 3000);
+      }, delay);
     };
     restartPolling.current = () => {
       window.clearTimeout(pollTimer);
