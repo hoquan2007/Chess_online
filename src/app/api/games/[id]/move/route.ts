@@ -40,19 +40,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     gameReadMs = performance.now() - gameReadStartedAt;
     return result;
   });
-  // Independent authenticated reads and rate limiting can overlap. The game
-  // row still decides participant access before any move result is disclosed.
+  // The game read and actor-scoped limiter can overlap. A fresh move's
+  // idempotency is enforced under the locked database commit transaction, so
+  // it needs no additional moves-table read on the normal path.
   const checksStartedAt = performance.now();
   let checksMs = 0;
-  const checks = Promise.all([
-    gameMutationLimit(admin, context.user.id, "move"),
-    admin.from("moves").select("ply,from_square,to_square,promotion")
-      .eq("game_id", id).eq("player_id", context.user.id).eq("idempotency_key", validated.requestId).maybeSingle(),
-  ]).then((result) => {
+  const checks = gameMutationLimit(admin, context.user.id, "move").then((result) => {
     checksMs = performance.now() - checksStartedAt;
     return result;
   });
-  const [{ data, error }, [limited, duplicate]] = await Promise.all([gameRead, checks]);
+  const [{ data, error }, limited] = await Promise.all([gameRead, checks]);
   if (error || !data) return NextResponse.json({ error: "Game not found" }, { status: 404 });
   const snapshot = data as OnlineGame;
   const actor = context.user.id;
@@ -89,12 +86,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   };
   // The limiter still decides first, including on duplicate/retried requests.
   if (limited) return limited;
-  if (duplicate.error) return NextResponse.json({ error: "Unable to validate request" }, { status: 503 });
-  if (duplicate.data) {
-    if (duplicate.data.ply !== validated.expectedPly + 1 || duplicate.data.from_square !== validated.from || duplicate.data.to_square !== validated.to || (duplicate.data.promotion ?? null) !== (validated.promotion ?? null)) {
-      return NextResponse.json({ error: "Request ID already used for another move" }, { status: 409 });
+  // A retry arrives after the original commit advanced the game, so check
+  // the durable idempotency key before reporting a stale/out-of-turn error.
+  // The RPC independently checks the same key under the game-row lock.
+  const currentMove = snapshot.status === "active" && validated.expectedPly === snapshot.ply &&
+    (snapshot.turn === "w" ? snapshot.white_id : snapshot.black_id) === actor;
+  if (!currentMove) {
+    const retryStartedAt = performance.now();
+    const duplicate = await admin.from("moves").select("ply,from_square,to_square,promotion")
+      .eq("game_id", id).eq("player_id", actor).eq("idempotency_key", validated.requestId).maybeSingle();
+    checksMs += performance.now() - retryStartedAt;
+    if (duplicate.error) return NextResponse.json({ error: "Unable to validate request" }, { status: 503 });
+    if (duplicate.data) {
+      if (duplicate.data.ply !== validated.expectedPly + 1 || duplicate.data.from_square !== validated.from || duplicate.data.to_square !== validated.to || (duplicate.data.promotion ?? null) !== (validated.promotion ?? null)) {
+        return NextResponse.json({ error: "Request ID already used for another move" }, { status: 409 });
+      }
+      return committedResponse({ status: "duplicate", ply: duplicate.data.ply });
     }
-    return committedResponse({ status: "duplicate", ply: duplicate.data.ply });
   }
   if (snapshot.status !== "active") return NextResponse.json({ error: "Game is not active" }, { status: 409 });
   if (validated.expectedPly !== snapshot.ply) return NextResponse.json({ error: "Stale game version" }, { status: 409 });

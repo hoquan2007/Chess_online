@@ -64,7 +64,7 @@ describe("POST move committed snapshot", () => {
   it("returns the database's authoritative board and clock with the accepted move", async () => {
     const chess = new Chess(); chess.move("e4");
     const committed = game({ fen: chess.fen(), pgn: chess.pgn(), ply: 1, turn: "b", white_ms: 299123 });
-    const { gameRead, rpc } = setup({ games: [game(), committed] });
+    const { gameRead, moveRead, rpc } = setup({ games: [game(), committed] });
     const response = await POST(request(), params);
     expect(response.status).toBe(200);
     const payload = await response.json();
@@ -73,6 +73,7 @@ describe("POST move committed snapshot", () => {
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(response.headers.get("Server-Timing")).toMatch(/^auth;dur=\d+\.\d, game;dur=\d+\.\d, checks;dur=\d+\.\d, rules;dur=\d+\.\d, rpc;dur=\d+\.\d, snapshot;dur=\d+\.\d$/);
     expect(gameRead).toHaveBeenCalledTimes(2);
+    expect(moveRead).not.toHaveBeenCalled();
     expect(rpc).toHaveBeenCalledWith("rookline_commit_move", expect.objectContaining({
       p_game: id, p_player: "white-id", p_expected_ply: 0, p_request: requestId,
     }));
@@ -93,14 +94,28 @@ describe("POST move committed snapshot", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("starts duplicate lookup while rate limiting is pending and still honors denial", async () => {
+  it("allows the locked RPC to resolve a concurrent duplicate after a still-current game read", async () => {
+    const chess = new Chess(); chess.move("e4");
+    const committed = game({ fen: chess.fen(), pgn: chess.pgn(), ply: 1, turn: "b" });
+    const { moveRead, rpc } = setup({
+      games: [game(), committed], commit: { status: "duplicate", ply: 1 },
+    });
+    const response = await POST(request(), params);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: "duplicate", ply: 1, game: committed });
+    expect(moveRead).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledOnce();
+  });
+
+  it("starts the game read while rate limiting is pending and still honors denial", async () => {
     let finishLimit: ((value: NextResponse | null) => void) | undefined;
     vi.mocked(gameMutationLimit).mockImplementationOnce(() => new Promise<NextResponse | null>((resolve) => {
       finishLimit = resolve;
     }));
-    const { moveRead, rpc } = setup({ games: [game()] });
+    const { gameRead, moveRead, rpc } = setup({ games: [game()] });
     const pending = POST(request(), params);
-    await vi.waitFor(() => expect(moveRead).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(gameRead).toHaveBeenCalledOnce());
+    expect(moveRead).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
     finishLimit!(NextResponse.json({ error: "Too many requests" }, { status: 429 }));
     const response = await pending;
@@ -108,7 +123,7 @@ describe("POST move committed snapshot", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it("overlaps the initial game read, duplicate lookup and limiter without committing early", async () => {
+  it("overlaps the initial game read and limiter without the extra move lookup", async () => {
     let releaseGame: ((value: { data: OnlineGame; error: null }) => void) | undefined;
     const { gameRead, moveRead, rpc } = setup({ games: [game()] });
     gameRead.mockImplementationOnce(() => new Promise((resolve) => { releaseGame = resolve; }));
@@ -116,15 +131,29 @@ describe("POST move committed snapshot", () => {
     const pending = POST(request(), params);
     await vi.waitFor(() => {
       expect(gameRead).toHaveBeenCalledOnce();
-      expect(moveRead).toHaveBeenCalledOnce();
       expect(gameMutationLimit).toHaveBeenCalledOnce();
     });
+    expect(moveRead).not.toHaveBeenCalled();
     expect(rpc).not.toHaveBeenCalled();
     releaseGame!({ data: game(), error: null });
 
     const response = await pending;
     expect(response.status).toBe(200);
     expect(rpc).toHaveBeenCalledOnce();
+    expect(moveRead).not.toHaveBeenCalled();
+  });
+
+  it("checks the existing idempotency key after a stale version and rejects its reuse", async () => {
+    const chess = new Chess(); chess.move("d4");
+    const { moveRead, rpc } = setup({
+      games: [game({ fen: chess.fen(), pgn: chess.pgn(), ply: 1, turn: "b" })],
+      duplicate: { ply: 1, from_square: "d2", to_square: "d4", promotion: null },
+    });
+    const response = await POST(request(), params);
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({ error: "Request ID already used for another move" });
+    expect(moveRead).toHaveBeenCalledOnce();
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   it("still rejects nonparticipants before accepting any concurrent check results", async () => {
