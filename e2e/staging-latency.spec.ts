@@ -7,6 +7,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { performance } from "node:perf_hooks";
 import { resolveStagingAppOrigin } from "./staging-target";
 import { redactedPreviewRequest, requireFreshPreviewOidcToken } from "./staging-preview-auth";
+import { firstCanonicalPlyRead } from "./staging-latency-read";
 
 loadEnvConfig(process.cwd(), true);
 const enabled = process.env.ROOKLINE_STAGING_E2E === "1" && process.env.ROOKLINE_STAGING_LATENCY_E2E === "1";
@@ -35,6 +36,7 @@ type MoveSample = {
   opponentBrowserRealtimeMs: number | null;
   responseHasSnapshot: boolean;
   opponentGetCount?: number;
+  opponentCorrelatedGetCount?: number;
   opponentFirstGetStartMs?: number | null;
   opponentFirstGetResponseMs?: number | null;
   opponentGetServerAuthMs?: number | null;
@@ -280,8 +282,10 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
       // Record only anonymous timings, to distinguish missed Realtime wakeups
       // from a slow canonical read on the opponent's browser.
       const opponentReads: Array<{
-        request: Request; start: number; response?: number; serverAuthMs?: number | null; serverSnapshotMs?: number | null;
+        request: Request; start: number; response?: number; status?: number; responsePly?: number;
+        serverAuthMs?: number | null; serverSnapshotMs?: number | null;
       }> = [];
+      const readBodies: Promise<void>[] = [];
       const readTarget = `/api/games/${gameId}`;
       const onOpponentRequest = (request: Request) => {
         if (request.method() === "GET" && new URL(request.url()).pathname === readTarget) {
@@ -292,9 +296,21 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
         const entry = opponentReads.find((item) => item.request === response.request());
         if (entry) {
           entry.response = performance.now();
+          entry.status = response.status();
           const serverTiming = response.headers()["server-timing"];
           entry.serverAuthMs = serverDuration(serverTiming, "auth");
           entry.serverSnapshotMs = serverDuration(serverTiming, "snapshot");
+          // Header arrival alone cannot prove the GET contains the current move:
+          // an older backup poll may have finished inside this measurement window.
+          readBodies.push(response.json().then((payload: unknown) => {
+            if (payload && typeof payload === "object" && "game" in payload) {
+              const game = payload.game;
+              if (game && typeof game === "object" && "id" in game && "ply" in game &&
+                  game.id === gameId && typeof game.ply === "number" && Number.isSafeInteger(game.ply)) {
+                entry.responsePly = game.ply;
+              }
+            }
+          }).catch(() => { /* Unparseable responses are excluded from canonical timings. */ }));
         }
       };
       opponent.on("request", onOpponentRequest);
@@ -309,6 +325,8 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
       ]);
       opponent.off("request", onOpponentRequest);
       opponent.off("response", onOpponentResponse);
+      await Promise.allSettled(readBodies);
+      const canonicalRead = firstCanonicalPlyRead(opponentReads, ply);
       expect(response.status(), `move ${ply} (${move.san})`).toBe(200);
       const body = await response.json();
       expect(body.status, `move ${ply} (${move.san})`).toBe("accepted");
@@ -334,10 +352,11 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
           ? Math.round(browserRoomReceived[ply % 2].get(ply)! - start) : null,
         responseHasSnapshot: body.game?.id === gameId,
         opponentGetCount: opponentReads.length,
-        opponentFirstGetStartMs: opponentReads[0] ? Math.round(opponentReads[0].start - start) : null,
-        opponentFirstGetResponseMs: opponentReads[0]?.response ? Math.round(opponentReads[0].response - start) : null,
-        opponentGetServerAuthMs: opponentReads[0]?.serverAuthMs ?? null,
-        opponentGetServerSnapshotMs: opponentReads[0]?.serverSnapshotMs ?? null,
+        opponentCorrelatedGetCount: opponentReads.filter((read) => read.status === 200 && read.responsePly === ply).length,
+        opponentFirstGetStartMs: canonicalRead ? Math.round(canonicalRead.start - start) : null,
+        opponentFirstGetResponseMs: canonicalRead?.response === undefined ? null : Math.round(canonicalRead.response - start),
+        opponentGetServerAuthMs: canonicalRead?.serverAuthMs ?? null,
+        opponentGetServerSnapshotMs: canonicalRead?.serverSnapshotMs ?? null,
       });
     }
     outcome = "completed";
@@ -389,6 +408,9 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
       realtimeDelivery: { white: received[0].size, black: received[1].size, status: socketStatus },
       browserRoomRealtime,
       canonicalResponses: samples.filter((s) => s.responseHasSnapshot).length,
+      // No matching GET means the timing is unknown, not zero. In-flight
+      // requests started before this ply's sampling window are not attributed.
+      correlatedOpponentGetSamples: samples.filter((s) => s.opponentFirstGetResponseMs != null).length,
       samples,
     };
     await mkdir("test-results", { recursive: true });
