@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-11-08 — checkpoint 208, local CI-fixture stabilization
+
+- Inspected GitHub Linux [quality run 42456593229](https://github.com/hoquan2007/Chess_online/actions/runs/42456593229) for development SHA `8afbdc7`. Migration source hashes, dependency audit, lint, TS, 339 unit and Linux build passed. Chromium produced **131 PASS / 10 SKIP / 1 FAIL** because an exact request-count check for queued refresh saw 37 requests after the live polling cadence continued.
+- Held the third mocked catch-up GET during the count assertion, then released it for the canonical `e4` display. Committed only `e2e/rookline.spec.ts` as `b575d6d` on the development branch. Preserved pre-existing `next-env.d.ts` modification. Fresh local **9/9 pinned historical SQL fingerprints, ESLint, TypeScript and 339/339 Vitest PASS**, `git diff --check` PASS. No new local Chromium PASS because the dev server never opened its listening port and its test run was interrupted. Local Windows build remains blocked by the previously observed `.next/standalone` EBUSY.
+- Attempted the authorized development workflow's `git push origin codex/frontend-redesign-2026-11-05`. Native auto-review **rejected** the private source upload as external data egress without explicit authorization for this destination and payload, so neither remote branch nor CI nor staging contains `b575d6d`. Preserve rating disabled and all 20 product acceptance gates OPEN. Resume push only after explicit approval, followed by exact-SHA CI, protected staging, three 32-ply genuine two-account latency runs and S2 multi-session database checks.
+
 ## 2026-11-08 — checkpoint 206, CI green after browser regression repair
 
 - Pushed `94b8141` containing a narrowly scoped mocked stale-GET correction after checkpoint-205 docs commit `fef3c83` failed one GitHub Chromium case. Exact-SHA [run 42454462536](https://github.com/hoquan2007/Chess_online/actions/runs/42454462536) SUCCESS, 339 Vitest, Linux build and 131 browser PASS / 10 conditional SKIP. Protected Vercel `staging`/`sin1` deployment `dpl_7bMuPUJwQGnEtQPz2muyXQF11WYH` READY at identical SHA and the authenticated `/login` response was HTTP 200 with Rookline content.
