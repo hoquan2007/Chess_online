@@ -256,14 +256,16 @@ export function GameRoom({ id }: { id: string }) {
     let pollTimer: number;
     const poll = () => {
       const currentGame = acceptedGame.current;
-      // If a socket update goes missing, the waiting player should see the
-      // opponent's move promptly instead of depending on a five-second poll.
+      // If a socket update goes missing or arrives slowly, the player waiting
+      // for their opponent needs a faster canonical read. Only visible,
+      // active opponent turns use this cadence; other states keep the slower
+      // backup polling schedule. Realtime events still trigger immediate GETs.
       const waitingForOpponent = currentGame?.status === "active" &&
         acceptedViewer.current !== null && currentGame.turn !== acceptedViewer.current;
       pollTimer = window.setTimeout(() => {
         if (!document.hidden) loadAuto();
         poll();
-      }, waitingForOpponent ? 1200 : realtimeConnected ? 5000 : 3000);
+      }, waitingForOpponent ? 500 : realtimeConnected ? 5000 : 3000);
     };
     restartPolling.current = () => {
       window.clearTimeout(pollTimer);

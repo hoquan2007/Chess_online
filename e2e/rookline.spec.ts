@@ -2296,7 +2296,7 @@ test("automatic online refreshes coalesce while a game read is pending", async (
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
 });
 
-test("a missed opponent Realtime event recovers through the short waiting-turn poll", async ({ page }) => {
+test("a missed opponent Realtime event recovers within a second of the waiting-turn poll", async ({ page }) => {
   const id = "00000000-0000-4000-8000-000000000097";
   const chess = new Chess();
   chess.move("e4");
@@ -2318,9 +2318,9 @@ test("a missed opponent Realtime event recovers through the short waiting-turn p
   });
   await page.goto(`/game/${id}`);
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
-  // No socket event, focus or reconnect hint is fired. The old 3-second
-  // fallback misses this deadline; the waiting-turn recovery should not.
-  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible({ timeout: 2500 });
+  // No socket event, focus or reconnect hint is fired. A 1,200 ms waiting
+  // poll misses this deadline; the faster recovery should not.
+  await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible({ timeout: 1100 });
   expect(reads).toBeGreaterThanOrEqual(2);
 });
 
