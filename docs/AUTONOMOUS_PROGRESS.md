@@ -1,5 +1,11 @@
 # Autonomous progress ledger
 
+## 2026-11-08 — checkpoint 206, CI green after browser regression repair
+
+- Pushed `94b8141` containing a narrowly scoped mocked stale-GET correction after checkpoint-205 docs commit `fef3c83` failed one GitHub Chromium case. Exact-SHA [run 42454462536](https://github.com/hoquan2007/Chess_online/actions/runs/42454462536) SUCCESS, 339 Vitest, Linux build and 131 browser PASS / 10 conditional SKIP. Protected Vercel `staging`/`sin1` deployment `dpl_7bMuPUJwQGnEtQPz2muyXQF11WYH` READY at identical SHA and the authenticated `/login` response was HTTP 200 with Rookline content.
+- Inspected per-ply real staging evidence. Run-2 outliers were ply 1 opponent visible **954 ms**, browser Realtime at **736 ms** and first canonical GET at **737–944 ms**, plus ply 4 visible **802 ms** and Realtime at **562 ms**. These tails explain why one of the three 32-ply runs misses the <800 ms criterion. Optimize the authenticated opponent refresh path with measured GET/request tradeoffs, then repeat protected staging and independent-device tests.
+- No rated enablement, unreviewed snapshot-RPC activation, main merge or production promotion. The full S2–S6 plan and 20 release gates remain OPEN.
+
 ## 2026-11-08 — checkpoint 205, verified protected multiplayer latency campaign
 
 - **Source and hosted evidence:** `e03cb3d859b6f2b3d0ec90bb29f90a63854de3f5` development branch, GitHub Actions [42452035895](https://github.com/hoquan2007/Chess_online/actions/runs/42452035895) SUCCESS, protected Vercel `staging`/`sin1` deployment `dpl_BgXWCK2EadMi8NyuNYJnUyMufV1m` READY on the same SHA.
