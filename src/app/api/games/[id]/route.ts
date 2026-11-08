@@ -17,8 +17,9 @@ export async function GET(_request: Request, { params }: RouteContext) {
     "Server-Timing": `auth;dur=${(authenticatedAt - startedAt).toFixed(1)}, snapshot;dur=${(performance.now() - authenticatedAt).toFixed(1)}`,
   });
   // Opt in only after the service-only RPC has been installed and exercised on
-  // staging. One PostgREST call performs the seat check, row-locked clock
-  // expiry and canonical read in one database transaction.
+  // staging. One PostgREST call performs the seat check and canonical read.
+  // The database only acquires the game-row lock for a clock that needs
+  // authoritative timeout settlement (and always for rated games).
   if (process.env.ROOKLINE_FAST_GAME_SNAPSHOT === "1") {
     const result = await context.admin.rpc("rookline_read_player_game", {
       p_game: id,
