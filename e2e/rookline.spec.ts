@@ -2338,16 +2338,21 @@ test("unchanged opponent-turn snapshots keep the clock running and later moves v
   chess.move("e5");
   const replied = { ...waiting, pgn: chess.pgn(), fen: chess.fen(), turn: "w", ply: 2 };
   let reads = 0;
+  let opponentHasMoved = false;
   await page.route(`**/api/games/${id}`, (route) => {
     reads++;
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
-      game: reads < 3 ? waiting : replied, viewerColor: "w", serverNow: Date.now(),
+      game: opponentHasMoved ? replied : waiting, viewerColor: "w", serverNow: Date.now(),
     }) });
   });
   await page.goto(`/game/${id}`);
   await expect(page.getByLabel("Move history").getByText("e4")).toBeVisible();
   await expect.poll(() => reads).toBeGreaterThanOrEqual(2);
+  // The quicker opponent-turn poll can surface move 2 before a clock second
+  // elapses. Keep the canonical board unchanged until the clock has ticked,
+  // then publish the next move; this tests both properties independently.
   await expect(page.getByLabel("Black clock")).not.toHaveText("00:10");
+  opponentHasMoved = true;
   await expect(page.getByLabel("Move history").getByText("e5")).toBeVisible({ timeout: 3500 });
   expect(reads).toBeGreaterThanOrEqual(3);
 });
