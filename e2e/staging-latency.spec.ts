@@ -32,6 +32,7 @@ type MoveSample = {
   opponentBoardMs: number;
   whiteRealtimeMs: number | null;
   blackRealtimeMs: number | null;
+  opponentBrowserRealtimeMs: number | null;
   responseHasSnapshot: boolean;
   opponentGetCount?: number;
   opponentFirstGetStartMs?: number | null;
@@ -100,6 +101,7 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
   const sockets: Array<{ removeAllChannels: () => Promise<unknown> }> = [];
   const samples: MoveSample[] = [];
   const received: Array<Map<number, number>> = [new Map(), new Map()];
+  const browserRoomReceived: Array<Map<number, number>> = [new Map(), new Map()];
   const socketStatus: string[][] = [[], []];
   const browserRoomRealtime = Array.from({ length: 2 }, () => ({
     opens: 0, joins: 0, joinOk: 0, changes: 0, closed: 0,
@@ -189,6 +191,16 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
               joinBindingCount: Array.isArray(value) ? value[4]?.config?.postgres_changes?.length : value.payload?.config?.postgres_changes?.length,
               joinHasAuth: Boolean(Array.isArray(value) ? value[4]?.access_token : value.payload?.access_token),
               replyBindingCount: Array.isArray(value) ? value[4]?.response?.postgres_changes?.length : value.payload?.response?.postgres_changes?.length,
+              // Keep only the numeric ply for timing. Never retain the actual
+              // row, authorization token, or raw WebSocket frame.
+              // Supabase Realtime can use either Phoenix's array envelope or
+              // the object envelope. Read only the sequence from either the
+              // postgres_changes data.record or the legacy new/record form.
+              ply: (() => {
+                const change = Array.isArray(value) ? value[4] : value.payload;
+                return change?.data?.record?.ply ?? change?.record?.ply
+                  ?? change?.data?.new?.ply ?? change?.new?.ply;
+              })(),
             };
           } catch { return null; }
         };
@@ -210,7 +222,12 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
             stats.replyStatuses.push(event.status ?? "unknown");
             stats.replyBindings.push(event.replyBindingCount ?? -1);
           }
-          if (event.event === "postgres_changes") stats.changes += 1;
+          if (event.event === "postgres_changes") {
+            stats.changes += 1;
+            if (Number.isSafeInteger(event.ply) && event.ply > 0 && !browserRoomReceived[index].has(event.ply)) {
+              browserRoomReceived[index].set(event.ply, performance.now());
+            }
+          }
         });
         socket.on("close", () => { stats.closed += 1; });
       });
@@ -312,6 +329,9 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
         opponentBoardMs: Math.round(opponentAt - start),
         whiteRealtimeMs: received[0].has(ply) ? Math.round(received[0].get(ply)! - start) : null,
         blackRealtimeMs: received[1].has(ply) ? Math.round(received[1].get(ply)! - start) : null,
+        // White sends odd plies, so the opposing browser is index 1 then 0.
+        opponentBrowserRealtimeMs: browserRoomReceived[ply % 2].has(ply)
+          ? Math.round(browserRoomReceived[ply % 2].get(ply)! - start) : null,
         responseHasSnapshot: body.game?.id === gameId,
         opponentGetCount: opponentReads.length,
         opponentFirstGetStartMs: opponentReads[0] ? Math.round(opponentReads[0].start - start) : null,
@@ -324,6 +344,8 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
     expect(samples).toHaveLength(moveCount);
     expect(browserRoomRealtime.every((room) => room.changes === moveCount),
       "both browser game rooms must receive every authorized move update").toBe(true);
+    expect(samples.every((sample) => sample.opponentBrowserRealtimeMs !== null),
+      "every opponent browser must expose a parseable Realtime ply before reporting latency").toBe(true);
   } finally {
     // Only timings and build information are persisted: never credentials, emails or user IDs.
     const report = {
@@ -342,6 +364,8 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
         opponentBoard: percentiles(samples.map((s) => s.opponentBoardMs)),
         whiteRealtime: percentiles(samples.map((s) => s.whiteRealtimeMs).filter((v): v is number => v !== null)),
         blackRealtime: percentiles(samples.map((s) => s.blackRealtimeMs).filter((v): v is number => v !== null)),
+        opponentBrowserRealtime: percentiles(samples.flatMap((s) =>
+          s.opponentBrowserRealtimeMs == null ? [] : [s.opponentBrowserRealtimeMs])),
         // These are paired per-move durations, not differences of percentile summaries.
         opponentGet: percentiles(samples.flatMap((s) =>
           s.opponentFirstGetStartMs == null || s.opponentFirstGetResponseMs == null
@@ -354,6 +378,11 @@ test("measure 32 actual browser moves and two authenticated Realtime recipients 
           const realtime = s.ply % 2 === 1 ? s.blackRealtimeMs : s.whiteRealtimeMs;
           return realtime == null ? [] : [s.opponentBoardMs - realtime];
         })),
+        opponentAfterBrowserRealtime: percentiles(samples.flatMap((s) =>
+          s.opponentBrowserRealtimeMs == null ? [] : [s.opponentBoardMs - s.opponentBrowserRealtimeMs])),
+        opponentGetStartAfterBrowserRealtime: percentiles(samples.flatMap((s) =>
+          s.opponentBrowserRealtimeMs == null || s.opponentFirstGetStartMs == null
+            ? [] : [s.opponentFirstGetStartMs - s.opponentBrowserRealtimeMs])),
         opponentRenderAfterResponse: percentiles(samples.flatMap((s) =>
           s.opponentFirstGetResponseMs == null ? [] : [s.opponentBoardMs - s.opponentFirstGetResponseMs])),
       },
